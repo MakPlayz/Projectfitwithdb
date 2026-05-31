@@ -63,7 +63,17 @@ export async function getUserFromAccessToken(accessToken: string) {
 
 async function parseSupabaseResponse<T>(response: Response) {
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    return {
+      data: null as T | null,
+      error: text || `Supabase returned an invalid response with ${response.status}`,
+      status: response.status,
+    };
+  }
 
   if (!response.ok) {
     const message =

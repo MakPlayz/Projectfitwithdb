@@ -27,7 +27,7 @@ export function clearSession() {
   localStorage.removeItem(sessionKey);
 }
 
-export function getAuthHeaders() {
+export function getAuthHeaders(): Record<string, string> {
   const session = getSession();
 
   return session

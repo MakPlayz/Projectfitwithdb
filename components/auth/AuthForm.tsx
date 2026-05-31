@@ -47,7 +47,7 @@ export default function AuthForm({
         },
         body: JSON.stringify(payload),
       });
-      const data = await response.json();
+      const data = await readJsonResponse(response);
 
       if (!response.ok) {
         throw new Error(data.error ?? 'Authentication failed.');
@@ -170,4 +170,22 @@ export default function AuthForm({
       </p>
     </div>
   );
+}
+
+async function readJsonResponse(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: response.ok
+        ? 'The server returned an invalid auth response.'
+        : 'The server returned an error instead of JSON.',
+    };
+  }
 }

@@ -8,29 +8,36 @@ interface SignupBody {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as SignupBody;
+  try {
+    const body = (await request.json()) as SignupBody;
 
-  if (!body.name || !body.email || !body.password) {
+    if (!body.name || !body.email || !body.password) {
+      return NextResponse.json(
+        { error: 'Name, email, and password are required.' },
+        { status: 400 }
+      );
+    }
+
+    const { data, error, status } = await supabaseAuthFetch('/signup', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: body.email,
+        password: body.password,
+        data: {
+          name: body.name,
+        },
+      }),
+    });
+
+    if (error) {
+      return NextResponse.json({ error }, { status });
+    }
+
+    return NextResponse.json(data ?? {}, { status: 201 });
+  } catch (err) {
     return NextResponse.json(
-      { error: 'Name, email, and password are required.' },
-      { status: 400 }
+      { error: err instanceof Error ? err.message : 'Signup failed.' },
+      { status: 500 }
     );
   }
-
-  const { data, error, status } = await supabaseAuthFetch('/signup', {
-    method: 'POST',
-    body: JSON.stringify({
-      email: body.email,
-      password: body.password,
-      data: {
-        name: body.name,
-      },
-    }),
-  });
-
-  if (error) {
-    return NextResponse.json({ error }, { status });
-  }
-
-  return NextResponse.json(data, { status: 201 });
 }
