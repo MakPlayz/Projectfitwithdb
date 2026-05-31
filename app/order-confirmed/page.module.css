@@ -1,0 +1,115 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 24px 40px;
+  background: radial-gradient(circle at center, rgba(45,186,78,0.1) 0%, var(--black) 50%);
+}
+
+.card {
+  background: var(--dark);
+  border: 1px solid rgba(45,186,78,0.3);
+  padding: 48px;
+  border-radius: 24px;
+  max-width: 500px;
+  width: 100%;
+  text-align: center;
+  animation: scaleUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(45,186,78,0.1);
+}
+
+.iconWrap {
+  width: 96px;
+  height: 96px;
+  background: rgba(45,186,78,0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+  animation: pulse-green 2s infinite;
+}
+
+.icon {
+  color: var(--green);
+}
+
+.title {
+  font-size: 32px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #fff 0%, #aaa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.desc {
+  color: var(--text-dim);
+  font-size: 16px;
+  margin-bottom: 32px;
+}
+
+.orderId {
+  background: var(--dark2);
+  border: 1px dashed var(--border);
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 32px;
+}
+
+.orderId span {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+}
+
+.orderId strong {
+  font-size: 24px;
+  color: var(--green);
+  letter-spacing: 2px;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+@keyframes scaleUp {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@media (max-width: 520px) {
+  .container {
+    padding: 88px 16px 32px;
+  }
+
+  .card {
+    padding: 32px 20px;
+    border-radius: 20px;
+  }
+
+  .iconWrap {
+    width: 78px;
+    height: 78px;
+  }
+
+  .title {
+    font-size: 26px;
+  }
+
+  .orderId strong {
+    font-size: 20px;
+    overflow-wrap: anywhere;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}

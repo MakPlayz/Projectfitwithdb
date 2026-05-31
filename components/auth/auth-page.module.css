@@ -1,0 +1,40 @@
+.main {
+  min-height: 100vh;
+  padding-top: calc(var(--nav-height) + 32px);
+  padding-bottom: 80px;
+  position: relative;
+}
+
+.decor {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(480px, 95vw);
+  height: 520px;
+  background: radial-gradient(ellipse, rgba(5, 150, 105, 0.14) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 40px;
+  transition: color 0.2s;
+}
+
+.back:hover {
+  color: var(--green);
+}
+
+.leafWrap {
+  display: flex;
+  justify-content: center;
+  padding: 32px 0 64px;
+  min-height: min(480px, 70vh);
+  align-items: center;
+}

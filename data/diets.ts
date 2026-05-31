@@ -1,0 +1,611 @@
+export type DietSlug =
+  | 'weight-loss'
+  | 'mass-gain'
+  | 'pregnancy'
+  | 'pcos-pcod'
+  | 'diabetes';
+
+export interface DietPlan {
+  id: string;
+  name: string;
+  duration: string;
+  price: number;
+  mealsPerDay: number;
+  highlight: string;
+}
+
+export interface DietMeal {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  price: number;
+  mealType?: 'breakfast' | 'lunch' | 'dinner' | 'snack' | 'juice';
+}
+
+export interface DietCategory {
+  slug: DietSlug;
+  href: string;
+  title: string;
+  shortTitle: string;
+  tagline: string;
+  description: string;
+  calorieTarget: string;
+  pdfUrl: string;
+  image: string;
+  accent: string;
+  accentLight: string;
+  gradient: string;
+  icon: string;
+  plans: DietPlan[];
+  meals: DietMeal[];
+  macros: { label: string; value: string; note: string }[];
+  nutritionHighlights: string[];
+}
+
+/** Category card & hero images */
+export const categoryImages = {
+  'weight-loss': '/images/categories/weightloss.png',
+  'mass-gain': '/images/categories/mass-gain.png',
+  pregnancy: '/images/categories/pregnancy.png',
+  'pcos-pcod': '/images/categories/pcod.png',
+  diabetes: '/images/categories/diabetes.png',
+} as const;
+
+const pregnancyImages = {
+  omelete: '/images/preg/omelete.png',
+  abc: '/images/preg/abc.png',
+  fishBowl: '/images/preg/fish-bowl.png',
+  chiaPudding: '/images/preg/chia-pudding.png',
+  poha: '/images/preg/poha.png',
+} as const;
+
+const weightLossImages = {
+  oats: '/images/weightloss/oats.png',
+  dal: '/images/weightloss/dal.png',
+  flax: '/images/weightloss/flax.png',
+  moong: '/images/weightloss/moong.png',
+  abc: '/images/weightloss/abc.png',
+} as const;
+
+const massGainImages = {
+  chocOats: '/images/mg/choc-oats.png',
+  chickBowl: '/images/mg/chick-bowl.png',
+  omelete: '/images/mg/omelete.png',
+  sandwich: '/images/mg/sandwich.png',
+  pineapple: '/images/mg/pineapple.png',
+} as const;
+
+const pcodImages = {
+  chiaPudding: '/images/pcod/chia-pudding.png',
+  avocado: '/images/pcod/avocado.png',
+  shrimp: '/images/pcod/shrimp.png',
+  fishBowl: '/images/pcod/fish-bowl.png',
+  greenJuice: '/images/pcod/green-juice.png',
+} as const;
+
+const diabetesImages = {
+  greenJuice: '/images/diabetes/green-juice.png',
+  omelete: '/images/diabetes/omelete.png',
+  shrimpSalad: '/images/diabetes/shrimp-salad.png',
+  lemonChick: '/images/diabetes/lemon-chick.png',
+  chiaPudding: '/images/diabetes/chia-pudding.png',
+} as const;
+
+export const dietCategories: DietCategory[] = [
+  {
+    slug: 'weight-loss',
+    href: '/weight-loss',
+    title: 'Weight Loss',
+    shortTitle: 'Weight Loss',
+    tagline: '7-day Indian plan · 1,400–1,600 kcal/day',
+    description:
+      'A structured 7-day Indian weight loss diet targeting 1,400–1,600 kcal per day with high protein, low-GI carbs, minimal oil, and portion control. Includes daily morning juices, balanced breakfast, lunch, and light dinners.',
+    calorieTarget: '1,400–1,600 kcal/day',
+    pdfUrl: '/pdfs/weight-loss.pdf',
+    image: weightLossImages.oats,
+    accent: '#059669',
+    accentLight: '#ecfdf5',
+    gradient: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 50%, #ffffff 100%)',
+    icon: 'scale',
+    plans: [
+      {
+        id: 'wl-7',
+        name: '7-Day Weight Loss Plan',
+        duration: '7 days',
+        price: 1999,
+        mealsPerDay: 4,
+        highlight: 'High protein · Low GI',
+      },
+    ],
+    meals: [
+      {
+        id: 'wl-m1',
+        name: 'Oats Porridge with Chia & Berries',
+        description: 'Monday breakfast — warm oats with chia seeds and fresh berries',
+        image: weightLossImages.oats,
+        calories: 320,
+        protein: 12,
+        carbs: 48,
+        fat: 8,
+        price: 199,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'wl-m2',
+        name: 'Brown Rice, Dal & Cucumber Salad',
+        description: 'Monday lunch — brown rice with dal and fresh cucumber salad',
+        image: weightLossImages.dal,
+        calories: 420,
+        protein: 18,
+        carbs: 58,
+        fat: 10,
+        price: 249,
+        mealType: 'lunch',
+      },
+      {
+        id: 'wl-m3',
+        name: 'Greek Yogurt with Flax Seeds',
+        description: 'Wednesday breakfast — protein-rich yogurt with flax',
+        image: weightLossImages.flax,
+        calories: 280,
+        protein: 20,
+        carbs: 22,
+        fat: 12,
+        price: 179,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'wl-m4',
+        name: 'Moong Dal Soup & Sautéed Veggies',
+        description: 'Monday dinner — light dal soup with sautéed vegetables',
+        image: weightLossImages.moong,
+        calories: 310,
+        protein: 16,
+        carbs: 38,
+        fat: 8,
+        price: 219,
+        mealType: 'dinner',
+      },
+      {
+        id: 'wl-m5',
+        name: 'Carrot ABC Juice',
+        description: 'Morning juice — apple, beetroot & carrot (daily rotation)',
+        image: weightLossImages.abc,
+        calories: 90,
+        protein: 2,
+        carbs: 20,
+        fat: 0,
+        price: 99,
+        mealType: 'juice',
+      },
+    ],
+    macros: [
+      { label: 'Daily Calories', value: '1,400–1,600', note: 'Calorie deficit' },
+      { label: 'Protein', value: 'High', note: 'Preserve muscle' },
+      { label: 'Carbs', value: 'Low–moderate', note: 'Brown rice, millets, quinoa' },
+    ],
+    nutritionHighlights: [
+      'High protein',
+      'Low sugar — no sugary drinks or desserts',
+      'Moderate complex carbs only',
+      'Half plate non-starchy vegetables',
+      '2–3 L water daily',
+      'No fried snacks or bakery items',
+    ],
+  },
+  {
+    slug: 'mass-gain',
+    href: '/mass-gain',
+    title: 'Mass Gain',
+    shortTitle: 'Mass Gain',
+    tagline: '7-day mass gain · 2,500–2,800 kcal/day',
+    description:
+      'A 7-day mass gain meal plan targeting 2,500–2,800 kcal per day for gradual, sustainable weight gain. Six meals daily with protein at every meal, healthy fats (nuts, dairy, peanut butter, ghee), and complex carbs in rice/quinoa bowls.',
+    calorieTarget: '2,500–2,800 kcal/day',
+    pdfUrl: '/pdfs/mass-gain.pdf',
+    image: massGainImages.chocOats,
+    accent: '#ea580c',
+    accentLight: '#fff7ed',
+    gradient: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 50%, #ffffff 100%)',
+    icon: 'dumbbell',
+    plans: [
+      {
+        id: 'mg-7',
+        name: '7-Day Mass Gain Plan',
+        duration: '7 days',
+        price: 2499,
+        mealsPerDay: 6,
+        highlight: 'Caloric surplus',
+      },
+    ],
+    meals: [
+      {
+        id: 'mg-m1',
+        name: 'Chocolate Oatmeal (Loaded)',
+        description: 'Monday breakfast — oats with peanut butter, mixed nuts & fruits',
+        image: massGainImages.chocOats,
+        calories: 620,
+        protein: 28,
+        carbs: 72,
+        fat: 24,
+        price: 299,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'mg-m2',
+        name: 'Lemon Pepper Chicken Bowl',
+        description: 'Monday dinner — generous portion with rice & veggies',
+        image: massGainImages.chickBowl,
+        calories: 780,
+        protein: 48,
+        carbs: 85,
+        fat: 22,
+        price: 349,
+        mealType: 'dinner',
+      },
+      {
+        id: 'mg-m3',
+        name: 'Paneer, Spinach & Mushroom Omelet',
+        description: 'Tuesday breakfast — with 200g roasted potatoes',
+        image: massGainImages.omelete,
+        calories: 540,
+        protein: 32,
+        carbs: 42,
+        fat: 28,
+        price: 279,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'mg-m4',
+        name: 'Fully Loaded Sandwich',
+        description: 'Friday breakfast — chicken, paneer, egg, mushroom, corn & cheese',
+        image: massGainImages.sandwich,
+        calories: 680,
+        protein: 42,
+        carbs: 58,
+        fat: 30,
+        price: 329,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'mg-m5',
+        name: 'Pineapple Lemon Juice + Whey',
+        description: 'Mid-morning snack — juice with 1 scoop whey protein',
+        image: massGainImages.pineapple,
+        calories: 220,
+        protein: 25,
+        carbs: 18,
+        fat: 4,
+        price: 149,
+        mealType: 'snack',
+      },
+    ],
+    macros: [
+      { label: 'Daily Calories', value: '2,500–2,800', note: 'Caloric surplus' },
+      { label: 'Protein', value: 'Every meal', note: 'Muscle synthesis' },
+      { label: 'Carbs', value: 'High', note: 'Rice & quinoa bowls' },
+    ],
+    nutritionHighlights: [
+      '6 meals per day',
+      'Protein with every meal',
+      'Healthy fats — nuts, ghee, whole milk',
+      'Do not skip rice/quinoa at dinner',
+      'Strength training recommended',
+      'Whey protein mid-morning snacks',
+    ],
+  },
+  {
+    slug: 'pregnancy',
+    href: '/pregnancy',
+    title: 'Pregnancy Nutrition',
+    shortTitle: 'Pregnancy',
+    tagline: '7-day pregnancy plan · Balanced & GD-safe',
+    description:
+      'A 7-day pregnancy meal plan focused on iron, calcium, protein, folic acid, and hydration. Uses complex carbs (quinoa, brown rice, oats) to help prevent gestational diabetes, with omega-3s via chia, walnuts, avocado, and low-mercury fish.',
+    calorieTarget: 'Trimester-adjusted portions',
+    pdfUrl: '/pdfs/pregnancy.pdf',
+    image: pregnancyImages.omelete,
+    accent: '#e11d48',
+    accentLight: '#fff1f2',
+    gradient: 'linear-gradient(135deg, #fff1f2 0%, #ffe4e6 50%, #ffffff 100%)',
+    icon: 'heart',
+    plans: [
+      {
+        id: 'pr-7',
+        name: '7-Day Pregnancy Plan',
+        duration: '7 days',
+        price: 2299,
+        mealsPerDay: 4,
+        highlight: 'Iron & folate focus',
+      },
+    ],
+    meals: [
+      {
+        id: 'pr-m1',
+        name: 'Paneer, Spinach & Mushroom Omelet',
+        description: 'Monday breakfast — iron & protein rich',
+        image: pregnancyImages.omelete,
+        calories: 380,
+        protein: 22,
+        carbs: 18,
+        fat: 26,
+        price: 269,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'pr-m2',
+        name: 'ABC Juice',
+        description: 'Monday mid-morning — apple, beetroot & carrot for iron',
+        image: pregnancyImages.abc,
+        calories: 110,
+        protein: 2,
+        carbs: 24,
+        fat: 0,
+        price: 99,
+        mealType: 'juice',
+      },
+      {
+        id: 'pr-m3',
+        name: 'Fish Bowl with Brown Rice',
+        description: 'Tuesday dinner — omega-3 rich, thoroughly cooked fish',
+        image: pregnancyImages.fishBowl,
+        calories: 480,
+        protein: 34,
+        carbs: 52,
+        fat: 16,
+        price: 349,
+        mealType: 'dinner',
+      },
+      {
+        id: 'pr-m4',
+        name: 'Chia Pudding',
+        description: 'Friday breakfast — yogurt, soaked chia, nuts & fruits',
+        image: pregnancyImages.chiaPudding,
+        calories: 360,
+        protein: 14,
+        carbs: 42,
+        fat: 16,
+        price: 229,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'pr-m5',
+        name: 'Veg-Loaded Poha',
+        description: 'Thursday breakfast — with peanuts & vegetables',
+        image: pregnancyImages.poha,
+        calories: 400,
+        protein: 12,
+        carbs: 58,
+        fat: 14,
+        price: 199,
+        mealType: 'breakfast',
+      },
+    ],
+    macros: [
+      { label: 'Key Nutrients', value: 'Iron · Calcium · Folate', note: 'Daily targets' },
+      { label: 'Protein', value: 'Lean sources', note: 'Paneer, eggs, dal, fish' },
+      { label: 'Carbs', value: 'Complex only', note: 'GD prevention' },
+    ],
+    nutritionHighlights: [
+      'Iron, calcium, protein, folic acid',
+      'Vitamin C juices boost iron absorption',
+      'Omega-3 via chia, walnuts & fish',
+      'Moderate complex carbs only',
+      'Thoroughly cooked proteins',
+      'Eat to satisfaction — no strict restriction',
+    ],
+  },
+  {
+    slug: 'pcos-pcod',
+    href: '/pcos-pcod',
+    title: 'PCOS / PCOD Diet',
+    shortTitle: 'PCOS / PCOD',
+    tagline: '7-day PCOD plan · Low GI · High fiber',
+    description:
+      'A 7-day PCOD/PCOS diet plan to stabilize insulin, reduce inflammation, and balance hormones. Low glycemic foods, strict avoidance of refined sugar and maida, high fiber and lean protein at every meal, plus chia and flax for healthy fats.',
+    calorieTarget: 'Hormone-balancing portions',
+    pdfUrl: '/pdfs/pcos-pcod.pdf',
+    image: categoryImages['pcos-pcod'],
+    accent: '#7c3aed',
+    accentLight: '#f5f3ff',
+    gradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #ffffff 100%)',
+    icon: 'sparkles',
+    plans: [
+      {
+        id: 'pc-7',
+        name: '7-Day PCOD Balance Plan',
+        duration: '7 days',
+        price: 2099,
+        mealsPerDay: 4,
+        highlight: 'Low GI · No maida',
+      },
+    ],
+    meals: [
+      {
+        id: 'pc-m1',
+        name: 'Chia Pudding',
+        description: 'Tuesday breakfast — yogurt, chia, nuts & berries',
+        image: pcodImages.chiaPudding,
+        calories: 340,
+        protein: 14,
+        carbs: 38,
+        fat: 16,
+        price: 229,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'pc-m2',
+        name: 'Avocado Chicken Toast',
+        description: 'Wednesday breakfast — 100% whole wheat/multigrain bread only',
+        image: pcodImages.avocado,
+        calories: 420,
+        protein: 28,
+        carbs: 32,
+        fat: 22,
+        price: 279,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'pc-m3',
+        name: 'Shrimp Salad (Lunch)',
+        description: 'Monday lunch — lean protein with extra vegetables',
+        image: pcodImages.shrimp,
+        calories: 360,
+        protein: 32,
+        carbs: 22,
+        fat: 14,
+        price: 299,
+        mealType: 'lunch',
+      },
+      {
+        id: 'pc-m4',
+        name: 'Fish Bowl — Extra Veggies',
+        description: 'Wednesday dinner — extra veggies, rice reduced or skipped',
+        image: pcodImages.fishBowl,
+        calories: 380,
+        protein: 30,
+        carbs: 28,
+        fat: 16,
+        price: 289,
+        mealType: 'dinner',
+      },
+      {
+        id: 'pc-m5',
+        name: 'Green Juice',
+        description: 'Tuesday mid-morning — spinach, cucumber, lemon, kale, celery',
+        image: pcodImages.greenJuice,
+        calories: 80,
+        protein: 3,
+        carbs: 14,
+        fat: 1,
+        price: 99,
+        mealType: 'juice',
+      },
+    ],
+    macros: [
+      { label: 'Glycemic Load', value: 'Low', note: 'Quinoa & brown rice' },
+      { label: 'Fiber', value: 'High', note: 'Every meal' },
+      { label: 'Avoid', value: 'Sugar & maida', note: 'Strict' },
+    ],
+    nutritionHighlights: [
+      'Low glycemic complex carbs',
+      'No refined sugar or maida',
+      'Chia & flax for omega-3s',
+      'Lighter dinners — more veggies, less rice',
+      'Whole wheat/multigrain bread only',
+      'Pair with daily exercise',
+    ],
+  },
+  {
+    slug: 'diabetes',
+    href: '/diabetes',
+    title: 'Diabetes-Friendly Diet',
+    shortTitle: 'Diabetes',
+    tagline: '7-day diabetes plan · Stable blood sugar',
+    description:
+      'A 7-day diabetes-friendly meal plan based on your personal menu rules. Eat every 3–4 hours, use quinoa or brown rice (never white rice or maida), high-fiber vegetables in every bowl, whole grain bread only, and strictly no white sugar.',
+    calorieTarget: 'Stable glucose · Low GI',
+    pdfUrl: '/pdfs/diabetes.pdf',
+    image: categoryImages.diabetes,
+    accent: '#0284c7',
+    accentLight: '#f0f9ff',
+    gradient: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #ffffff 100%)',
+    icon: 'activity',
+    plans: [
+      {
+        id: 'db-7',
+        name: '7-Day Diabetes-Friendly Plan',
+        duration: '7 days',
+        price: 2099,
+        mealsPerDay: 4,
+        highlight: 'No white sugar',
+      },
+    ],
+    meals: [
+      {
+        id: 'db-m1',
+        name: 'Green Juice',
+        description: 'Monday mid-morning — spinach, cucumber, kale, celery & lemon',
+        image: diabetesImages.greenJuice,
+        calories: 75,
+        protein: 3,
+        carbs: 12,
+        fat: 1,
+        price: 99,
+        mealType: 'juice',
+      },
+      {
+        id: 'db-m2',
+        name: 'Paneer, Spinach & Mushroom Omelet',
+        description: 'Monday breakfast — high protein start',
+        image: diabetesImages.omelete,
+        calories: 350,
+        protein: 24,
+        carbs: 12,
+        fat: 24,
+        price: 259,
+        mealType: 'breakfast',
+      },
+      {
+        id: 'db-m3',
+        name: 'Shrimp Salad',
+        description: 'Monday lunch — lean protein with fiber-rich vegetables',
+        image: diabetesImages.shrimpSalad,
+        calories: 320,
+        protein: 30,
+        carbs: 18,
+        fat: 12,
+        price: 299,
+        mealType: 'lunch',
+      },
+      {
+        id: 'db-m4',
+        name: 'Lemon Pepper Chicken Bowl',
+        description: 'Monday dinner — quinoa base with mixed high-fiber veggies',
+        image: diabetesImages.lemonChick,
+        calories: 400,
+        protein: 36,
+        carbs: 38,
+        fat: 12,
+        price: 289,
+        mealType: 'dinner',
+      },
+      {
+        id: 'db-m5',
+        name: 'Chia Pudding',
+        description: 'Friday breakfast — yogurt, chia, nuts & low-GI fruits',
+        image: diabetesImages.chiaPudding,
+        calories: 310,
+        protein: 12,
+        carbs: 36,
+        fat: 14,
+        price: 219,
+        mealType: 'breakfast',
+      },
+    ],
+    macros: [
+      { label: 'Meal Timing', value: 'Every 3–4 hrs', note: 'Stable glucose' },
+      { label: 'Carbs', value: 'Complex only', note: 'Quinoa & brown rice' },
+      { label: 'Sugar', value: 'Zero white sugar', note: 'Strict rule' },
+    ],
+    nutritionHighlights: [
+      'Eat every 3–4 hours',
+      'Quinoa or brown rice — no white rice',
+      'High-fiber vegetables in every bowl',
+      'Whole wheat/multigrain bread only',
+      'Green juice — diabetic & fatty liver friendly',
+      'Lighter dinners — extra veggies, less rice',
+    ],
+  },
+];
+
+export function getDietBySlug(slug: string): DietCategory | undefined {
+  return dietCategories.find((d) => d.slug === slug);
+}
+
+export const dietSlugs = dietCategories.map((d) => d.slug);

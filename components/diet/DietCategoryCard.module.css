@@ -1,0 +1,143 @@
+.motionWrap {
+  height: 100%;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--diet-gradient, var(--white));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.4s var(--transition), border-color 0.3s;
+  position: relative;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--diet-accent) 35%, var(--border));
+}
+
+.card:hover .arrow {
+  transform: translate(2px, -2px);
+  background: var(--diet-accent);
+  color: white;
+}
+
+.imageArea {
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.imageOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 55%, rgba(255, 255, 255, 0.55) 100%);
+  pointer-events: none;
+}
+
+.iconBadge {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--diet-accent);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  z-index: 2;
+}
+
+.body {
+  padding: 18px 20px 22px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.topRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.topRow h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.body > p {
+  font-size: 0.875rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.calorieBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--diet-accent);
+  background: color-mix(in srgb, var(--diet-accent) 10%, white);
+  border: 1px solid color-mix(in srgb, var(--diet-accent) 25%, transparent);
+  padding: 4px 10px;
+  border-radius: 50px;
+  letter-spacing: 0.02em;
+}
+
+.arrow {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  color: var(--diet-accent);
+  border: 1px solid var(--border);
+  transition: transform 0.3s var(--transition), background 0.3s, color 0.3s;
+}
+
+.shine {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: skewX(-20deg);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+}
+
+.card:hover .shine {
+  opacity: 1;
+  animation: cardShine 0.8s var(--transition);
+}
+
+@keyframes cardShine {
+  from { left: -100%; }
+  to { left: 150%; }
+}
+
+@media (max-width: 768px) {
+  .imageArea {
+    height: 140px;
+  }
+}

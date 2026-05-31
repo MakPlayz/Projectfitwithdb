@@ -1,0 +1,133 @@
+.hero {
+  position: relative;
+  width: 100%;
+  min-height: calc(100svh - var(--nav-height));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(72px, 11vh, 112px) 16px clamp(180px, 28vh, 280px);
+  text-align: center;
+  background: var(--bg);
+  isolation: isolate;
+}
+
+.hero::before {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: url('/images/heroes/hero-bg.png') center / cover no-repeat;
+  z-index: 0;
+}
+
+.content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 760px;
+}
+
+.tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  border: 1px solid var(--border-accent);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 7px 16px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow-sm);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(3.35rem, 10vw, 6.35rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 0.98;
+  color: var(--green);
+}
+
+.description {
+  max-width: 610px;
+  margin: 24px 0 0;
+  color: var(--text-dim);
+  font-size: clamp(1rem, 2vw, 1.16rem);
+  line-height: 1.75;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 32px;
+}
+
+.galleryWrap {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  height: min(43vh, 390px);
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, transparent, #fff 12%, #fff 92%);
+}
+
+@media (max-width: 760px) {
+  .hero {
+    min-height: 92svh;
+    padding-inline: 16px;
+    padding-top: 48px;
+    padding-bottom: 170px;
+  }
+
+  .title {
+    font-size: clamp(2.75rem, 17vw, 4rem);
+    line-height: 1;
+  }
+
+  .description {
+    font-size: 0.98rem;
+    line-height: 1.65;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions a {
+    justify-content: center;
+  }
+
+  .galleryWrap {
+    height: 230px;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero {
+    padding-bottom: 145px;
+  }
+
+  .tagline {
+    max-width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .galleryWrap {
+    height: 190px;
+  }
+}
