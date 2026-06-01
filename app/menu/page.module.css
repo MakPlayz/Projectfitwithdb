@@ -24,6 +24,34 @@
   color: var(--text-dim);
 }
 
+.recommendationCard {
+  margin-top: 26px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+  text-align: left;
+  padding: 22px 24px;
+  border-radius: 24px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.94), rgba(236, 253, 245, 0.92)),
+    radial-gradient(circle at top right, rgba(5, 150, 105, 0.16), transparent 42%);
+  border: 1px solid var(--border-accent);
+  box-shadow: var(--shadow);
+}
+
+.recommendationCard h2 {
+  margin: 12px 0 8px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  text-transform: capitalize;
+}
+
+.recommendationCard p {
+  color: var(--text-secondary);
+  max-width: 720px;
+}
+
 .filters {
   position: sticky;
   top: calc(var(--nav-height) - 4px);
@@ -175,6 +203,12 @@
     top: var(--nav-height);
     padding: 14px 0;
     margin-bottom: 28px;
+  }
+
+  .recommendationCard {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
   }
 
   .toggles {

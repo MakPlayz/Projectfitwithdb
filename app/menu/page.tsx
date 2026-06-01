@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Leaf, ArrowDown, ArrowUp } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { Leaf } from 'lucide-react';
 import FoodCard from '@/components/FoodCard';
 import { menuData, categories } from '@/data/menu';
+import { getAuthHeaders } from '@/lib/auth-client';
+import type { CustomerProfile } from '@/lib/backend-types';
 import styles from './page.module.css';
 
 type SortOption = 'popular' | 'price-low' | 'price-high';
@@ -14,6 +17,39 @@ export default function MenuPage() {
   const [nonVegOnly, setNonVegOnly] = useState(false);
   const [highProtein, setHighProtein] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('popular');
+  const [profile, setProfile] = useState<CustomerProfile | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadProfile() {
+      try {
+        const response = await fetch('/api/profile', {
+          headers: {
+            ...getAuthHeaders(),
+          },
+          cache: 'no-store',
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          return;
+        }
+
+        if (isMounted) {
+          setProfile(data.profile ?? null);
+        }
+      } catch {
+        // Menu still works without a profile, so keep this silent.
+      }
+    }
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredMenu = useMemo(() => {
     let result = menuData;
@@ -40,6 +76,18 @@ export default function MenuPage() {
         <div className="container">
           <h1 className={styles.title}>Our Menu</h1>
           <p className={styles.subtitle}>Fuel your body with macros that matter.</p>
+          {profile?.is_profile_complete && (
+            <div className={styles.recommendationCard}>
+              <div>
+                <span className="tag">Personalized plan</span>
+                <h2>Recommended path: {profile.recommended_path.replace('-', ' ')}</h2>
+                <p>{profile.recommendation_summary}</p>
+              </div>
+              <Link href="/onboarding" className="btn-secondary">
+                Update profile
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 

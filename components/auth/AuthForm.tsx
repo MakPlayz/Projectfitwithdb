@@ -61,11 +61,8 @@ export default function AuthForm({
         accessToken: data.access_token,
         user: data.user,
       });
-      if (onSuccess) {
-        onSuccess();
-      } else {
-        router.push('/menu');
-      }
+      onSuccess?.();
+      router.push('/onboarding');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');
     } finally {

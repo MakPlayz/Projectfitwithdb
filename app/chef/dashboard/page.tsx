@@ -91,6 +91,10 @@ export default function ChefDashboard() {
               <span>Preparing</span>
               <strong>{orders.filter(o => o.status === 'preparing').length}</strong>
             </div>
+            <div className={styles.statBox}>
+              <span>Profiles</span>
+              <strong>{orders.filter(o => o.customer_profile?.is_profile_complete).length}</strong>
+            </div>
           </div>
         </div>
       </header>
@@ -130,6 +134,27 @@ export default function ChefDashboard() {
                       <div className={styles.itemHeader}>
                         <span className={styles.name}>{order.customer_name}</span>
                       </div>
+                    </div>
+                  )}
+
+                  {order.customer_profile && (
+                    <div className={styles.profilePanel}>
+                      <div className={styles.profileTags}>
+                        <span className={styles.profileTag}>{order.customer_profile.primary_goal}</span>
+                        <span className={styles.profileTag}>{order.customer_profile.health_focus}</span>
+                        <span className={styles.profileTag}>{order.customer_profile.diet_preference}</span>
+                      </div>
+                      <p className={styles.profileSummary}>
+                        {order.customer_profile.recommendation_summary}
+                      </p>
+                      {order.customer_profile.allergies.length > 0 && (
+                        <p className={styles.profileAlert}>
+                          Allergies: {order.customer_profile.allergies.join(', ')}
+                        </p>
+                      )}
+                      {order.customer_profile.health_notes && (
+                        <p className={styles.profileMeta}>{order.customer_profile.health_notes}</p>
+                      )}
                     </div>
                   )}
 
