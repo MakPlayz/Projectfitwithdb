@@ -26,7 +26,7 @@ export default function MenuPage() {
       try {
         const response = await fetch('/api/profile', {
           headers: {
-            ...getAuthHeaders(),
+            ...(await getAuthHeaders()),
           },
           cache: 'no-store',
         });

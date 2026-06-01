@@ -2,21 +2,25 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ShoppingCart, Menu, X, Leaf } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthModalStore } from '@/store/authModalStore';
 import { dietCategories } from '@/data/diets';
 import { useScrollAuthPrompt } from '@/hooks/useScrollAuthPrompt';
+import { clearSession, ensureSession } from '@/lib/auth-client';
 import styles from './Navbar.module.css';
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [programsOpen, setProgramsOpen] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const leafRef = useRef<HTMLButtonElement>(null);
   const { toggleCart, getCount } = useCartStore();
   const count = useCartStore(getCount);
   const openAuth = useAuthModalStore((s) => s.open);
+  const router = useRouter();
 
   const getLeafOrigin = useCallback(() => {
     const el = leafRef.current;
@@ -26,17 +30,54 @@ export default function Navbar() {
   }, []);
 
   const handleOpenAuth = useCallback(() => {
+    if (isAuthenticated) {
+      router.push('/onboarding');
+      return;
+    }
+
     const origin = getLeafOrigin();
     if (origin) openAuth(origin);
-  }, [getLeafOrigin, openAuth]);
+  }, [getLeafOrigin, isAuthenticated, openAuth, router]);
 
-  useScrollAuthPrompt(getLeafOrigin);
+  useScrollAuthPrompt(getLeafOrigin, !isAuthenticated);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handler);
     return () => window.removeEventListener('scroll', handler);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSession() {
+      const session = await ensureSession();
+      if (isMounted) {
+        setIsAuthenticated(Boolean(session?.accessToken));
+      }
+    }
+
+    loadSession();
+
+    const onStorage = () => {
+      loadSession();
+    };
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('projectfit-auth-changed', onStorage);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('projectfit-auth-changed', onStorage);
+    };
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    clearSession();
+    setIsAuthenticated(false);
+    router.push('/');
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -88,7 +129,16 @@ export default function Navbar() {
             )}
           </div>
           <Link href="/#how-it-works">How It Works</Link>
-          <Link href="/login">Log in</Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/onboarding">My Profile</Link>
+              <button type="button" className={styles.inlineAction} onClick={handleLogout}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <Link href="/login">Log in</Link>
+          )}
           <Link href="/chef">Chef Portal</Link>
         </div>
 
@@ -101,9 +151,9 @@ export default function Navbar() {
             type="button"
             className="btn-primary"
             style={{ padding: '10px 22px', fontSize: '14px' }}
-            onClick={handleOpenAuth}
+            onClick={isAuthenticated ? () => router.push('/onboarding') : handleOpenAuth}
           >
-            Get Started
+            {isAuthenticated ? 'My Plan' : 'Get Started'}
           </button>
           <button
             type="button"
@@ -128,12 +178,28 @@ export default function Navbar() {
           <Link href="/#how-it-works" onClick={() => setMenuOpen(false)}>
             How It Works
           </Link>
-          <Link href="/login" onClick={() => setMenuOpen(false)}>
-            Log in
-          </Link>
-          <Link href="/signup" onClick={() => setMenuOpen(false)}>
-            Sign up
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link href="/onboarding" onClick={() => setMenuOpen(false)}>
+                My Profile
+              </Link>
+              <button type="button" className={styles.mobileAction} onClick={() => {
+                setMenuOpen(false);
+                handleLogout();
+              }}>
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" onClick={() => setMenuOpen(false)}>
+                Log in
+              </Link>
+              <Link href="/signup" onClick={() => setMenuOpen(false)}>
+                Sign up
+              </Link>
+            </>
+          )}
           <Link href="/chef" onClick={() => setMenuOpen(false)}>
             Chef Portal
           </Link>

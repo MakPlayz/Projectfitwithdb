@@ -96,6 +96,19 @@
   vertical-align: middle;
 }
 
+.inlineAction {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  padding: 0;
+  line-height: 1.4;
+}
+
+.inlineAction:hover {
+  color: var(--green);
+}
+
 .links > a:hover,
 .dropdownTrigger:hover {
   color: var(--green);
@@ -237,7 +250,20 @@
   color: var(--text-secondary);
 }
 
+.mobileAction {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
 .mobile a:hover {
+  color: var(--green);
+}
+
+.mobileAction:hover {
   color: var(--green);
 }
 

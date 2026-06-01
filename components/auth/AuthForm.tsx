@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Leaf, Mail, Lock, User } from 'lucide-react';
-import { saveSession } from '@/lib/auth-client';
+import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
 import styles from './AuthForm.module.css';
 
 export type AuthMode = 'login' | 'signup';
@@ -59,6 +59,8 @@ export default function AuthForm({
 
       saveSession({
         accessToken: data.access_token,
+        refreshToken: data.refresh_token ?? null,
+        expiresAt: getAccessTokenExpiry(data.access_token),
         user: data.user,
       });
       onSuccess?.();

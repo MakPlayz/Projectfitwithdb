@@ -9,13 +9,17 @@ const SCROLL_THRESHOLD = 420;
 /**
  * Opens leaf auth modal once per session after user scrolls past threshold.
  */
-export function useScrollAuthPrompt(getOrigin: () => { x: number; y: number } | null) {
+export function useScrollAuthPrompt(
+  getOrigin: () => { x: number; y: number } | null,
+  enabled = true
+) {
   const open = useAuthModalStore((s) => s.open);
   const isOpen = useAuthModalStore((s) => s.isOpen);
   const triggered = useRef(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    if (!enabled) return;
     if (sessionStorage.getItem(STORAGE_KEY)) return;
 
     const onScroll = () => {
@@ -32,5 +36,5 @@ export function useScrollAuthPrompt(getOrigin: () => { x: number; y: number } | 
 
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, [open, isOpen, getOrigin]);
+  }, [open, isOpen, getOrigin, enabled]);
 }

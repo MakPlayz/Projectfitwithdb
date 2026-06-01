@@ -45,7 +45,7 @@ export default function OnboardingPage() {
       try {
         const response = await fetch('/api/profile', {
           headers: {
-            ...getAuthHeaders(),
+            ...(await getAuthHeaders()),
           },
           cache: 'no-store',
         });
@@ -106,7 +106,7 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
+          ...(await getAuthHeaders()),
         },
         body: JSON.stringify({
           ...form,

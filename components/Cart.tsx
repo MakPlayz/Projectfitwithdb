@@ -26,7 +26,7 @@ export default function Cart() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...getAuthHeaders(),
+          ...(await getAuthHeaders()),
         },
         body: JSON.stringify({
           items,
