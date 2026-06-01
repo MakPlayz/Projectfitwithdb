@@ -17,17 +17,26 @@ This app uses Next.js route handlers as the backend and Supabase as the database
 3. Run the SQL in `supabase/schema.sql`.
 4. In Supabase Project Settings, copy:
    - Project URL
-   - anon public key
-   - service_role secret key
+   - anon public key or publishable key
+   - service_role secret key or secret key
 5. Add those values to Vercel environment variables:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+SUPABASE_SECRET_KEY=your-supabase-secret-key
 ```
 
+The app accepts either naming style:
+
+- Public key: `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_ANON_KEY`, or `SUPABASE_PUBLISHABLE_KEY`
+- Secret server key: `SUPABASE_SERVICE_ROLE_KEY` or `SUPABASE_SECRET_KEY`
+- URL: `NEXT_PUBLIC_SUPABASE_URL` or `SUPABASE_URL`
+
 For local development, create `.env.local` with the same values. Do not commit `.env.local`.
+If you are testing preview deploys, make sure the needed variables are added to the `Preview` environment too, not only `Production`.
 
 ## Beginner mental model
 
