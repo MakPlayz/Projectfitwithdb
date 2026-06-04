@@ -8,6 +8,8 @@ This app uses Next.js route handlers as the backend and Supabase as the database
 - Those route files live inside `app/api`.
 - The route files talk to Supabase using server-side environment variables.
 - Orders are saved in the Supabase `orders` table.
+- Razorpay Checkout collects payment after the backend creates a Razorpay order.
+- Delivery address and optional browser location coordinates are saved with the order.
 - The chef dashboard reads `/api/orders` every 5 seconds.
 
 ## Supabase setup
@@ -27,6 +29,8 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 SUPABASE_SECRET_KEY=your-supabase-secret-key
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_your_key_id
+RAZORPAY_KEY_SECRET=your-razorpay-key-secret
 ```
 
 The app accepts either naming style:
@@ -46,8 +50,10 @@ In this project:
 
 - `components/auth/AuthForm.tsx` sends login/signup details to your backend.
 - `components/Cart.tsx` sends cart items to your backend when the user places an order.
-- `app/api/orders/route.ts` validates the logged-in user, calculates tax/total, and saves the order.
-- `app/chef/dashboard/page.tsx` shows saved orders from the database.
+- `components/Cart.tsx` collects delivery address, opens Razorpay Checkout, and sends payment details for verification.
+- `app/api/orders/route.ts` validates the logged-in user, calculates tax/total, saves a pending order, and creates a Razorpay order.
+- `app/api/payments/verify/route.ts` verifies the Razorpay signature before marking the order paid.
+- `app/chef/dashboard/page.tsx` shows paid orders from the database.
 
 ## Current limitations
 

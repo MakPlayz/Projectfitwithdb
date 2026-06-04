@@ -166,6 +166,33 @@
   border: 1px solid rgba(5, 150, 105, 0.14);
 }
 
+.deliveryPanel {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(59, 130, 246, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.16);
+}
+
+.deliveryPanel strong {
+  display: block;
+  color: var(--white);
+  margin-bottom: 8px;
+}
+
+.deliveryPanel p {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.deliveryPanel a {
+  display: inline-flex;
+  margin-top: 8px;
+  color: #93c5fd;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .profileTags {
   display: flex;
   flex-wrap: wrap;

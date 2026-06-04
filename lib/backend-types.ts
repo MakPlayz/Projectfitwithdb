@@ -1,6 +1,7 @@
 import type { CartItem } from '@/store/cartStore';
 
 export type ApiOrderStatus = 'new' | 'preparing' | 'ready';
+export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type CustomerGoal =
   | 'weight-loss'
   | 'maintenance'
@@ -59,6 +60,16 @@ export interface CustomerProfilePayload {
   health_notes: string;
 }
 
+export interface DeliveryAddress {
+  addressLine1: string;
+  addressLine2?: string;
+  city: string;
+  pincode: string;
+  phone: string;
+  latitude?: number;
+  longitude?: number;
+}
+
 export interface ApiOrder {
   id: string;
   user_id: string | null;
@@ -68,6 +79,10 @@ export interface ApiOrder {
   tax: number;
   total: number;
   status: ApiOrderStatus;
+  payment_status: PaymentStatus;
+  razorpay_order_id: string | null;
+  razorpay_payment_id: string | null;
+  delivery_address: DeliveryAddress;
   created_at: string;
   customer_profile?: CustomerProfile | null;
 }

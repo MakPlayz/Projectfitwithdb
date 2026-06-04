@@ -3,17 +3,52 @@ import {
   getUserFromAccessToken,
   supabaseRestFetch,
 } from '@/lib/supabase-rest';
-import type { ApiOrder, CustomerProfile } from '@/lib/backend-types';
+import { createRazorpayOrder, getRazorpayKeyId } from '@/lib/razorpay';
+import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
 
 interface CreateOrderBody {
   items?: CartItem[];
   subtotal?: number;
+  deliveryAddress?: Partial<DeliveryAddress>;
+}
+
+function normalizeText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
+  const deliveryAddress: DeliveryAddress = {
+    addressLine1: normalizeText(value?.addressLine1),
+    addressLine2: normalizeText(value?.addressLine2) || undefined,
+    city: normalizeText(value?.city),
+    pincode: normalizeText(value?.pincode),
+    phone: normalizeText(value?.phone),
+  };
+
+  if (typeof value?.latitude === 'number' && typeof value.longitude === 'number') {
+    deliveryAddress.latitude = value.latitude;
+    deliveryAddress.longitude = value.longitude;
+  }
+
+  if (
+    !deliveryAddress.addressLine1 ||
+    !deliveryAddress.city ||
+    !/^[1-9][0-9]{5}$/.test(deliveryAddress.pincode) ||
+    !/^[6-9][0-9]{9}$/.test(deliveryAddress.phone)
+  ) {
+    return {
+      deliveryAddress: null,
+      error: 'Enter a complete delivery address, 6-digit pincode, and 10-digit phone number.',
+    };
+  }
+
+  return { deliveryAddress, error: null };
 }
 
 export async function GET() {
   const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
-    '/orders?select=*&order=created_at.desc'
+    '/orders?select=*&payment_status=eq.paid&order=created_at.desc'
   );
 
   if (error) {
@@ -81,6 +116,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const addressValidation = validateDeliveryAddress(body.deliveryAddress);
+  if (addressValidation.error || !addressValidation.deliveryAddress) {
+    return NextResponse.json(
+      { error: addressValidation.error },
+      { status: 400 }
+    );
+  }
+
   const tax = Math.round(body.subtotal * 0.05);
   const total = body.subtotal + tax;
   const user = userResult.data;
@@ -120,6 +163,8 @@ export async function POST(request: Request) {
       tax,
       total,
       status: 'new',
+      payment_status: 'pending',
+      delivery_address: addressValidation.deliveryAddress,
     }),
   });
 
@@ -127,5 +172,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error }, { status });
   }
 
-  return NextResponse.json({ order: data?.[0] }, { status: 201 });
+  const order = data?.[0];
+
+  if (!order) {
+    return NextResponse.json({ error: 'Could not create local order.' }, { status: 500 });
+  }
+
+  try {
+    const razorpayOrder = await createRazorpayOrder({
+      amount: total * 100,
+      currency: 'INR',
+      receipt: order.id,
+      notes: {
+        local_order_id: order.id,
+        customer_name: customerName ?? 'Project Fit customer',
+        delivery_city: addressValidation.deliveryAddress.city,
+      },
+    });
+
+    const updateResult = await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(order.id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          razorpay_order_id: razorpayOrder.id,
+        }),
+      }
+    );
+
+    if (updateResult.error) {
+      return NextResponse.json(
+        { error: updateResult.error },
+        { status: updateResult.status || 500 }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        order: updateResult.data?.[0] ?? order,
+        razorpay: {
+          keyId: getRazorpayKeyId(),
+          orderId: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+        },
+      },
+      { status: 201 }
+    );
+  } catch (err) {
+    await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(order.id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          payment_status: 'failed',
+        }),
+      }
+    );
+
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : 'Could not start Razorpay payment.' },
+      { status: 502 }
+    );
+  }
 }

@@ -30,12 +30,24 @@ create table if not exists public.orders (
   tax integer not null,
   total integer not null,
   status text not null default 'new' check (status in ('new', 'preparing', 'ready')),
+  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
+  razorpay_order_id text,
+  razorpay_payment_id text,
+  delivery_address jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
+alter table public.orders
+  add column if not exists payment_status text not null default 'pending'
+    check (payment_status in ('pending', 'paid', 'failed')),
+  add column if not exists razorpay_order_id text,
+  add column if not exists razorpay_payment_id text,
+  add column if not exists delivery_address jsonb not null default '{}'::jsonb;
+
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
+create index if not exists orders_payment_status_idx on public.orders (payment_status);
 create index if not exists customer_profiles_goal_idx on public.customer_profiles (primary_goal);
 create index if not exists customer_profiles_focus_idx on public.customer_profiles (health_focus);
 

@@ -137,6 +137,29 @@ export default function ChefDashboard() {
                     </div>
                   )}
 
+                  {order.delivery_address && (
+                    <div className={styles.deliveryPanel}>
+                      <strong>Delivery</strong>
+                      <p>
+                        {order.delivery_address.addressLine1}
+                        {order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}
+                      </p>
+                      <p>
+                        {order.delivery_address.city} - {order.delivery_address.pincode}
+                      </p>
+                      <p>Phone: {order.delivery_address.phone}</p>
+                      {typeof order.delivery_address.latitude === 'number' && typeof order.delivery_address.longitude === 'number' && (
+                        <a
+                          href={`https://www.google.com/maps?q=${order.delivery_address.latitude},${order.delivery_address.longitude}`}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Open map
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   {order.customer_profile && (
                     <div className={styles.profilePanel}>
                       <div className={styles.profileTags}>
