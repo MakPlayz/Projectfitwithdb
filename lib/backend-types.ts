@@ -60,6 +60,56 @@ export interface CustomerProfilePayload {
   health_notes: string;
 }
 
+export interface ProjectFitUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  whatsapp_opt_in: boolean;
+  whatsapp_opt_in_at: string | null;
+  created_at: string;
+}
+
+export interface MenuItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  category: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealPlan {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  duration: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WhatsAppMessageDirection = 'incoming' | 'outgoing';
+export type WhatsAppMessageStatus = 'received' | 'sent' | 'delivered' | 'read' | 'failed';
+
+export interface WhatsAppMessageLog {
+  id: string;
+  user_id: string | null;
+  phone: string;
+  direction: WhatsAppMessageDirection;
+  message_type: string;
+  template_name: string | null;
+  message_body: string | null;
+  status: WhatsAppMessageStatus;
+  provider_message_id: string | null;
+  error_message: string | null;
+  payload: unknown;
+  created_at: string;
+}
+
 export interface DeliveryAddress {
   addressLine1: string;
   addressLine2?: string;
@@ -93,5 +143,6 @@ export interface AuthUser {
   user_metadata?: {
     name?: string;
     full_name?: string;
+    phone?: string;
   };
 }

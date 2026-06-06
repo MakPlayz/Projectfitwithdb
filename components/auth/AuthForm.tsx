@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Leaf, Mail, Lock, User } from 'lucide-react';
+import { Leaf, Mail, Lock, User, Phone } from 'lucide-react';
 import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
 import styles from './AuthForm.module.css';
 
@@ -37,6 +37,8 @@ export default function AuthForm({
       name: String(formData.get('name') ?? ''),
       email: String(formData.get('email') ?? ''),
       password: String(formData.get('password') ?? ''),
+      phone: String(formData.get('phone') ?? ''),
+      whatsappOptIn: formData.get('whatsappOptIn') === 'on',
     };
 
     try {
@@ -108,10 +110,27 @@ export default function AuthForm({
 
       <form className={styles.form} onSubmit={handleSubmit}>
         {mode === 'signup' && (
-          <label className={styles.field}>
-            <User size={16} />
-            <input type="text" name="name" placeholder="Full name" autoComplete="name" required />
-          </label>
+          <>
+            <label className={styles.field}>
+              <User size={16} />
+              <input type="text" name="name" placeholder="Full name" autoComplete="name" required />
+            </label>
+            <label className={styles.field}>
+              <Phone size={16} />
+              <input
+                type="tel"
+                name="phone"
+                placeholder="WhatsApp number"
+                autoComplete="tel"
+                inputMode="tel"
+                required
+              />
+            </label>
+            <label className={styles.consent}>
+              <input type="checkbox" name="whatsappOptIn" required />
+              <span>I agree to receive WhatsApp messages from ProjectFitVizag.</span>
+            </label>
+          </>
         )}
         <label className={styles.field}>
           <Mail size={16} />

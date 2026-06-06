@@ -10,6 +10,7 @@ This app uses Next.js route handlers as the backend and Supabase as the database
 - Orders are saved in the Supabase `orders` table.
 - Razorpay Checkout collects payment after the backend creates a Razorpay order.
 - Delivery address and optional browser location coordinates are saved with the order.
+- WhatsApp Cloud API sends the welcome template to opted-in users and handles menu replies.
 - The chef dashboard reads `/api/orders` every 5 seconds.
 
 ## Supabase setup
@@ -31,6 +32,14 @@ SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 SUPABASE_SECRET_KEY=your-supabase-secret-key
 NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_your_key_id
 RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+WHATSAPP_ACCESS_TOKEN=your-meta-whatsapp-cloud-api-token
+WHATSAPP_PHONE_NUMBER_ID=your-meta-phone-number-id
+WHATSAPP_VERIFY_TOKEN=choose-a-strong-webhook-verify-token
+WHATSAPP_APP_SECRET=your-meta-app-secret
+WHATSAPP_GRAPH_API_VERSION=v21.0
+WHATSAPP_KITCHEN_CONTACT_MESSAGE=Contact ProjectFit Vizag Kitchen:\nPhone: +91 90000 00000\nHours: 8 AM - 9 PM
+PROJECTFIT_INTERNAL_API_SECRET=choose-a-long-random-internal-secret
+WHATSAPP_ADMIN_TOKEN=choose-a-long-random-admin-token
 ```
 
 The app accepts either naming style:
@@ -53,7 +62,24 @@ In this project:
 - `components/Cart.tsx` collects delivery address, opens Razorpay Checkout, and sends payment details for verification.
 - `app/api/orders/route.ts` validates the logged-in user, calculates tax/total, saves a pending order, and creates a Razorpay order.
 - `app/api/payments/verify/route.ts` verifies the Razorpay signature before marking the order paid.
+- `app/api/auth/signup/route.ts` saves WhatsApp opt-in consent in `users`.
+- `app/api/whatsapp/welcome/route.ts` sends the approved `welcome_projectfit` template for opted-in users.
+- `app/api/webhooks/whatsapp/route.ts` verifies Meta webhooks, logs incoming messages, and replies to menu options.
+- `app/admin/whatsapp` shows users, opt-ins, WhatsApp logs, failed deliveries, menu items, and meal plans. Open it with `?token=WHATSAPP_ADMIN_TOKEN`.
 - `app/chef/dashboard/page.tsx` shows paid orders from the database.
+
+## WhatsApp setup
+
+1. Create and approve the `welcome_projectfit` template in WhatsApp Manager.
+2. Add the WhatsApp environment variables in Vercel.
+3. In Meta App Dashboard, set the callback URL to:
+
+```text
+https://projectfitvizag.com/api/webhooks/whatsapp
+```
+
+4. Use your `WHATSAPP_VERIFY_TOKEN` as the Meta webhook verify token.
+5. Subscribe to WhatsApp message and message status webhook fields.
 
 ## Current limitations
 
