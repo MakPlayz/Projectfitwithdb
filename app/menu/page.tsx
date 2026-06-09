@@ -143,8 +143,8 @@ export default function MenuPage() {
                 <Leaf size={14} />
                 High Protein
               </label>
+            </div>
           </div>
-
         </div>
       </div>
 

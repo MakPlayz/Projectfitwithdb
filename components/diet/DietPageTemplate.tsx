@@ -204,7 +204,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
                 <h3>⚡ Day Plan</h3>
-                <p>A standard single-day plan. Ideal for flexible daily ordering with a low entry price.</p>
+                <p>A standard single-day plan. Ideal for flexible daily ordering whenever you need healthy meals.</p>
               </div>
               <div className={styles.plansGrid}>
                 {dayPlans.map((plan, i) => renderPlanCard(plan, i))}

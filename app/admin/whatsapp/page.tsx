@@ -93,7 +93,7 @@ export default async function WhatsAppAdminPage({
                   <textarea name="description" placeholder="Description" />
                   <div className={styles.formRow}>
                     <input name="category" placeholder="Category" required />
-                    <input name="price" placeholder="Price" inputMode="numeric" required />
+                    <input type="hidden" name="price" value="0" />
                   </div>
                   <label className={styles.check}><input type="checkbox" name="active" defaultChecked /> Active</label>
                   <button className="btn-primary" type="submit">Add Menu Item</button>
@@ -107,7 +107,7 @@ export default async function WhatsAppAdminPage({
                       <textarea name="description" defaultValue={item.description ?? ''} aria-label="Description" />
                       <div className={styles.formRow}>
                         <input name="category" defaultValue={item.category} aria-label="Category" />
-                        <input name="price" defaultValue={item.price} aria-label="Price" inputMode="numeric" />
+                        <input type="hidden" name="price" value="0" />
                       </div>
                       <label className={styles.check}><input type="checkbox" name="active" defaultChecked={item.active} /> Active</label>
                       <button className="btn-secondary" type="submit">Save</button>
@@ -124,7 +124,7 @@ export default async function WhatsAppAdminPage({
                   <textarea name="description" placeholder="Description" />
                   <div className={styles.formRow}>
                     <input name="duration" placeholder="Duration" required />
-                    <input name="price" placeholder="Price" inputMode="numeric" required />
+                    <input type="hidden" name="price" value="0" />
                   </div>
                   <label className={styles.check}><input type="checkbox" name="active" defaultChecked /> Active</label>
                   <button className="btn-primary" type="submit">Add Meal Plan</button>
@@ -138,7 +138,7 @@ export default async function WhatsAppAdminPage({
                       <textarea name="description" defaultValue={plan.description ?? ''} aria-label="Description" />
                       <div className={styles.formRow}>
                         <input name="duration" defaultValue={plan.duration} aria-label="Duration" />
-                        <input name="price" defaultValue={plan.price} aria-label="Price" inputMode="numeric" />
+                        <input type="hidden" name="price" value="0" />
                       </div>
                       <label className={styles.check}><input type="checkbox" name="active" defaultChecked={plan.active} /> Active</label>
                       <button className="btn-secondary" type="submit">Save</button>

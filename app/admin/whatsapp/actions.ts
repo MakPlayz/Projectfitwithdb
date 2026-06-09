@@ -18,13 +18,7 @@ function getText(formData: FormData, key: string) {
 }
 
 function getPrice(formData: FormData) {
-  const price = Number(getText(formData, 'price'));
-
-  if (!Number.isFinite(price) || price < 0) {
-    throw new Error('Enter a valid price.');
-  }
-
-  return Math.round(price);
+  return 0;
 }
 
 export async function saveMenuItem(formData: FormData) {

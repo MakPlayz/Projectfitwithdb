@@ -29,7 +29,7 @@ const sections = [
     items: [
       {
         name: 'Day Plan',
-        desc: 'A standard single-day plan. Order whenever you just need healthy meals for one day at a low entry price.',
+        desc: 'A standard single-day plan. Order whenever you just need healthy meals for one day.',
       },
       {
         name: 'Week Plan',
@@ -66,7 +66,7 @@ const sections = [
 
 export default function PlanOptionsSection() {
   return (
-    <section className={styles.section} id="pricing-options">
+    <section className={styles.section} id="plan-options">
       <div className="container">
         <div className={styles.header}>
           <p className="section-label">Flexible Plans</p>

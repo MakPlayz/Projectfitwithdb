@@ -279,7 +279,7 @@ export async function buildMenuReply() {
 
   return [
     'ProjectFit Vizag Menu',
-    ...items.map((item) => `${item.name} - Rs. ${item.price}${item.description ? `\n${item.description}` : ''}`),
+    ...items.map((item) => `${item.name}${item.description ? `\n${item.description}` : ''}`),
   ].join('\n\n');
 }
 
@@ -295,7 +295,7 @@ export async function buildSpecialsReply() {
 
   return [
     'Today\'s Specials',
-    ...items.map((item) => `${item.name} - Rs. ${item.price}${item.description ? `\n${item.description}` : ''}`),
+    ...items.map((item) => `${item.name}${item.description ? `\n${item.description}` : ''}`),
   ].join('\n\n');
 }
 
@@ -311,7 +311,7 @@ export async function buildMealPlansReply() {
 
   return [
     'Available Meal Plans',
-    ...plans.map((plan) => `${plan.name} (${plan.duration}) - Rs. ${plan.price}${plan.description ? `\n${plan.description}` : ''}`),
+    ...plans.map((plan) => `${plan.name} (${plan.duration})${plan.description ? `\n${plan.description}` : ''}`),
   ].join('\n\n');
 }
 

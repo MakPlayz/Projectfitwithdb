@@ -76,7 +76,6 @@ export default function Navbar() {
       <div className={styles.inner}>
         <div className={styles.logo}>
           <button
-            ref={leafRef}
             type="button"
             className={styles.leafBtn}
             onClick={handleOpenAuth}
