@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth-client';
 
@@ -14,10 +14,20 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  const authorizedRef = useRef(authorized);
+  authorizedRef.current = authorized;
+
   useEffect(() => {
     const checkAuth = () => {
-      const isAuthPage = pathname === '/login' || pathname === '/signup';
+      const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/chef';
       const session = getSession();
+
+      console.log('[AuthGuard] checkAuth:', {
+        pathname,
+        isAuthPage,
+        hasSession: !!session,
+        wasAuthorized: authorizedRef.current
+      });
 
       if (isAuthPage) {
         setAuthorized(true);
@@ -26,9 +36,17 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       }
 
       if (!session) {
-        setAuthorized(false);
+        // If we were authorized, don't set authorized to false immediately.
+        // This keeps the current page component mounted while Next.js transitions to /login,
+        // preventing the router from getting stuck due to premature unmounting.
+        if (!authorizedRef.current) {
+          setAuthorized(false);
+        }
         setLoading(false);
-        router.replace('/login');
+        
+        const target = pathname?.startsWith('/chef') ? '/chef' : '/login';
+        console.log('[AuthGuard] Redirecting to:', target);
+        router.replace(target);
       } else {
         setAuthorized(true);
         setLoading(false);
@@ -44,7 +62,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     };
   }, [pathname, router]);
 
-  const isAuthPage = pathname === '/login' || pathname === '/signup';
+  const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/chef';
+
+  console.log('[AuthGuard] Render:', {
+    loading,
+    authorized,
+    isAuthPage,
+    shouldShowRedirecting: loading || (!authorized && !isAuthPage)
+  });
 
   if (loading || (!authorized && !isAuthPage)) {
     return (

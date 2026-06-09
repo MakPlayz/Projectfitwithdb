@@ -76,9 +76,7 @@ export default function Navbar() {
   const handleLogout = useCallback(() => {
     clearSession();
     setIsAuthenticated(false);
-    router.push('/');
-    router.refresh();
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;

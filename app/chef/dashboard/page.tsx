@@ -84,7 +84,6 @@ export default function ChefDashboard() {
 
   const handleLogout = () => {
     clearSession();
-    router.push('/chef');
   };
 
   const getStatusIcon = (status: ApiOrderStatus) => {
