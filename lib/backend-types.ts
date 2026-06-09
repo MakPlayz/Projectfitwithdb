@@ -7,7 +7,7 @@ export type CustomerGoal =
   | 'maintenance'
   | 'muscle-gain'
   | 'better-fitness';
-export type HealthFocus = 'general' | 'pregnancy' | 'pcos-pcod' | 'diabetes';
+export type HealthFocus = 'general' | 'pregnancy' | 'pcos-pcod' | 'diabetes' | 'kids';
 export type ActivityLevel =
   | 'sedentary'
   | 'lightly-active'

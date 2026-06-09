@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check, FileDown } from 'lucide-react';
-import { categoryImages, type DietCategory } from '@/data/diets';
+import { categoryImages, type DietCategory, type DietPlan } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
+import { useCartStore } from '@/store/cartStore';
 import styles from './DietPageTemplate.module.css';
 
 interface DietPageTemplateProps {
@@ -13,6 +15,102 @@ interface DietPageTemplateProps {
 
 export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const categoryImage = categoryImages[diet.slug];
+  const { addItem, toggleCart } = useCartStore();
+  const [selectedMeals, setSelectedMeals] = useState<Record<string, number>>({});
+
+  const handleAddPlanToCart = (plan: DietPlan) => {
+    let price = plan.price;
+    let name = plan.name;
+    let meals = plan.mealsPerDay;
+
+    if (plan.customPrices) {
+      const customMeals = selectedMeals[plan.id] ?? 1;
+      meals = customMeals;
+      price = plan.customPrices[customMeals] ?? plan.price;
+      name = `${plan.name} (${customMeals} Meal${customMeals > 1 ? 's' : ''}/Day)`;
+    }
+
+    addItem({
+      id: `${plan.id}-${Date.now()}`,
+      name: `${diet.title} - ${name}`,
+      basePrice: price,
+      quantity: 1,
+      image: categoryImage,
+      removedIngredients: [],
+      addOns: [],
+      totalPrice: price,
+    });
+    toggleCart();
+  };
+
+  const handleToggleMeals = (planId: string, count: number) => {
+    setSelectedMeals((prev) => ({ ...prev, [planId]: count }));
+  };
+
+  const dayPlans = diet.plans.filter((p) => p.duration === '1 day');
+  const weekPlans = diet.plans.filter((p) => p.duration === '6 days');
+  const monthPlans = diet.plans.filter((p) => p.duration === '24 days');
+
+  const renderPlanCard = (plan: DietPlan, i: number) => {
+    const hasCustomOption = Boolean(plan.customPrices);
+    const customMealsVal = selectedMeals[plan.id] ?? 1;
+    const displayPrice = hasCustomOption && plan.customPrices
+      ? (plan.customPrices[customMealsVal] ?? plan.price)
+      : plan.price;
+    const displayMeals = hasCustomOption ? customMealsVal : plan.mealsPerDay;
+
+    return (
+      <motion.article
+        key={plan.id}
+        className={styles.planCard}
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: i * 0.08 }}
+      >
+        {plan.highlight && <span className={styles.planBadge}>{plan.highlight}</span>}
+        <h3>{plan.name}</h3>
+        <p className={styles.planDuration}>{plan.duration}</p>
+        
+        {hasCustomOption ? (
+          <div className={styles.customSelector}>
+            <span className={styles.customSelectorLabel}>Choose meal frequency:</span>
+            <div className={styles.customSelectorGroup}>
+              <button
+                type="button"
+                className={`${styles.customSelectorBtn} ${customMealsVal === 1 ? styles.customSelectorBtnActive : ''}`}
+                onClick={() => handleToggleMeals(plan.id, 1)}
+              >
+                1 Meal/Day
+              </button>
+              <button
+                type="button"
+                className={`${styles.customSelectorBtn} ${customMealsVal === 2 ? styles.customSelectorBtnActive : ''}`}
+                onClick={() => handleToggleMeals(plan.id, 2)}
+              >
+                2 Meals/Day
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className={styles.planMeta}>{displayMeals} meals / day</p>
+        )}
+
+        <p className={styles.planPrice}>
+          ₹{displayPrice.toLocaleString('en-IN')}
+          <span>/ plan</span>
+        </p>
+        <button
+          type="button"
+          className="btn-primary"
+          style={{ width: '100%', marginTop: '20px', justifyContent: 'center' }}
+          onClick={() => handleAddPlanToCart(plan)}
+        >
+          Add to Cart
+        </button>
+      </motion.article>
+    );
+  };
 
   return (
     <main
@@ -112,32 +210,44 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           <p className="section-label">Plans</p>
           <h2 className="section-title">Choose your plan</h2>
           <p className="section-subtitle">
-            {diet.calorieTarget} — structured {diet.plans[0]?.duration ?? '7-day'} program from your diet plan.
+            {diet.calorieTarget} — structured nutrition options tailored to your schedule.
           </p>
-          <div className={styles.plansGrid}>
-            {diet.plans.map((plan, i) => (
-              <motion.article
-                key={plan.id}
-                className={styles.planCard}
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-              >
-                {plan.highlight && <span className={styles.planBadge}>{plan.highlight}</span>}
-                <h3>{plan.name}</h3>
-                <p className={styles.planDuration}>{plan.duration}</p>
-                <p className={styles.planMeta}>{plan.mealsPerDay} meals / day</p>
-                <p className={styles.planPrice}>
-                  ₹{plan.price.toLocaleString('en-IN')}
-                  <span>/ plan</span>
-                </p>
-                <button type="button" className="btn-primary" style={{ width: '100%', marginTop: '20px' }}>
-                  Get Started
-                </button>
-              </motion.article>
-            ))}
-          </div>
+
+          {dayPlans.length > 0 && (
+            <div className={styles.planGroup}>
+              <div className={styles.groupHeader}>
+                <h3>⚡ Day Plan</h3>
+                <p>A standard single-day plan. Ideal for flexible daily ordering with a low entry price.</p>
+              </div>
+              <div className={styles.plansGrid}>
+                {dayPlans.map((plan, i) => renderPlanCard(plan, i))}
+              </div>
+            </div>
+          )}
+
+          {weekPlans.length > 0 && (
+            <div className={styles.planGroup}>
+              <div className={styles.groupHeader}>
+                <h3>📅 Week Plan (6-Day)</h3>
+                <p>Delivered Monday to Saturday (Sundays off). Perfect for staying clean during the workweek.</p>
+              </div>
+              <div className={styles.plansGrid}>
+                {weekPlans.map((plan, i) => renderPlanCard(plan, i))}
+              </div>
+            </div>
+          )}
+
+          {monthPlans.length > 0 && (
+            <div className={styles.planGroup}>
+              <div className={styles.groupHeader}>
+                <h3>💎 Month Plan (24-Day)</h3>
+                <p>A 24-day subscription block. Required if custom calorie/macro adjustments or ingredient swaps are needed.</p>
+              </div>
+              <div className={styles.plansGrid}>
+                {monthPlans.map((plan, i) => renderPlanCard(plan, i))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
@@ -145,7 +255,9 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
         <div className="container">
           <p className="section-label">Menu</p>
           <h2 className="section-title">Featured meals</h2>
-          <p className="section-subtitle">Sample meals from your 7-day {diet.shortTitle.toLowerCase()} menu.</p>
+          <p className="section-subtitle">
+            Sample meals from your {diet.plans[0]?.duration ? diet.plans[0].duration.replace(' days', '-day') : '6-day'} {diet.shortTitle.toLowerCase()} menu.
+          </p>
           <div className={styles.mealsGrid}>
             {diet.meals.map((meal, i) => (
               <motion.article
@@ -195,9 +307,9 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
             <h2>Ready to start your {diet.shortTitle.toLowerCase()} journey?</h2>
             <p>Personalized meals, transparent macros, delivered on your schedule.</p>
             <div className={styles.ctaButtons}>
-              <button type="button" className="btn-primary">
+              <a href="#plans" className="btn-primary">
                 Get Started
-              </button>
+              </a>
               <Link href="/" className="btn-secondary">
                 Browse all programs
               </Link>

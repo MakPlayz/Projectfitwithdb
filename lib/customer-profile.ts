@@ -33,6 +33,7 @@ export const HEALTH_FOCUS_OPTIONS: Array<{ value: HealthFocus; label: string }> 
   { value: 'pregnancy', label: 'Pregnancy nutrition' },
   { value: 'pcos-pcod', label: 'PCOS / PCOD support' },
   { value: 'diabetes', label: 'Diabetes-friendly plan' },
+  { value: 'kids', label: 'Kids Section' },
 ];
 
 export const DIET_PREFERENCE_OPTIONS: Array<{ value: DietPreference; label: string }> = [
@@ -44,6 +45,7 @@ export const DIET_PREFERENCE_OPTIONS: Array<{ value: DietPreference; label: stri
 ];
 
 export function getRecommendedPath(profile: CustomerProfilePayload) {
+  if (profile.health_focus === 'kids') return 'kids';
   if (profile.health_focus === 'pregnancy') return 'pregnancy';
   if (profile.health_focus === 'pcos-pcod') return 'pcos-pcod';
   if (profile.health_focus === 'diabetes') return 'diabetes';
@@ -83,6 +85,10 @@ export function buildCoachNotes(profile: CustomerProfilePayload) {
     notes.push('Focus on consistent nourishment, iron-rich meals, calcium, hydration, and gentle digestion support.');
   }
 
+  if (profile.health_focus === 'kids') {
+    notes.push('Focus on balanced nutrients, calcium, and zero refined sugar for growing kids.');
+  }
+
   if (profile.diet_preference === 'vegan' || profile.diet_preference === 'vegetarian') {
     notes.push('Track protein quality carefully with legumes, soy, dairy alternatives, and smart add-ons.');
   }
@@ -113,7 +119,9 @@ export function buildRecommendationSummary(profile: CustomerProfilePayload) {
             ? 'PCOS-friendly meals'
             : path === 'diabetes'
               ? 'diabetes-friendly meals'
-              : 'balanced menu options';
+              : path === 'kids'
+                ? 'kids nutrition meals'
+                : 'balanced menu options';
 
   return `Recommended focus: ${pathCopy} designed to ${goalCopy}, with ${profile.diet_preference.replace('-', ' ')} choices matched to a ${profile.activity_level.replace('-', ' ')} lifestyle.`;
 }
