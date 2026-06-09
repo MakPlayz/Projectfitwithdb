@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Leaf, Mail, Lock, User, Phone } from 'lucide-react';
+import { Mail, Lock, User, Phone, Calendar, Scale, Heart } from 'lucide-react';
+import Broccoli from '@/components/ui/Broccoli';
 import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
 import styles from './AuthForm.module.css';
 
@@ -39,6 +40,10 @@ export default function AuthForm({
       password: String(formData.get('password') ?? ''),
       phone: String(formData.get('phone') ?? ''),
       whatsappOptIn: formData.get('whatsappOptIn') === 'on',
+      gender: String(formData.get('gender') ?? ''),
+      age: formData.get('age') ? Number(formData.get('age')) : undefined,
+      weight: formData.get('weight') ? Number(formData.get('weight')) : undefined,
+      healthNotes: String(formData.get('healthNotes') ?? ''),
     };
 
     try {
@@ -66,7 +71,7 @@ export default function AuthForm({
         user: data.user,
       });
       onSuccess?.();
-      router.push('/onboarding');
+      router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');
     } finally {
@@ -74,12 +79,10 @@ export default function AuthForm({
     }
   };
 
-  return (
-    <div
-      className={`${styles.wrap} ${variant === 'page' ? styles.page : ''} ${isLeaf ? styles.leaf : ''}`}
-    >
+  const formContent = (
+    <>
       <div className={styles.brandMark}>
-        <Leaf size={isLeaf ? 28 : variant === 'page' ? 36 : 32} />
+        <Broccoli size={isLeaf ? 28 : 36} />
       </div>
 
       <h1 className={styles.title}>
@@ -126,12 +129,57 @@ export default function AuthForm({
                 required
               />
             </label>
-            <label className={styles.consent}>
-              <input type="checkbox" name="whatsappOptIn" required />
-              <span>I agree to receive WhatsApp messages from ProjectFitVizag.</span>
+
+            <div className={styles.fieldRow}>
+              <label className={styles.field}>
+                <Calendar size={16} />
+                <input
+                  type="number"
+                  name="age"
+                  placeholder="Age"
+                  min={13}
+                  max={100}
+                  required
+                />
+              </label>
+              <label className={styles.field}>
+                <Scale size={16} />
+                <input
+                  type="number"
+                  name="weight"
+                  placeholder="Weight (kg)"
+                  min={25}
+                  max={300}
+                  step="0.1"
+                  required
+                />
+              </label>
+            </div>
+
+            <label className={styles.field}>
+              <User size={16} />
+              <select name="gender" required className={styles.select} defaultValue="">
+                <option value="" disabled>
+                  Select Gender
+                </option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="non-binary">Non-binary</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
+              </select>
+            </label>
+
+            <label className={styles.field}>
+              <Heart size={16} />
+              <input
+                type="text"
+                name="healthNotes"
+                placeholder="Health issues (e.g. None)"
+              />
             </label>
           </>
         )}
+
         <label className={styles.field}>
           <Mail size={16} />
           <input type="email" name="email" placeholder="Email address" autoComplete="email" required />
@@ -147,6 +195,29 @@ export default function AuthForm({
             minLength={6}
           />
         </label>
+
+        {mode === 'signup' && (
+          <div className={styles.consentGroup}>
+            <label className={styles.consent}>
+              <input type="checkbox" name="whatsappOptIn" defaultChecked required />
+              <span>I agree to receive WhatsApp promotional messages.</span>
+            </label>
+            <label className={styles.consent}>
+              <input type="checkbox" name="termsAccept" required />
+              <span>
+                I accept the{' '}
+                <Link href="/terms" target="_blank" className={styles.consentLink}>
+                  Terms & Conditions
+                </Link>{' '}
+                and{' '}
+                <Link href="/privacy" target="_blank" className={styles.consentLink}>
+                  Privacy Policy
+                </Link>
+                .
+              </span>
+            </label>
+          </div>
+        )}
 
         {mode === 'login' && (
           <div className={styles.forgot}>
@@ -165,27 +236,76 @@ export default function AuthForm({
         {mode === 'login' ? (
           <>
             New here?{' '}
-            {variant === 'page' ? (
-              <Link href="/signup">Sign up</Link>
-            ) : (
-              <button type="button" onClick={() => setMode('signup')}>
-                Sign up
-              </button>
-            )}
+            <button type="button" onClick={() => setMode('signup')}>
+              Sign up
+            </button>
           </>
         ) : (
           <>
             Already have an account?{' '}
-            {variant === 'page' ? (
-              <Link href="/login">Log in</Link>
-            ) : (
-              <button type="button" onClick={() => setMode('login')}>
-                Log in
-              </button>
-            )}
+            <button type="button" onClick={() => setMode('login')}>
+              Log in
+            </button>
           </>
         )}
       </p>
+    </>
+  );
+
+  if (variant === 'page') {
+    return (
+      <div className={styles.splitCard}>
+        <div className={styles.collageSide}>
+          <div className={styles.collageGrid}>
+            <div className={styles.collageColumn}>
+              <img
+                src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80"
+                alt="Healthy Fresh Salad"
+                className={`${styles.collageImg} ${styles.img1}`}
+              />
+              <img
+                src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=80"
+                alt="Yoga & Mindful Fitness"
+                className={`${styles.collageImg} ${styles.img2}`}
+              />
+            </div>
+            <div className={styles.collageColumn}>
+              <img
+                src="https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=600&auto=format&fit=crop&q=80"
+                alt="Healthy Meal Prep"
+                className={`${styles.collageImg} ${styles.img3}`}
+              />
+              <img
+                src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80"
+                alt="Active Lifestyle Running"
+                className={`${styles.collageImg} ${styles.img4}`}
+              />
+            </div>
+          </div>
+          <div className={styles.collageOverlay}>
+            <div className={styles.overlayContent}>
+              <span className={styles.overlayTag}>Premium Nutrition</span>
+              <h2 className={styles.overlayTitle}>ProjectFit</h2>
+              <p className={styles.overlayText}>
+                Achieve your nutrition goals with custom diets, calorie tracking, and expert lifestyle coaching.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className={styles.formSide}>
+          <div className={styles.formSideInner}>
+            {formContent}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${styles.wrap} ${isLeaf ? styles.leaf : ''}`}
+    >
+      {formContent}
     </div>
   );
 }

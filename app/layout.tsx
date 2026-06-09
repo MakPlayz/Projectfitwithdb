@@ -5,7 +5,7 @@ import Cart from '@/components/Cart';
 import BackgroundDecor from '@/components/layout/BackgroundDecor';
 import Footer from '@/components/layout/Footer';
 import LeafAuthModal from '@/components/auth/LeafAuthModal';
-import TextCursor from '@/components/ui/TextCursor';
+import AuthGuard from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
   title: 'Project Fit | Premium Health & Diet Nutrition',
@@ -23,19 +23,12 @@ export default function RootLayout({
       <body>
         <BackgroundDecor />
         <Navbar />
-        {children}
+        <AuthGuard>
+          {children}
+        </AuthGuard>
         <Footer />
         <Cart />
         <LeafAuthModal />
-        <TextCursor
-          text="🥦"
-          spacing={80}
-          followMouseDirection
-          randomFloat
-          exitDuration={0.3}
-          removalInterval={20}
-          maxPoints={10}
-        />
       </body>
     </html>
   );

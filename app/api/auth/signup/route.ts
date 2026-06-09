@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { supabaseAuthFetch, supabaseRestFetch } from '@/lib/supabase-rest';
 import { getRequestIp, isRateLimited } from '@/lib/rate-limit';
 import { formatWhatsAppPhone, getInternalApiSecret } from '@/lib/whatsapp';
-import type { AuthUser, ProjectFitUser } from '@/lib/backend-types';
+import type { AuthUser, ProjectFitUser, CustomerProfilePayload } from '@/lib/backend-types';
+import { getRecommendedPath, buildRecommendationSummary, buildCoachNotes } from '@/lib/customer-profile';
 
 interface SignupBody {
   name?: string;
@@ -10,6 +11,10 @@ interface SignupBody {
   password?: string;
   phone?: string;
   whatsappOptIn?: boolean;
+  gender?: string;
+  age?: number;
+  weight?: number;
+  healthNotes?: string;
 }
 
 interface SupabaseSignupResponse {
@@ -32,11 +37,34 @@ export async function POST(request: Request) {
     const body = (await request.json()) as SignupBody;
     const formattedPhone = body.phone ? formatWhatsAppPhone(body.phone) : null;
 
-    if (!body.name || !body.email || !body.password || !formattedPhone) {
+    if (
+      !body.name ||
+      !body.email ||
+      !body.password ||
+      !formattedPhone ||
+      !body.gender ||
+      body.age === undefined ||
+      body.weight === undefined
+    ) {
       return NextResponse.json(
-        { error: 'Name, email, password, and a valid WhatsApp phone number are required.' },
+        { error: 'Name, email, password, WhatsApp phone number, age, gender, and weight are required.' },
         { status: 400 }
       );
+    }
+
+    const age = Number(body.age);
+    if (!Number.isFinite(age) || age < 13 || age > 100) {
+      return NextResponse.json({ error: 'Age must be between 13 and 100.' }, { status: 400 });
+    }
+
+    const weight = Number(body.weight);
+    if (!Number.isFinite(weight) || weight < 25 || weight > 300) {
+      return NextResponse.json({ error: 'Weight must be between 25 kg and 300 kg.' }, { status: 400 });
+    }
+
+    const validGenders = ['male', 'female', 'non-binary', 'prefer-not-to-say'];
+    if (!validGenders.includes(body.gender)) {
+      return NextResponse.json({ error: 'Invalid gender selection.' }, { status: 400 });
     }
 
     const { data, error, status } = await supabaseAuthFetch<SupabaseSignupResponse>('/signup', {
@@ -76,6 +104,41 @@ export async function POST(request: Request) {
         return NextResponse.json(
           { error: userInsertResult.error },
           { status: userInsertResult.status || 500 }
+        );
+      }
+
+      // Insert customer profile
+      const profile: CustomerProfilePayload = {
+        full_name: body.name.trim(),
+        age: age,
+        gender: body.gender as any,
+        height_cm: 170, // Default since not in signup
+        weight_kg: weight,
+        activity_level: 'lightly-active',
+        primary_goal: 'better-fitness',
+        health_focus: 'general',
+        diet_preference: 'balanced',
+        allergies: [],
+        health_notes: body.healthNotes?.trim() ?? '',
+      };
+
+      const profileInsertResult = await supabaseRestFetch('/customer_profiles', {
+        method: 'POST',
+        body: JSON.stringify({
+          user_id: user.id,
+          ...profile,
+          health_notes: profile.health_notes || null,
+          recommended_path: getRecommendedPath(profile),
+          recommendation_summary: buildRecommendationSummary(profile),
+          coach_notes: buildCoachNotes(profile),
+          is_profile_complete: true,
+        }),
+      });
+
+      if (profileInsertResult.error) {
+        return NextResponse.json(
+          { error: `Profile creation failed: ${profileInsertResult.error}` },
+          { status: profileInsertResult.status || 500 }
         );
       }
 

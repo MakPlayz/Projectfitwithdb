@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingCart, Menu, X, Leaf } from 'lucide-react';
+import { ShoppingCart, Menu, X } from 'lucide-react';
+import Broccoli from '@/components/ui/Broccoli';
 import { useCartStore } from '@/store/cartStore';
 import { useAuthModalStore } from '@/store/authModalStore';
 import { dietCategories } from '@/data/diets';
@@ -31,7 +32,7 @@ export default function Navbar() {
 
   const handleOpenAuth = useCallback(() => {
     if (isAuthenticated) {
-      router.push('/onboarding');
+      router.push('/menu');
       return;
     }
 
@@ -100,7 +101,7 @@ export default function Navbar() {
             onClick={handleOpenAuth}
             aria-label="Log in or sign up"
           >
-            <Leaf size={22} />
+            <Broccoli size={22} />
           </button>
           <Link href="/" className={styles.logoText}>
             Project<strong>Fit</strong>
@@ -131,7 +132,7 @@ export default function Navbar() {
           <Link href="/#how-it-works">How It Works</Link>
           {isAuthenticated ? (
             <>
-              <Link href="/onboarding">My Profile</Link>
+              <Link href="/menu">Our Menu</Link>
               <button type="button" className={styles.inlineAction} onClick={handleLogout}>
                 Log out
               </button>
@@ -151,7 +152,7 @@ export default function Navbar() {
             type="button"
             className="btn-primary"
             style={{ padding: '10px 22px', fontSize: '14px' }}
-            onClick={isAuthenticated ? () => router.push('/onboarding') : handleOpenAuth}
+            onClick={isAuthenticated ? () => router.push('/menu') : handleOpenAuth}
           >
             {isAuthenticated ? 'My Plan' : 'Get Started'}
           </button>
@@ -180,8 +181,8 @@ export default function Navbar() {
           </Link>
           {isAuthenticated ? (
             <>
-              <Link href="/onboarding" onClick={() => setMenuOpen(false)}>
-                My Profile
+              <Link href="/menu" onClick={() => setMenuOpen(false)}>
+                Our Menu
               </Link>
               <button type="button" className={styles.mobileAction} onClick={() => {
                 setMenuOpen(false);

@@ -2,10 +2,11 @@
 
 import { useId, type ReactNode } from 'react';
 import {
-  LEAF_BODY_PATH,
-  LEAF_CLIP_SCALE,
+  LEAF_BODY_PATHS,
+  LEAF_BORDER_PATHS,
+  LEAF_CLIP_SCALE_X,
+  LEAF_CLIP_SCALE_Y,
   LEAF_SAFE_AREA,
-  LEAF_VEIN_PATH,
   LEAF_VIEWBOX,
 } from './leaf-shape';
 import styles from './LeafAuthShell.module.css';
@@ -34,10 +35,14 @@ export default function LeafAuthShell({
       <svg className={styles.svgDefs} aria-hidden>
         <defs>
           <clipPath id={clipId} clipPathUnits="objectBoundingBox">
-            <path d={LEAF_BODY_PATH} transform={`scale(${LEAF_CLIP_SCALE})`} />
+            {LEAF_BODY_PATHS.map((d, i) => (
+              <path key={i} d={d} transform={`scale(${LEAF_CLIP_SCALE_X}, ${LEAF_CLIP_SCALE_Y})`} />
+            ))}
           </clipPath>
           <mask id={maskId} maskUnits="objectBoundingBox" maskContentUnits="objectBoundingBox">
-            <path d={LEAF_BODY_PATH} transform={`scale(${LEAF_CLIP_SCALE})`} fill="white" />
+            {LEAF_BODY_PATHS.map((d, i) => (
+              <path key={i} d={d} transform={`scale(${LEAF_CLIP_SCALE_X}, ${LEAF_CLIP_SCALE_Y})`} fill="white" />
+            ))}
           </mask>
           <filter id={glowId} x="-25%" y="-25%" width="150%" height="150%">
             <feGaussianBlur stdDeviation="0.3" result="blur" />
@@ -77,11 +82,13 @@ export default function LeafAuthShell({
         preserveAspectRatio="none"
         aria-hidden
       >
-        <path
-          className={styles.leafStroke}
-          d={LEAF_BODY_PATH}
-        />
-        <path className={styles.leafVein} d={LEAF_VEIN_PATH} />
+        {LEAF_BORDER_PATHS.map((d, i) => (
+          <path
+            key={i}
+            className={styles.leafStroke}
+            d={d}
+          />
+        ))}
       </svg>
     </div>
   );

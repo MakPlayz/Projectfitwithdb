@@ -1,18 +1,38 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import type { ApiOrder, ApiOrderStatus } from '@/lib/backend-types';
-import { Clock, CheckCircle2, CircleDashed } from 'lucide-react';
+import { Clock, CheckCircle2, CircleDashed, LogOut } from 'lucide-react';
+import { getSession, getAuthHeaders, clearSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
 export default function ChefDashboard() {
+  const router = useRouter();
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    const session = getSession();
+    const isChef = session?.user?.email?.toLowerCase().endsWith('@projectfitvizag.com');
+    if (!isChef) {
+      router.push('/chef');
+    } else {
+      setIsAuthorized(true);
+    }
+  }, [router]);
 
   const loadOrders = useCallback(async () => {
     try {
-      const response = await fetch('/api/orders', { cache: 'no-store' });
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch('/api/orders', { 
+        cache: 'no-store',
+        headers: {
+          ...authHeaders,
+        }
+      });
       const data = await response.json();
 
       if (!response.ok) {
@@ -29,30 +49,42 @@ export default function ChefDashboard() {
   }, []);
 
   useEffect(() => {
+    if (!isAuthorized) return;
     loadOrders();
     const interval = window.setInterval(loadOrders, 5000);
 
     return () => window.clearInterval(interval);
-  }, [loadOrders]);
+  }, [loadOrders, isAuthorized]);
 
   const updateStatus = async (orderId: string, status: ApiOrderStatus) => {
-    const response = await fetch(`/api/orders/${orderId}/status`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-    });
-    const data = await response.json();
+    try {
+      const authHeaders = await getAuthHeaders();
+      const response = await fetch(`/api/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify({ status }),
+      });
+      const data = await response.json();
 
-    if (!response.ok) {
-      setError(data.error ?? 'Could not update order status.');
-      return;
+      if (!response.ok) {
+        setError(data.error ?? 'Could not update order status.');
+        return;
+      }
+
+      setOrders((current) =>
+        current.map((order) => (order.id === orderId ? data.order : order))
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update status.');
     }
+  };
 
-    setOrders((current) =>
-      current.map((order) => (order.id === orderId ? data.order : order))
-    );
+  const handleLogout = () => {
+    clearSession();
+    router.push('/chef');
   };
 
   const getStatusIcon = (status: ApiOrderStatus) => {
@@ -74,6 +106,10 @@ export default function ChefDashboard() {
     }
   };
 
+  if (!isAuthorized) {
+    return null;
+  }
+
   return (
     <div className={styles.dashboard}>
       <header className={styles.header}>
@@ -82,7 +118,16 @@ export default function ChefDashboard() {
             <h1>Kitchen Dashboard</h1>
             <p>Live order stream</p>
           </div>
-          <div className={styles.stats}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <button 
+              onClick={handleLogout} 
+              className="btn-secondary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', height: 'fit-content' }}
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+            <div className={styles.stats}>
             <div className={styles.statBox}>
               <span>New</span>
               <strong>{orders.filter(o => o.status === 'new').length}</strong>
@@ -97,7 +142,8 @@ export default function ChefDashboard() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
+    </header>
 
       <main className="container" style={{ padding: '40px 24px' }}>
         {error && <p className={styles.error}>{error}</p>}

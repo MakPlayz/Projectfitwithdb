@@ -37,4 +37,5 @@
   padding: 32px 0 64px;
   min-height: min(480px, 70vh);
   align-items: center;
+  width: 100%;
 }

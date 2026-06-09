@@ -12,11 +12,11 @@
   margin: 0 auto;
 }
 
-/* Compact layout inside leaf clip */
+/* Compact layout inside broccoli clip */
 .leaf {
-  max-width: 224px;
+  max-width: 300px;
   width: 100%;
-  transform: translateX(-10px) scale(0.9);
+  transform: none;
   transform-origin: center center;
 }
 
@@ -307,3 +307,209 @@
 .footerNote button:hover {
   color: var(--green-dark);
 }
+
+.field select {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  font-family: var(--font-body);
+  color: var(--text);
+  background: transparent;
+  cursor: pointer;
+}
+
+.leaf .field select {
+  font-size: 13px;
+}
+
+.fieldRow {
+  display: flex;
+  gap: 14px;
+  width: 100%;
+}
+
+.leaf .fieldRow {
+  gap: 7px;
+}
+
+/* Split card container */
+.splitCard {
+  display: flex;
+  width: 960px;
+  max-width: 100%;
+  min-height: 640px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  margin: 0 auto;
+}
+
+/* Left side: Photo collage */
+.collageSide {
+  flex: 1.1;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, #022c22 0%, #064e3b 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Photo collage staggered layout */
+.collageGrid {
+  display: flex;
+  gap: 16px;
+  padding: 32px;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+}
+
+.collageColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+/* Masonry staggered offset */
+.collageColumn:first-child {
+  transform: translateY(-20px);
+}
+
+.collageColumn:last-child {
+  transform: translateY(20px);
+}
+
+.collageImg {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), filter 0.4s ease;
+  filter: grayscale(15%) contrast(105%);
+}
+
+.collageImg:hover {
+  transform: scale(1.05) rotate(1deg);
+  filter: grayscale(0%) contrast(110%);
+}
+
+/* Collage overlay text */
+.collageOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(15, 23, 42, 0.1) 0%,
+    rgba(6, 78, 59, 0.4) 50%,
+    rgba(2, 44, 34, 0.95) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 48px 40px;
+  color: var(--white);
+  z-index: 2;
+}
+
+.overlayContent {
+  animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.overlayTag {
+  display: inline-block;
+  background: rgba(5, 150, 105, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #a7f3d0;
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.overlayTitle {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+  color: var(--white);
+  line-height: 1.1;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.overlayText {
+  font-size: 0.95rem;
+  color: #d1fae5;
+  line-height: 1.6;
+  max-width: 380px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+/* Right side: Form */
+.formSide {
+  flex: 0.9;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 48px 40px;
+  background: var(--white);
+}
+
+.formSideInner {
+  width: 100%;
+  max-width: 340px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Checkbox group at the bottom */
+.consentGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.consentLink {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 500;
+}
+
+.consentLink:hover {
+  color: var(--green-dark);
+}
+
+/* Responsive styles */
+@media (max-width: 900px) {
+  .splitCard {
+    flex-direction: column;
+    max-width: 460px;
+    min-height: auto;
+    border-radius: 20px;
+  }
+
+  .collageSide {
+    display: none;
+  }
+
+  .formSide {
+    padding: 36px 24px;
+  }
+}
+

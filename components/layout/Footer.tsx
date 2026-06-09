@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Leaf, Mail, Phone } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
+import Broccoli from '@/components/ui/Broccoli';
 import { dietCategories } from '@/data/diets';
 import styles from './Footer.module.css';
 
@@ -30,7 +31,7 @@ export default function Footer() {
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link href="/" className={styles.logo}>
-              <Leaf size={22} />
+              <Broccoli size={22} />
               <span>
                 Project<strong>Fit</strong>
               </span>

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseRestFetch } from '@/lib/supabase-rest';
+import { supabaseRestFetch, getUserFromAccessToken } from '@/lib/supabase-rest';
 import type { ApiOrder, ApiOrderStatus } from '@/lib/backend-types';
 
 const statuses: ApiOrderStatus[] = ['new', 'preparing', 'ready'];
@@ -12,6 +12,32 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const authHeader = request.headers.get('authorization');
+  const accessToken = authHeader?.replace(/^Bearer\s+/i, '');
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'Authentication required. Please log in.' },
+      { status: 401 }
+    );
+  }
+
+  const userResult = await getUserFromAccessToken(accessToken);
+  if (userResult.error || !userResult.data) {
+    return NextResponse.json(
+      { error: userResult.error ?? 'Invalid login session.' },
+      { status: userResult.status || 401 }
+    );
+  }
+
+  const user = userResult.data;
+  if (!user.email?.toLowerCase().endsWith('@projectfitvizag.com')) {
+    return NextResponse.json(
+      { error: 'Access denied. Only kitchen staff can update order status.' },
+      { status: 403 }
+    );
+  }
+
   const { id } = await context.params;
   const body = (await request.json()) as StatusBody;
 

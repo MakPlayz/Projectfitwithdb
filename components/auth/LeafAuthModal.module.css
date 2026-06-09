@@ -24,8 +24,8 @@
   z-index: 3002;
   left: 50%;
   top: 50%;
-  width: min(400px, 92vw);
-  aspect-ratio: 380 / 440;
+  width: min(600px, 94vw);
+  aspect-ratio: 1 / 1;
   transform-origin: center center;
 }
 
@@ -60,8 +60,8 @@
 
 @media (max-width: 480px) {
   .panelWrap {
-    width: min(360px, 94vw);
-    aspect-ratio: 380 / 440;
+    width: min(460px, 96vw);
+    aspect-ratio: 1 / 1;
   }
 
   .closeBtn {

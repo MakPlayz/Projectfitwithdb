@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import gsap from 'gsap';
-import { Leaf, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import Broccoli from '@/components/ui/Broccoli';
 import { useAuthModalStore } from '@/store/authModalStore';
 import AuthForm from './AuthForm';
 import LeafAuthShell from './LeafAuthShell';
@@ -189,7 +190,7 @@ export default function LeafAuthModal() {
       }}
     >
       <div ref={flyerRef} className={styles.flyer} aria-hidden>
-        <Leaf size={32} strokeWidth={2.25} />
+        <Broccoli size={32} strokeWidth={2.25} />
       </div>
 
       <div ref={panelRef} className={styles.panelWrap}>

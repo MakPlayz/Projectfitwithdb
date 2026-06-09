@@ -46,7 +46,33 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
   return { deliveryAddress, error: null };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const authHeader = request.headers.get('authorization');
+  const accessToken = authHeader?.replace(/^Bearer\s+/i, '');
+
+  if (!accessToken) {
+    return NextResponse.json(
+      { error: 'Authentication required. Please log in.' },
+      { status: 401 }
+    );
+  }
+
+  const userResult = await getUserFromAccessToken(accessToken);
+  if (userResult.error || !userResult.data) {
+    return NextResponse.json(
+      { error: userResult.error ?? 'Invalid login session.' },
+      { status: userResult.status || 401 }
+    );
+  }
+
+  const user = userResult.data;
+  if (!user.email?.toLowerCase().endsWith('@projectfitvizag.com')) {
+    return NextResponse.json(
+      { error: 'Access denied. Only kitchen staff can access orders.' },
+      { status: 403 }
+    );
+  }
+
   const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
     '/orders?select=*&payment_status=eq.paid&order=created_at.desc'
   );
