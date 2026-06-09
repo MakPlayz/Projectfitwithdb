@@ -96,10 +96,6 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           <p className={styles.planMeta}>{displayMeals} meals / day</p>
         )}
 
-        <p className={styles.planPrice}>
-          ₹{displayPrice.toLocaleString('en-IN')}
-          <span>/ plan</span>
-        </p>
         <button
           type="button"
           className="btn-primary"
@@ -147,15 +143,6 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                 </a>
                 <a href="#meals" className="btn-secondary">
                   Free Sample
-                </a>
-                <a
-                  href={diet.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary"
-                >
-                  <FileDown size={18} />
-                  Diet Plan
                 </a>
               </div>
               <ul className={styles.highlights}>
@@ -284,8 +271,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                     <span>F {meal.fat}g</span>
                   </div>
                   <div className={styles.mealFooter}>
-                    <span className={styles.mealPrice}>₹{meal.price}</span>
-                    <button type="button" className="btn-ghost">
+                    <button type="button" className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
                       Add to cart
                     </button>
                   </div>

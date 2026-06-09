@@ -48,20 +48,7 @@ const initialDeliveryAddress: DeliveryAddress = {
   phone: '',
 };
 
-function loadRazorpayScript() {
-  return new Promise<boolean>((resolve) => {
-    if (window.Razorpay) {
-      resolve(true);
-      return;
-    }
 
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
 
 function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
   if (!deliveryAddress.addressLine1.trim() || !deliveryAddress.city.trim()) {
@@ -134,12 +121,6 @@ export default function Cart() {
         throw new Error(addressError);
       }
 
-      const isLoaded = await loadRazorpayScript();
-
-      if (!isLoaded || !window.Razorpay) {
-        throw new Error('Could not load Razorpay checkout. Please try again.');
-      }
-
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -158,56 +139,10 @@ export default function Cart() {
         throw new Error(data.error ?? 'Could not place your order.');
       }
 
-      const checkout = new window.Razorpay({
-        key: data.razorpay.keyId,
-        amount: data.razorpay.amount,
-        currency: data.razorpay.currency,
-        name: 'Project Fit',
-        description: `Order ${data.order.id}`,
-        order_id: data.razorpay.orderId,
-        prefill: {
-          contact: deliveryAddress.phone,
-        },
-        notes: {
-          local_order_id: data.order.id,
-          delivery_city: deliveryAddress.city,
-        },
-        theme: {
-          color: '#16a34a',
-        },
-        modal: {
-          ondismiss: () => setIsSubmitting(false),
-        },
-        handler: async (paymentResponse) => {
-          try {
-            const verifyResponse = await fetch('/api/payments/verify', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                orderId: data.order.id,
-                ...paymentResponse,
-              }),
-            });
-            const verifyData = await verifyResponse.json();
-
-            if (!verifyResponse.ok) {
-              throw new Error(verifyData.error ?? 'Payment could not be verified.');
-            }
-
-            clearCart();
-            setDeliveryAddress(initialDeliveryAddress);
-            toggleCart();
-            router.push(`/order-confirmed?id=${verifyData.order.id}`);
-          } catch (verifyError) {
-            setError(verifyError instanceof Error ? verifyError.message : 'Payment could not be verified.');
-            setIsSubmitting(false);
-          }
-        },
-      });
-
-      checkout.open();
+      clearCart();
+      setDeliveryAddress(initialDeliveryAddress);
+      toggleCart();
+      router.push(`/order-confirmed?id=${data.order.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not place your order.');
       setIsSubmitting(false);
@@ -237,7 +172,6 @@ export default function Cart() {
                   <div className={styles.itemHeader}>
                     <div className={styles.itemTitle}>
                       <h4>{item.name}</h4>
-                      <p className={styles.price}>₹{item.totalPrice}</p>
                     </div>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
                       <Trash2 size={16} />
@@ -256,7 +190,7 @@ export default function Cart() {
                     <div className={styles.customizations}>
                       {item.addOns.map(addon => (
                         <p key={addon.name} className={styles.added}>
-                          + {addon.name} (₹{addon.price})
+                          + {addon.name}
                         </p>
                       ))}
                     </div>
@@ -336,21 +270,9 @@ export default function Cart() {
                 </label>
               </div>
 
-              <div className={styles.summaryrow}>
-                <span>Subtotal</span>
-                <span>₹{total}</span>
-              </div>
-              <div className={styles.summaryrow}>
-                <span>Taxes & Fees</span>
-                <span>₹{tax}</span>
-              </div>
-              <div className={`${styles.summaryrow} ${styles.total}`}>
-                <span>Total</span>
-                <span>₹{payableTotal}</span>
-              </div>
               {error && <p className={styles.error}>{error}</p>}
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }} onClick={handleCheckout} disabled={isSubmitting}>
-                {isSubmitting ? 'Opening Razorpay...' : 'Pay & Place Order'}
+                {isSubmitting ? 'Placing Order...' : 'Place Order'}
               </button>
             </div>
           </>

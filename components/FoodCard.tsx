@@ -53,7 +53,6 @@ export default function FoodCard({ item }: { item: MenuItem }) {
           </div>
 
           <div className={styles.footer}>
-            <span className={styles.price}>₹{item.price}</span>
             <button 
               className={styles.addBtn}
               onClick={() => setShowModal(true)}

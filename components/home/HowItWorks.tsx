@@ -5,7 +5,7 @@ import styles from './HowItWorks.module.css';
 
 const steps = [
   { step: '01', title: 'Choose your program', text: 'Select from five specialized diet paths tailored to your health goals.' },
-  { step: '02', title: 'Pick your plan', text: 'Flexible weekly or monthly plans with transparent pricing and macros.' },
+  { step: '02', title: 'Pick your plan', text: 'Flexible weekly or monthly plans tailored to your macros and delivery schedules.' },
   { step: '03', title: 'Enjoy fresh meals', text: 'Chef-crafted dishes delivered daily — heat, eat, and track your progress.' },
 ];
 

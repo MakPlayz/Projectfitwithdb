@@ -4,7 +4,6 @@ import Navbar from '@/components/Navbar';
 import Cart from '@/components/Cart';
 import BackgroundDecor from '@/components/layout/BackgroundDecor';
 import Footer from '@/components/layout/Footer';
-import LeafAuthModal from '@/components/auth/LeafAuthModal';
 import AuthGuard from '@/components/auth/AuthGuard';
 
 export const metadata: Metadata = {
@@ -28,7 +27,6 @@ export default function RootLayout({
         </AuthGuard>
         <Footer />
         <Cart />
-        <LeafAuthModal />
       </body>
     </html>
   );

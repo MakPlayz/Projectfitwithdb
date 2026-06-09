@@ -44,7 +44,7 @@ const sections = [
   },
   {
     icon: Gem,
-    title: 'Pricing & Diet Tiers',
+    title: 'Diet Tiers',
     subtitle: 'Choose your menu level',
     accent: '#7c3aed',
     items: [
@@ -69,7 +69,7 @@ export default function PlanOptionsSection() {
     <section className={styles.section} id="pricing-options">
       <div className="container">
         <div className={styles.header}>
-          <p className="section-label">Flexible Pricing</p>
+          <p className="section-label">Flexible Plans</p>
           <h2 className="section-title">Designed for your lifestyle</h2>
           <p className="section-subtitle">
             Transparent delivery schedules, flexible duration blocks, and diet tiers to match your performance goals.

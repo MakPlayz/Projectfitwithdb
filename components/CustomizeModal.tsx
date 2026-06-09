@@ -56,7 +56,6 @@ export default function CustomizeModal({ item, onClose }: Props) {
         
         <div className={styles.header}>
           <h2>Customize {item.name}</h2>
-          <p>₹{item.price} base price</p>
         </div>
 
         <div className={styles.scroll}>
@@ -92,7 +91,6 @@ export default function CustomizeModal({ item, onClose }: Props) {
                     />
                     <div className={styles.addonInfo}>
                       <span>{addon.name}</span>
-                      <span className={styles.addonPrice}>+₹{addon.price}</span>
                     </div>
                   </label>
                 );
@@ -109,7 +107,7 @@ export default function CustomizeModal({ item, onClose }: Props) {
           </div>
           
           <button className="btn-primary" onClick={handleAdd} style={{ flex: 1, justifyContent: 'center' }}>
-            Add Item • ₹{totalPrice}
+            Add Item
           </button>
         </div>
       </div>

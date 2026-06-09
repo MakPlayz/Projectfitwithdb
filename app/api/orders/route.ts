@@ -189,7 +189,7 @@ export async function POST(request: Request) {
       tax,
       total,
       status: 'new',
-      payment_status: 'pending',
+      payment_status: 'paid',
       delivery_address: addressValidation.deliveryAddress,
     }),
   });
@@ -204,61 +204,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Could not create local order.' }, { status: 500 });
   }
 
-  try {
-    const razorpayOrder = await createRazorpayOrder({
-      amount: total * 100,
-      currency: 'INR',
-      receipt: order.id,
-      notes: {
-        local_order_id: order.id,
-        customer_name: customerName ?? 'Project Fit customer',
-        delivery_city: addressValidation.deliveryAddress.city,
-      },
-    });
-
-    const updateResult = await supabaseRestFetch<ApiOrder[]>(
-      `/orders?id=eq.${encodeURIComponent(order.id)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          razorpay_order_id: razorpayOrder.id,
-        }),
-      }
-    );
-
-    if (updateResult.error) {
-      return NextResponse.json(
-        { error: updateResult.error },
-        { status: updateResult.status || 500 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        order: updateResult.data?.[0] ?? order,
-        razorpay: {
-          keyId: getRazorpayKeyId(),
-          orderId: razorpayOrder.id,
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-        },
-      },
-      { status: 201 }
-    );
-  } catch (err) {
-    await supabaseRestFetch<ApiOrder[]>(
-      `/orders?id=eq.${encodeURIComponent(order.id)}`,
-      {
-        method: 'PATCH',
-        body: JSON.stringify({
-          payment_status: 'failed',
-        }),
-      }
-    );
-
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Could not start Razorpay payment.' },
-      { status: 502 }
-    );
-  }
+  return NextResponse.json({ order }, { status: 201 });
 }

@@ -1,14 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingCart, Menu, X } from 'lucide-react';
 import Broccoli from '@/components/ui/Broccoli';
 import { useCartStore } from '@/store/cartStore';
-import { useAuthModalStore } from '@/store/authModalStore';
 import { dietCategories } from '@/data/diets';
-import { useScrollAuthPrompt } from '@/hooks/useScrollAuthPrompt';
 import { clearSession, ensureSession } from '@/lib/auth-client';
 import styles from './Navbar.module.css';
 
@@ -17,30 +15,17 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [programsOpen, setProgramsOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const leafRef = useRef<HTMLButtonElement>(null);
   const { toggleCart, getCount } = useCartStore();
   const count = useCartStore(getCount);
-  const openAuth = useAuthModalStore((s) => s.open);
   const router = useRouter();
-
-  const getLeafOrigin = useCallback(() => {
-    const el = leafRef.current;
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-  }, []);
 
   const handleOpenAuth = useCallback(() => {
     if (isAuthenticated) {
       router.push('/menu');
-      return;
+    } else {
+      router.push('/login');
     }
-
-    const origin = getLeafOrigin();
-    if (origin) openAuth(origin);
-  }, [getLeafOrigin, isAuthenticated, openAuth, router]);
-
-  useScrollAuthPrompt(getLeafOrigin, !isAuthenticated);
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     const handler = () => setScrolled(window.scrollY > 20);
@@ -82,9 +67,7 @@ export default function Navbar() {
     if (!menuOpen) return;
     document.body.style.overflow = 'hidden';
     return () => {
-      if (!useAuthModalStore.getState().isOpen) {
-        document.body.style.overflow = '';
-      }
+      document.body.style.overflow = '';
     };
   }, [menuOpen]);
 

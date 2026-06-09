@@ -143,19 +143,6 @@ export default function MenuPage() {
                 <Leaf size={14} />
                 High Protein
               </label>
-            </div>
-
-            <div className={styles.sort}>
-              <select 
-                value={sortBy} 
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className={styles.select}
-              >
-                <option value="popular">Most Popular</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-              </select>
-            </div>
           </div>
 
         </div>

@@ -252,7 +252,6 @@ export default function ChefDashboard() {
                 </div>
 
                 <div className={styles.cardFooter}>
-                  <strong className={styles.total}>Rs. {order.total}</strong>
                   {getStatusBtn(order.status, order.id)}
                 </div>
               </div>

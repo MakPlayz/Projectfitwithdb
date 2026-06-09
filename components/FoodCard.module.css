@@ -143,6 +143,8 @@
 .addBtn {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 100%;
   gap: 6px;
   background: var(--green-light);
   color: var(--green);
