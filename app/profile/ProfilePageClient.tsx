@@ -25,6 +25,7 @@ export default function ProfilePageClient() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
+  const nextPath = getSafeNextPath(searchParams.get('next'));
 
   useEffect(() => {
     const current = getSession();
@@ -52,7 +53,7 @@ export default function ProfilePageClient() {
       setProfile(nextProfile);
 
       if (searchParams.get('completeProfile') === '1') {
-        setStatus('Please complete your profile before placing an order.');
+        setStatus('Please complete your profile before continuing.');
       }
     });
 
@@ -65,16 +66,18 @@ export default function ProfilePageClient() {
       const data = response.ok ? await response.json() : null;
 
         const remote = data?.profile;
-        if (!remote) return;
+        const appUser = data?.user;
+        if (!remote && !appUser) return;
 
         setProfile((currentProfile) => ({
           ...currentProfile,
-          fullName: remote.full_name || currentProfile.fullName,
-          age: remote.age ?? currentProfile.age,
-          gender: remote.gender || currentProfile.gender,
-          height: remote.height_cm ?? currentProfile.height,
-          weight: remote.weight_kg ?? currentProfile.weight,
-          healthNotes: remote.health_notes ?? currentProfile.healthNotes,
+          fullName: remote?.full_name || appUser?.name || currentProfile.fullName,
+          phone: appUser?.phone || currentProfile.phone,
+          age: remote?.age ?? currentProfile.age,
+          gender: remote?.gender || currentProfile.gender,
+          height: remote?.height_cm ?? currentProfile.height,
+          weight: remote?.weight_kg ?? currentProfile.weight,
+          healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
         }));
     }
 
@@ -159,6 +162,7 @@ export default function ProfilePageClient() {
         },
         body: JSON.stringify({
           full_name: nextProfile.fullName,
+          phone: nextProfile.phone,
           age: Number(nextProfile.age),
           gender: nextProfile.gender || 'prefer-not-to-say',
           height_cm: Number(nextProfile.height),
@@ -188,6 +192,9 @@ export default function ProfilePageClient() {
     }
 
     setStatus('Profile updated');
+    if (searchParams.get('completeProfile') === '1') {
+      router.replace(nextPath);
+    }
   };
 
   if (!session) {
@@ -267,23 +274,23 @@ export default function ProfilePageClient() {
               </label>
               <label className={styles.field}>
                 <span>WhatsApp number</span>
-                <input name="phone" value={profile.phone} onChange={handleChange} inputMode="tel" />
+                <input name="phone" value={profile.phone} onChange={handleChange} inputMode="tel" required />
               </label>
               <label className={styles.field}>
                 <span>Age</span>
-                <input name="age" type="number" min={13} max={100} value={profile.age} onChange={handleChange} />
+                <input name="age" type="number" min={13} max={100} value={profile.age} onChange={handleChange} required />
               </label>
               <label className={styles.field}>
                 <span>Height (cm)</span>
-                <input name="height" type="number" min={100} max={250} value={profile.height} onChange={handleChange} />
+                <input name="height" type="number" min={100} max={250} value={profile.height} onChange={handleChange} required />
               </label>
               <label className={styles.field}>
                 <span>Weight (kg)</span>
-                <input name="weight" type="number" min={25} max={300} step="0.1" value={profile.weight} onChange={handleChange} />
+                <input name="weight" type="number" min={25} max={300} step="0.1" value={profile.weight} onChange={handleChange} required />
               </label>
               <label className={styles.field}>
                 <span>Gender</span>
-                <select name="gender" value={profile.gender} onChange={handleChange}>
+                <select name="gender" value={profile.gender} onChange={handleChange} required>
                   <option value="">Select gender</option>
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -308,6 +315,7 @@ export default function ProfilePageClient() {
                 onChange={handleChange}
                 placeholder="Allergies, health issues, food preferences, or notes for the kitchen"
                 rows={4}
+                required
               />
             </label>
 
@@ -397,4 +405,8 @@ export default function ProfilePageClient() {
       )}
     </main>
   );
+}
+
+function getSafeNextPath(value: string | null) {
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : '/';
 }

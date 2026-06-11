@@ -47,7 +47,21 @@ export default function AuthCallbackCompleteClient() {
         fullName: data.user.user_metadata?.name || data.user.user_metadata?.full_name || '',
       });
 
-      router.replace(next.startsWith('/') && !next.startsWith('//') ? next : '/');
+      const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      const profileResponse = await fetch('/api/profile', {
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+        },
+        cache: 'no-store',
+      });
+      const profileData = profileResponse.ok ? await profileResponse.json() : null;
+
+      if (!profileData?.profile?.is_profile_complete) {
+        router.replace(`/profile?completeProfile=1&next=${encodeURIComponent(safeNext)}`);
+        return;
+      }
+
+      router.replace(safeNext);
     }
 
     completeSignIn().catch((err) => {

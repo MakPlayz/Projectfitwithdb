@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { getSession } from '@/lib/auth-client';
+import { ensureSession, getAuthHeaders } from '@/lib/auth-client';
 import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
 
 interface AuthGuardProps {
@@ -16,12 +16,19 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = () => {
-      const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/chef';
-      const isProtectedPage = isProtectedPath(pathname);
-      const session = getSession();
+    let cancelled = false;
 
-      if (isAuthPage || !isProtectedPage) {
+    const checkAuth = async () => {
+      const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/chef';
+      const isAuthFlowPage = Boolean(pathname?.startsWith('/auth/'));
+      const isProfilePage = pathname === '/profile';
+      const isChefPage = Boolean(pathname?.startsWith('/chef'));
+      const isProtectedPage = isProtectedPath(pathname);
+      const session = await ensureSession();
+
+      if (cancelled) return;
+
+      if (!session && (isAuthPage || !isProtectedPage)) {
         setAuthorized(true);
         setLoading(false);
         return;
@@ -33,10 +40,29 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         
         const target = pathname?.startsWith('/chef') ? '/chef' : buildAuthRedirect(pathname, '/signup');
         router.replace(target);
-      } else {
-        setAuthorized(true);
-        setLoading(false);
+        return;
       }
+
+      if (!isAuthFlowPage && !isProfilePage && !isChefPage) {
+        const headers = await getAuthHeaders();
+        const response = await fetch('/api/profile', {
+          headers,
+          cache: 'no-store',
+        });
+        const data = response.ok ? await response.json() : null;
+
+        if (cancelled) return;
+
+        if (!data?.profile?.is_profile_complete) {
+          setAuthorized(false);
+          setLoading(false);
+          router.replace(buildAuthRedirect(pathname, '/profile?completeProfile=1'));
+          return;
+        }
+      }
+
+      setAuthorized(true);
+      setLoading(false);
     };
 
     checkAuth();
@@ -44,13 +70,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     // Listen for custom auth change events
     window.addEventListener('projectfit-auth-changed', checkAuth);
     return () => {
+      cancelled = true;
       window.removeEventListener('projectfit-auth-changed', checkAuth);
     };
   }, [pathname, router]);
 
   const isProtectedPage = isProtectedPath(pathname);
 
-  if (isProtectedPage && (loading || !authorized)) {
+  if (loading || (isProtectedPage && !authorized)) {
     return (
       <div style={{
         display: 'flex',

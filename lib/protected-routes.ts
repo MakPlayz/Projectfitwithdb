@@ -20,5 +20,6 @@ export function buildAuthRedirect(pathname: string | null | undefined, target = 
     return target;
   }
 
-  return `${target}?next=${encodeURIComponent(safePath)}`;
+  const separator = target.includes('?') ? '&' : '?';
+  return `${target}${separator}next=${encodeURIComponent(safePath)}`;
 }
