@@ -7,6 +7,7 @@ import { ArrowUpRight, Scale, Dumbbell, Heart, Sparkles, Activity } from 'lucide
 import { categoryImages, type DietCategory } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
 import { ensureSession } from '@/lib/auth-client';
+import { buildAuthRedirect } from '@/lib/protected-routes';
 import styles from './DietCategoryCard.module.css';
 
 const icons = {
@@ -61,7 +62,7 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
       className={styles.motionWrap}
     >
       <Link
-        href={isAuthenticated ? diet.href : '/signup'}
+        href={isAuthenticated ? diet.href : buildAuthRedirect(diet.href)}
         className={styles.card}
         style={
           {

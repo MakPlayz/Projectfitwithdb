@@ -8,6 +8,7 @@ import { ChevronDown, LogOut, Menu, ShoppingCart, UserCircle, X } from 'lucide-r
 import { useCartStore } from '@/store/cartStore';
 import { dietCategories } from '@/data/diets';
 import { clearSession, ensureSession } from '@/lib/auth-client';
+import { buildAuthRedirect } from '@/lib/protected-routes';
 import styles from './Navbar.module.css';
 
 export default function Navbar() {
@@ -99,7 +100,7 @@ export default function Navbar() {
             {programsOpen && (
               <div className={styles.dropdownMenu}>
                 {dietCategories.map((d) => (
-                  <Link key={d.slug} href={d.href}>
+                  <Link key={d.slug} href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}>
                     <span style={{ color: d.accent }}>●</span>
                     {d.shortTitle}
                   </Link>
@@ -179,7 +180,11 @@ export default function Navbar() {
         <div className={styles.mobile}>
           <p className={styles.mobileLabel}>Programs</p>
           {dietCategories.map((d) => (
-            <Link key={d.slug} href={d.href} onClick={() => setMenuOpen(false)}>
+            <Link
+              key={d.slug}
+              href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}
+              onClick={() => setMenuOpen(false)}
+            >
               {d.title}
             </Link>
           ))}

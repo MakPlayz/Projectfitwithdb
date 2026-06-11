@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, User, Phone, Calendar, Scale, Heart, Ruler } from 'lucide-react';
 import Broccoli from '@/components/ui/Broccoli';
 import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
@@ -30,9 +30,13 @@ export default function AuthForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isLeaf = variant === 'leaf' || variant === 'modal';
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = getSafeNextPath(searchParams.get('next'));
 
   const handleGoogleSignIn = () => {
-    window.location.href = '/api/auth/google';
+    const googleUrl = new URL('/api/auth/google', window.location.origin);
+    googleUrl.searchParams.set('next', nextPath);
+    window.location.href = googleUrl.toString();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -108,7 +112,7 @@ export default function AuthForm({
         });
       }
       onSuccess?.();
-      router.push('/');
+      router.push(nextPath);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentication failed.');
     } finally {
@@ -417,4 +421,8 @@ async function readJsonResponse(response: Response) {
         : 'The server returned an error instead of JSON.',
     };
   }
+}
+
+function getSafeNextPath(value: string | null) {
+  return value && value.startsWith('/') && !value.startsWith('//') ? value : '/';
 }

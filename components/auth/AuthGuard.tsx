@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { getSession } from '@/lib/auth-client';
+import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -17,7 +18,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   useEffect(() => {
     const checkAuth = () => {
       const isAuthPage = pathname === '/login' || pathname === '/signup' || pathname === '/chef';
-      const isProtectedPage = pathname === '/menu' || pathname === '/chef/dashboard';
+      const isProtectedPage = isProtectedPath(pathname);
       const session = getSession();
 
       if (isAuthPage || !isProtectedPage) {
@@ -30,7 +31,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         setAuthorized(false);
         setLoading(false);
         
-        const target = pathname?.startsWith('/chef') ? '/chef' : '/login';
+        const target = pathname?.startsWith('/chef') ? '/chef' : buildAuthRedirect(pathname, '/signup');
         router.replace(target);
       } else {
         setAuthorized(true);
@@ -47,7 +48,7 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     };
   }, [pathname, router]);
 
-  const isProtectedPage = pathname === '/menu' || pathname === '/chef/dashboard';
+  const isProtectedPage = isProtectedPath(pathname);
 
   if (isProtectedPage && (loading || !authorized)) {
     return (

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import AuthForm from '@/components/auth/AuthForm';
@@ -20,7 +21,9 @@ export default function SignupPage() {
         </Link>
 
         <div className={styles.leafWrap}>
-          <AuthForm initialMode="signup" variant="page" />
+          <Suspense fallback={null}>
+            <AuthForm initialMode="signup" variant="page" />
+          </Suspense>
         </div>
       </div>
     </main>
