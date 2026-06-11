@@ -66,6 +66,10 @@ export function hasSupabaseConfig() {
   return Boolean(normalizeEnv(supabaseUrl) && normalizeEnv(publicKey));
 }
 
+export function canUseMockAuth() {
+  return process.env.NODE_ENV !== 'production' && !hasSupabaseConfig();
+}
+
 export async function supabaseAuthFetch<T>(
   path: string,
   init: RequestInit = {}

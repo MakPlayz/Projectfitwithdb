@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createMockAuthResponse } from '@/lib/mock-auth';
 import {
+  canUseMockAuth,
   hasSupabaseConfig,
   supabaseAuthFetch,
   supabaseRestFetch,
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid gender selection.' }, { status: 400 });
     }
 
-    if (!hasSupabaseConfig()) {
+    if (canUseMockAuth()) {
       return NextResponse.json(
         createMockAuthResponse({
           email: body.email,
@@ -87,6 +88,13 @@ export async function POST(request: Request) {
           phone: formattedPhone,
         }),
         { status: 201 }
+      );
+    }
+
+    if (!hasSupabaseConfig()) {
+      return NextResponse.json(
+        { error: 'Supabase auth is not configured. Add Supabase URL and public key in Vercel.' },
+        { status: 500 }
       );
     }
 
