@@ -6,7 +6,10 @@ declare const Deno: {
 };
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const SERVICE_ROLE_KEY = Deno.env.get('PROJECTFIT_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const SERVICE_ROLE_KEYS = [
+  Deno.env.get('PROJECTFIT_SERVICE_ROLE_KEY'),
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+].filter((value): value is string => Boolean(value));
 const FROM = 'Project Fit Vizag <noreply@projectfitvizag.com>';
 const SUBJECT = 'Welcome to Project Fit!';
 const MENU_URL = 'https://www.projectfitvizag.com/menu';
@@ -123,9 +126,9 @@ Deno.serve(async (req) => {
     return json({ error: 'RESEND_API_KEY not configured' }, 500);
   }
 
-  if (SERVICE_ROLE_KEY) {
+  if (SERVICE_ROLE_KEYS.length > 0) {
     const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
-    if (token !== SERVICE_ROLE_KEY) {
+    if (!token || !SERVICE_ROLE_KEYS.includes(token)) {
       return json({ error: 'Unauthorized' }, 401);
     }
   }
