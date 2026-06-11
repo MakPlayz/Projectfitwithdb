@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ensureSession, getAuthHeaders } from '@/lib/auth-client';
+import { ensureSession, getAuthHeaders, type ProjectFitSession } from '@/lib/auth-client';
 import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
+import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -14,6 +15,8 @@ export default function AuthGuard({ children }: AuthGuardProps) {
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [profileRequired, setProfileRequired] = useState(false);
+  const [session, setSession] = useState<ProjectFitSession | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,17 +27,20 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       const isProfilePage = pathname === '/profile';
       const isChefPage = Boolean(pathname?.startsWith('/chef'));
       const isProtectedPage = isProtectedPath(pathname);
-      const session = await ensureSession();
+      const currentSession = await ensureSession();
 
       if (cancelled) return;
+      setSession(currentSession);
 
-      if (!session && (isAuthPage || !isProtectedPage)) {
+      if (!currentSession && (isAuthPage || !isProtectedPage)) {
+        setProfileRequired(false);
         setAuthorized(true);
         setLoading(false);
         return;
       }
 
-      if (!session) {
+      if (!currentSession) {
+        setProfileRequired(false);
         setAuthorized(false);
         setLoading(false);
         
@@ -54,13 +60,14 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         if (cancelled) return;
 
         if (!data?.profile?.is_profile_complete) {
-          setAuthorized(false);
+          setProfileRequired(true);
+          setAuthorized(true);
           setLoading(false);
-          router.replace(buildAuthRedirect(pathname, '/profile?completeProfile=1'));
           return;
         }
       }
 
+      setProfileRequired(false);
       setAuthorized(true);
       setLoading(false);
     };
@@ -109,5 +116,19 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {profileRequired && session && (
+        <ProfileCompletionModal
+          defaultName={session.user.user_metadata?.name || session.user.user_metadata?.full_name || ''}
+          defaultPhone={session.user.user_metadata?.phone || ''}
+          onComplete={() => {
+            setProfileRequired(false);
+            setAuthorized(true);
+          }}
+        />
+      )}
+    </>
+  );
 }
