@@ -5,6 +5,8 @@ import type { AuthUser } from '@/lib/backend-types';
 const verifierCookie = 'projectfit.oauth.verifier';
 const stateCookie = 'projectfit.oauth.state';
 const sessionCookie = 'projectfit.oauth.session';
+const sessionCookieCount = `${sessionCookie}.count`;
+const sessionCookieChunkSize = 2800;
 
 interface OAuthTokenResponse {
   access_token?: string;
@@ -27,6 +29,15 @@ function getSafeNextPath(value: string | null) {
 
 function getSecureCookieFlag(request: Request) {
   return new URL(request.url).protocol === 'https:';
+}
+
+function deleteSessionCookies(response: NextResponse) {
+  response.cookies.delete(sessionCookie);
+  response.cookies.delete(sessionCookieCount);
+
+  for (let i = 0; i < 8; i += 1) {
+    response.cookies.delete(`${sessionCookie}.${i}`);
+  }
 }
 
 function isLikelyNewUser(user: OAuthTokenResponse['user']) {
@@ -112,6 +123,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.delete(verifierCookie);
     response.cookies.delete(stateCookie);
+    deleteSessionCookies(response);
     response.headers.set('Cache-Control', 'no-store');
     return response;
   };
@@ -139,12 +151,19 @@ export async function GET(request: NextRequest) {
       await sendGoogleWelcomeEmail(data.user);
     }
 
-    response.cookies.set(sessionCookie, Buffer.from(JSON.stringify(session)).toString('base64url'), {
+    const encodedSession = Buffer.from(JSON.stringify(session)).toString('base64url');
+    const chunks = encodedSession.match(new RegExp(`.{1,${sessionCookieChunkSize}}`, 'g')) ?? [];
+    const cookieOptions = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       secure,
       path: '/',
-      maxAge: 60,
+      maxAge: 120,
+    };
+
+    response.cookies.set(sessionCookieCount, String(chunks.length), cookieOptions);
+    chunks.forEach((chunk, index) => {
+      response.cookies.set(`${sessionCookie}.${index}`, chunk, cookieOptions);
     });
     response.headers.set('Cache-Control', 'no-store');
     return response;

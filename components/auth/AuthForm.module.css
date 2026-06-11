@@ -232,15 +232,7 @@
 .googleMark {
   width: 20px;
   height: 20px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #fff;
-  color: #1a73e8;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  font-family: Arial, sans-serif;
-  font-size: 14px;
-  font-weight: 800;
+  flex: 0 0 20px;
 }
 
 .divider {

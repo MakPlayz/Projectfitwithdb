@@ -6,7 +6,7 @@ declare const Deno: {
 };
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
-const SERVICE_ROLE_KEY = Deno.env.get('PROJECTFIT_SERVICE_ROLE_KEY');
+const SERVICE_ROLE_KEY = Deno.env.get('PROJECTFIT_SERVICE_ROLE_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const FROM = 'Project Fit Vizag <noreply@projectfitvizag.com>';
 const SUBJECT = 'Welcome to Project Fit!';
 const MENU_URL = 'https://www.projectfitvizag.com/menu';

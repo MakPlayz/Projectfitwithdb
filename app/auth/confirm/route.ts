@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAuthFetch } from '@/lib/supabase-rest';
+import { getSupabaseUrl, supabaseAuthFetch } from '@/lib/supabase-rest';
+import type { AuthUser } from '@/lib/backend-types';
 
 const allowedTypes = new Set([
   'signup',
@@ -21,6 +22,27 @@ function getSafeNextUrl(request: Request, nextPath: string | null) {
   return new URL(nextPath, requestUrl.origin);
 }
 
+async function sendWelcomeEmail(user?: AuthUser) {
+  if (!user?.email) return;
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+  if (!serviceRoleKey) return;
+
+  const name = user.user_metadata?.name || user.user_metadata?.full_name;
+
+  await fetch(`${getSupabaseUrl()}/functions/v1/send-welcome-email`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      email: user.email,
+      name,
+    }),
+  }).catch(() => undefined);
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const tokenHash = requestUrl.searchParams.get('token_hash');
@@ -33,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.redirect(nextUrl);
   }
 
-  const { error } = await supabaseAuthFetch('/verify', {
+  const { data, error } = await supabaseAuthFetch<{ user?: AuthUser }>('/verify', {
     method: 'POST',
     body: JSON.stringify({
       token_hash: tokenHash,
@@ -45,6 +67,10 @@ export async function GET(request: Request) {
     nextUrl.searchParams.set('confirmed', '0');
     nextUrl.searchParams.set('error', 'confirmation_failed');
     return NextResponse.redirect(nextUrl);
+  }
+
+  if (type === 'signup') {
+    await sendWelcomeEmail(data?.user);
   }
 
   nextUrl.searchParams.set('confirmed', '1');
