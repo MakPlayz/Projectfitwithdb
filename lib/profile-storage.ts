@@ -77,3 +77,15 @@ export function mergeStoredProfile(profile: Partial<StoredProfile>) {
   writeStoredProfile(next);
   return next;
 }
+
+export function hasCompleteStoredProfile(profile: Partial<StoredProfile>) {
+  return Boolean(
+    profile.fullName &&
+      profile.phone &&
+      profile.gender &&
+      profile.age &&
+      profile.height &&
+      profile.weight &&
+      profile.healthNotes
+  );
+}

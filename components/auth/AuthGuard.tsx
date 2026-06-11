@@ -4,10 +4,37 @@ import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ensureSession, getAuthHeaders, type ProjectFitSession } from '@/lib/auth-client';
 import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
+import { hasCompleteStoredProfile, readStoredProfile } from '@/lib/profile-storage';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
 
 interface AuthGuardProps {
   children: React.ReactNode;
+}
+
+async function syncStoredProfileIfComplete() {
+  const storedProfile = readStoredProfile();
+  if (!hasCompleteStoredProfile(storedProfile)) {
+    return false;
+  }
+
+  const response = await fetch('/api/profile', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(await getAuthHeaders()),
+    },
+    body: JSON.stringify({
+      full_name: storedProfile.fullName,
+      phone: storedProfile.phone,
+      age: Number(storedProfile.age),
+      gender: storedProfile.gender,
+      height_cm: Number(storedProfile.height),
+      weight_kg: Number(storedProfile.weight),
+      health_notes: storedProfile.healthNotes,
+    }),
+  });
+
+  return response.ok;
 }
 
 export default function AuthGuard({ children }: AuthGuardProps) {
@@ -60,6 +87,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         if (cancelled) return;
 
         if (!data?.profile?.is_profile_complete) {
+          const syncedStoredProfile = await syncStoredProfileIfComplete();
+          if (cancelled) return;
+
+          if (syncedStoredProfile) {
+            setProfileRequired(false);
+            setAuthorized(true);
+            setLoading(false);
+            return;
+          }
+
           setProfileRequired(true);
           setAuthorized(true);
           setLoading(false);
