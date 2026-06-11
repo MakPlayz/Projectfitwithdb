@@ -34,6 +34,25 @@
   gap: 8px;
 }
 
+.logoLink {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  min-height: 52px;
+  flex-shrink: 0;
+}
+
+.logoImage {
+  width: 52px;
+  height: 52px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid rgba(5, 150, 105, 0.18);
+  box-shadow: 0 6px 18px rgba(5, 150, 105, 0.12);
+  background: var(--white);
+}
+
 .leafBtn {
   display: flex;
   align-items: center;
@@ -175,6 +194,54 @@
   flex-shrink: 0;
 }
 
+.authActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.signInBtn,
+.signUpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font-display);
+  line-height: 1;
+  white-space: nowrap;
+  transition: transform 0.25s var(--transition), box-shadow 0.25s, border-color 0.25s, background 0.25s, color 0.25s;
+}
+
+.signInBtn {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.signInBtn:hover {
+  color: var(--green);
+  border-color: var(--border-accent);
+  background: var(--white);
+  transform: translateY(-1px);
+}
+
+.signUpBtn {
+  color: var(--white);
+  background: linear-gradient(135deg, var(--green), var(--green-dark));
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-green);
+}
+
+.signUpBtn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(5, 150, 105, 0.24);
+}
+
 .cartBtn {
   position: relative;
   background: var(--white);
@@ -194,6 +261,69 @@
   border-color: var(--green);
   color: var(--green);
   box-shadow: var(--shadow-green);
+}
+
+.profileMenu {
+  position: relative;
+}
+
+.profileTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border-accent);
+  background: linear-gradient(135deg, var(--green), var(--green-dark));
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: var(--shadow-green);
+  transition: transform 0.25s var(--transition), box-shadow 0.25s;
+}
+
+.profileTrigger:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgba(5, 150, 105, 0.24);
+}
+
+.profileDropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  min-width: 180px;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.profileDropdown a,
+.profileDropdown button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.profileDropdown a:hover,
+.profileDropdown button:hover {
+  background: var(--green-light);
+  color: var(--text);
 }
 
 .badge {
@@ -282,7 +412,11 @@
     display: flex;
   }
 
-  .actions .btn-primary {
+  .profileMenu {
+    display: none;
+  }
+
+  .authActions {
     display: none;
   }
 }
@@ -294,6 +428,16 @@
 
   .logoText {
     font-size: 18px;
+  }
+
+  .logoLink {
+    min-height: 44px;
+    gap: 8px;
+  }
+
+  .logoImage {
+    width: 44px;
+    height: 44px;
   }
 
   .leafBtn,

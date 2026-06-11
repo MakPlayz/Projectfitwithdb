@@ -3,9 +3,12 @@
 import { useCartStore } from '@/store/cartStore';
 import { X, Plus, Minus, ShoppingBag, Trash2, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/auth-client';
 import type { DeliveryAddress } from '@/lib/backend-types';
+import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
+import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
 
 type RazorpayCheckoutResponse = {
@@ -59,6 +62,10 @@ function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
     return 'Enter a valid 6-digit pincode.';
   }
 
+  if (!isServiceablePincode(deliveryAddress.pincode)) {
+    return 'Sorry, we currently deliver only to selected Vizag areas.';
+  }
+
   if (!/^[6-9][0-9]{9}$/.test(deliveryAddress.phone.trim())) {
     return 'Enter a valid 10-digit mobile number.';
   }
@@ -71,20 +78,42 @@ export default function Cart() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(initialDeliveryAddress);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const savedProfile = readStoredProfile();
+    if (savedProfile.deliveryAddress) {
+      setDeliveryAddress((current) => ({
+        ...normalizeDeliveryAddress(savedProfile.deliveryAddress),
+        phone: savedProfile.deliveryAddress?.phone || savedProfile.phone || current.phone,
+      }));
+    } else if (savedProfile.phone) {
+      setDeliveryAddress((current) => ({ ...current, phone: savedProfile.phone || current.phone }));
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   const total = getTotal();
-  const tax = Math.round(total * 0.05);
-  const payableTotal = total + tax;
 
   const updateAddressField = (field: keyof DeliveryAddress, value: string) => {
-    setDeliveryAddress((current) => ({ ...current, [field]: value }));
+    setDeliveryAddress((current) => {
+      const next = { ...current, [field]: value };
+      mergeStoredProfile({ deliveryAddress: next });
+      return next;
+    });
   };
 
-  const useCurrentLocation = () => {
+  const openLocationPicker = () => {
+    setError('');
+    setIsMapOpen(true);
+  };
+
+  const useCurrentLocationFallback = () => {
     setError('');
 
     if (!navigator.geolocation) {
@@ -95,11 +124,15 @@ export default function Cart() {
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setDeliveryAddress((current) => ({
-          ...current,
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        }));
+        setDeliveryAddress((current) => {
+          const next = {
+            ...current,
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          mergeStoredProfile({ deliveryAddress: next });
+          return next;
+        });
         setIsLocating(false);
       },
       () => {
@@ -108,6 +141,32 @@ export default function Cart() {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  const handleMapAddressSelect = (address: Partial<DeliveryAddress>) => {
+    setDeliveryAddress((current) => {
+      const next = normalizeDeliveryAddress({
+        ...current,
+        addressLine1: address.addressLine1 ?? current.addressLine1,
+        addressLine2: address.addressLine2 ?? current.addressLine2,
+        city: address.city ?? current.city,
+        pincode: address.pincode ?? current.pincode,
+        latitude: address.latitude,
+        longitude: address.longitude,
+      });
+      mergeStoredProfile({ deliveryAddress: next });
+      return next;
+    });
+    setIsMapOpen(false);
+
+    if (address.pincode && !isServiceablePincode(address.pincode)) {
+      setError('Sorry, we currently deliver only to selected Vizag areas.');
+    }
+  };
+
+  const handleBrowsePrograms = () => {
+    toggleCart();
+    router.push('/#programs');
   };
 
   const handleCheckout = async () => {
@@ -136,6 +195,18 @@ export default function Cart() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (/complete your profile/i.test(data.error ?? '')) {
+          toggleCart();
+          router.push('/profile?completeProfile=1');
+          return;
+        }
+
+        if (response.status === 401) {
+          toggleCart();
+          router.push('/login');
+          return;
+        }
+
         throw new Error(data.error ?? 'Could not place your order.');
       }
 
@@ -150,8 +221,9 @@ export default function Cart() {
   };
 
   return (
-    <div className={styles.overlay} onClick={toggleCart}>
-      <div className={styles.cart} onClick={e => e.stopPropagation()}>
+    <>
+      <div className={styles.overlay} onClick={toggleCart}>
+        <div className={styles.cart} onClick={e => e.stopPropagation()}>
         <div className={styles.header}>
           <h2>Your Cart</h2>
           <button className={styles.closeBtn} onClick={toggleCart}><X size={24} /></button>
@@ -162,7 +234,7 @@ export default function Cart() {
             <ShoppingBag size={48} className={styles.emptyIcon} />
             <h3>Cart is empty</h3>
             <p>Looks like you have not added anything yet.</p>
-            <button className="btn-primary" onClick={toggleCart}>Browse Menu</button>
+            <button className="btn-primary" onClick={handleBrowsePrograms}>Browse Programs</button>
           </div>
         ) : (
           <>
@@ -170,8 +242,18 @@ export default function Cart() {
               {items.map(item => (
                 <div key={item.id} className={styles.item}>
                   <div className={styles.itemHeader}>
+                    <div className={styles.itemImage}>
+                      {item.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.image} alt="" />
+                      ) : (
+                        <ShoppingBag size={22} />
+                      )}
+                    </div>
                     <div className={styles.itemTitle}>
+                      <span className={styles.itemEyebrow}>Selected plan</span>
                       <h4>{item.name}</h4>
+                      <p>₹{item.totalPrice.toLocaleString('en-IN')}</p>
                     </div>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
                       <Trash2 size={16} />
@@ -197,9 +279,9 @@ export default function Cart() {
                   )}
 
                   <div className={styles.qtyCtrl}>
-                    <button onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus size={14} /></button>
+                    <button aria-label={`Decrease ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus size={14} /></button>
                     <span>{item.quantity}</span>
-                    <button onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
+                    <button aria-label={`Increase ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
                   </div>
                 </div>
               ))}
@@ -209,11 +291,19 @@ export default function Cart() {
               <div className={styles.addressBlock}>
                 <div className={styles.addressHeader}>
                   <h3>Delivery Address</h3>
-                  <button type="button" className={styles.locationBtn} onClick={useCurrentLocation} disabled={isLocating}>
+                  <button type="button" className={styles.locationBtn} onClick={openLocationPicker} disabled={isLocating}>
                     <MapPin size={16} />
-                    {isLocating ? 'Locating...' : deliveryAddress.latitude ? 'Location added' : 'Use location'}
+                    {deliveryAddress.latitude ? 'Change location' : 'Detect location'}
                   </button>
                 </div>
+                {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+                  <div className={styles.mapFallback}>
+                    <span>Map key not configured yet.</span>
+                    <button type="button" onClick={useCurrentLocationFallback} disabled={isLocating}>
+                      {isLocating ? 'Locating...' : 'Use GPS only'}
+                    </button>
+                  </div>
+                )}
 
                 <label className={styles.field}>
                   <span>Address</span>
@@ -277,7 +367,19 @@ export default function Cart() {
             </div>
           </>
         )}
+        </div>
       </div>
-    </div>
+
+      {isMapOpen && (
+        <LocationPickerModal
+          initialLocation={{
+            latitude: deliveryAddress.latitude,
+            longitude: deliveryAddress.longitude,
+          }}
+          onCancel={() => setIsMapOpen(false)}
+          onSelect={handleMapAddressSelect}
+        />
+      )}
+    </>
   );
 }

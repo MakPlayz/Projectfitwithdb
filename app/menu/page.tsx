@@ -16,8 +16,9 @@ export default function MenuPage() {
   const [vegOnly, setVegOnly] = useState(false);
   const [nonVegOnly, setNonVegOnly] = useState(false);
   const [highProtein, setHighProtein] = useState(false);
-  const [sortBy, setSortBy] = useState<SortOption>('popular');
+  const [sortBy] = useState<SortOption>('popular');
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const hasMenuItems = menuData.length > 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -151,11 +152,17 @@ export default function MenuPage() {
       <div className="container">
         {filteredMenu.length === 0 ? (
           <div className={styles.empty}>
-            <h3>No items found</h3>
-            <p>Try adjusting your filters to see more options.</p>
-            <button className="btn-secondary" onClick={() => {
-              setVegOnly(false); setNonVegOnly(false); setHighProtein(false); setActiveCat('All');
-            }}>Clear Filters</button>
+            <h3>{hasMenuItems ? 'No items found' : 'No menu options added yet'}</h3>
+            <p>
+              {hasMenuItems
+                ? 'Try adjusting your filters to see more options.'
+                : 'New menu options can be added here when they are ready.'}
+            </p>
+            {hasMenuItems && (
+              <button className="btn-secondary" onClick={() => {
+                setVegOnly(false); setNonVegOnly(false); setHighProtein(false); setActiveCat('All');
+              }}>Clear Filters</button>
+            )}
           </div>
         ) : (
           <div className={styles.grid}>

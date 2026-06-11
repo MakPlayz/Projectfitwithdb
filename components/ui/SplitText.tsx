@@ -52,7 +52,7 @@ const SplitText: React.FC<SplitTextProps> = ({
 
   useEffect(() => {
     if (document.fonts.status === 'loaded') {
-      setFontsLoaded(true);
+      queueMicrotask(() => setFontsLoaded(true));
     } else {
       document.fonts.ready.then(() => {
         setFontsLoaded(true);

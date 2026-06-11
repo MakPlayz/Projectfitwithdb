@@ -1,10 +1,12 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowUpRight, Scale, Dumbbell, Heart, Sparkles, Activity } from 'lucide-react';
 import { categoryImages, type DietCategory } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
+import { ensureSession } from '@/lib/auth-client';
 import styles from './DietCategoryCard.module.css';
 
 const icons = {
@@ -23,6 +25,32 @@ interface DietCategoryCardProps {
 export default function DietCategoryCard({ diet, index }: DietCategoryCardProps) {
   const Icon = icons[diet.icon as keyof typeof icons] ?? Scale;
   const categoryImage = categoryImages[diet.slug];
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadSession() {
+      const session = await ensureSession();
+      if (isMounted) {
+        setIsAuthenticated(Boolean(session?.accessToken));
+      }
+    }
+
+    loadSession();
+
+    const onAuthChanged = () => {
+      loadSession();
+    };
+
+    window.addEventListener('storage', onAuthChanged);
+    window.addEventListener('projectfit-auth-changed', onAuthChanged);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('storage', onAuthChanged);
+      window.removeEventListener('projectfit-auth-changed', onAuthChanged);
+    };
+  }, []);
 
   return (
     <motion.div
@@ -33,7 +61,7 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
       className={styles.motionWrap}
     >
       <Link
-        href={diet.href}
+        href={isAuthenticated ? diet.href : '/signup'}
         className={styles.card}
         style={
           {

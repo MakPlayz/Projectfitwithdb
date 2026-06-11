@@ -1,6 +1,6 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Mail, Phone } from 'lucide-react';
-import Broccoli from '@/components/ui/Broccoli';
 import { dietCategories } from '@/data/diets';
 import styles from './Footer.module.css';
 
@@ -31,10 +31,13 @@ export default function Footer() {
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link href="/" className={styles.logo}>
-              <Broccoli size={22} />
-              <span>
-                Project<strong>Fit</strong>
-              </span>
+              <Image
+                src="/images/projectfit-logo.png"
+                alt="Project Fit"
+                width={128}
+                height={128}
+                className={styles.logoImage}
+              />
             </Link>
             <p>
               Premium health & diet meal delivery. Personalized nutrition for every goal.
@@ -56,7 +59,6 @@ export default function Footer() {
             <h4>Company</h4>
             <ul>
               <li><Link href="/#how-it-works">How It Works</Link></li>
-              <li><Link href="/chef">Chef Portal</Link></li>
             </ul>
           </div>
 

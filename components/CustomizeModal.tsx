@@ -61,7 +61,7 @@ export default function CustomizeModal({ item, onClose }: Props) {
         <div className={styles.scroll}>
           <div className={styles.section}>
             <h3>Remove Ingredients</h3>
-            <p className={styles.hint}>Deselect any ingredients you don't want</p>
+            <p className={styles.hint}>Deselect any ingredients you don&apos;t want</p>
             <div className={styles.list}>
               {item.ingredients.map(ing => (
                 <label key={ing} className={`${styles.item} ${removed.includes(ing) ? styles.removed : ''}`}>

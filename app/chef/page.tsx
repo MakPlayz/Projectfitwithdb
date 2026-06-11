@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LockKeyhole, Mail, Lock, AlertCircle } from 'lucide-react';
+import { LockKeyhole, AlertCircle } from 'lucide-react';
 import { getAccessTokenExpiry, saveSession, clearSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 

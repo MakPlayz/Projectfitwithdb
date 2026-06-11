@@ -43,7 +43,7 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
   images,
   className,
 }) => {
-  const galleryItems = images.map((image, index) => ({
+  const galleryItems = images.map((image) => ({
     image,
     text: '',
   }));

@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Mail, Lock, User, Phone, Calendar, Scale, Heart } from 'lucide-react';
+import { Mail, Lock, User, Phone, Calendar, Scale, Heart, Ruler } from 'lucide-react';
 import Broccoli from '@/components/ui/Broccoli';
 import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
+import { mergeStoredProfile } from '@/lib/profile-storage';
 import styles from './AuthForm.module.css';
 
 export type AuthMode = 'login' | 'signup';
@@ -24,13 +26,19 @@ export default function AuthForm({
 }: AuthFormProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isLeaf = variant === 'leaf' || variant === 'modal';
   const router = useRouter();
 
+  const handleGoogleSignIn = () => {
+    window.location.href = '/api/auth/google';
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+    setStatus('');
     setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
@@ -42,6 +50,7 @@ export default function AuthForm({
       whatsappOptIn: formData.get('whatsappOptIn') === 'on',
       gender: String(formData.get('gender') ?? ''),
       age: formData.get('age') ? Number(formData.get('age')) : undefined,
+      height: formData.get('height') ? Number(formData.get('height')) : undefined,
       weight: formData.get('weight') ? Number(formData.get('weight')) : undefined,
       healthNotes: String(formData.get('healthNotes') ?? ''),
     };
@@ -60,8 +69,24 @@ export default function AuthForm({
         throw new Error(data.error ?? 'Authentication failed.');
       }
 
+      if (mode === 'signup' && !data.access_token) {
+        mergeStoredProfile({
+          fullName: payload.name,
+          phone: payload.phone,
+          gender: payload.gender,
+          age: payload.age ?? '',
+          height: payload.height ?? '',
+          weight: payload.weight ?? '',
+          healthNotes: payload.healthNotes,
+          image: '',
+        });
+        setStatus('Account created. Please check your email to confirm your account, then sign in.');
+        setMode('login');
+        return;
+      }
+
       if (!data.access_token || !data.user) {
-        throw new Error('Please check your email to confirm your account, then log in.');
+        throw new Error('Signup completed, but no login session was returned.');
       }
 
       saveSession({
@@ -70,6 +95,18 @@ export default function AuthForm({
         expiresAt: getAccessTokenExpiry(data.access_token),
         user: data.user,
       });
+      if (mode === 'signup') {
+        mergeStoredProfile({
+          fullName: payload.name,
+          phone: payload.phone,
+          gender: payload.gender,
+          age: payload.age ?? '',
+          height: payload.height ?? '',
+          weight: payload.weight ?? '',
+          healthNotes: payload.healthNotes,
+          image: '',
+        });
+      }
       onSuccess?.();
       router.push('/');
     } catch (err) {
@@ -82,7 +119,18 @@ export default function AuthForm({
   const formContent = (
     <>
       <div className={styles.brandMark}>
-        <Broccoli size={isLeaf ? 28 : 36} />
+        {variant === 'page' ? (
+          <Image
+            src="/images/auth/broccoli-mini.png"
+            alt=""
+            width={48}
+            height={48}
+            className={styles.brandImage}
+            priority
+          />
+        ) : (
+          <Broccoli size={isLeaf ? 28 : 36} />
+        )}
       </div>
 
       <h1 className={styles.title}>
@@ -100,7 +148,7 @@ export default function AuthForm({
           className={mode === 'login' ? styles.tabActive : styles.tab}
           onClick={() => setMode('login')}
         >
-          Log in
+          Sign in
         </button>
         <button
           type="button"
@@ -109,6 +157,15 @@ export default function AuthForm({
         >
           Sign up
         </button>
+      </div>
+
+      <button type="button" className={styles.googleBtn} onClick={handleGoogleSignIn}>
+        <span className={styles.googleMark} aria-hidden>G</span>
+        Continue with Google
+      </button>
+
+      <div className={styles.divider}>
+        <span>or</span>
       </div>
 
       <form className={styles.form} onSubmit={handleSubmit}>
@@ -143,6 +200,19 @@ export default function AuthForm({
                 />
               </label>
               <label className={styles.field}>
+                <Ruler size={16} />
+                <input
+                  type="number"
+                  name="height"
+                  placeholder="Height (cm)"
+                  min={100}
+                  max={250}
+                  required
+                />
+              </label>
+            </div>
+
+            <label className={styles.field}>
                 <Scale size={16} />
                 <input
                   type="number"
@@ -154,7 +224,6 @@ export default function AuthForm({
                   required
                 />
               </label>
-            </div>
 
             <label className={styles.field}>
               <User size={16} />
@@ -226,9 +295,10 @@ export default function AuthForm({
         )}
 
         {error && <p className={styles.error}>{error}</p>}
+        {status && <p className={styles.success}>{status}</p>}
 
         <button type="submit" className={`btn-primary ${styles.submitBtn}`}>
-          {isSubmitting ? 'Please wait...' : mode === 'login' ? 'Log in' : 'Create account'}
+          {isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}
         </button>
       </form>
 
@@ -244,7 +314,7 @@ export default function AuthForm({
           <>
             Already have an account?{' '}
             <button type="button" onClick={() => setMode('login')}>
-              Log in
+              Sign in
             </button>
           </>
         )}
@@ -258,11 +328,13 @@ export default function AuthForm({
         <div className={styles.collageSide}>
           <div className={styles.collageGrid}>
             <div className={styles.collageColumn}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80"
                 alt="Healthy Fresh Salad"
                 className={`${styles.collageImg} ${styles.img1}`}
               />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=80"
                 alt="Yoga & Mindful Fitness"
@@ -270,11 +342,13 @@ export default function AuthForm({
               />
             </div>
             <div className={styles.collageColumn}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=600&auto=format&fit=crop&q=80"
                 alt="Healthy Meal Prep"
                 className={`${styles.collageImg} ${styles.img3}`}
               />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80"
                 alt="Active Lifestyle Running"
@@ -293,7 +367,7 @@ export default function AuthForm({
           </div>
         </div>
         <div className={styles.formSide}>
-          <div className={styles.formSideInner}>
+          <div className={`${styles.formSideInner} ${styles.page}`}>
             {formContent}
           </div>
         </div>

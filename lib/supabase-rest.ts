@@ -28,14 +28,14 @@ function normalizeEnv(value: string | undefined) {
   return value.trim().replace(/^['"]|['"]$/g, '');
 }
 
-function getSupabaseUrl() {
+export function getSupabaseUrl() {
   return requireEnv(
     supabaseUrl,
     'NEXT_PUBLIC_SUPABASE_URL or SUPABASE_URL'
   ).replace(/\/$/, '');
 }
 
-function getPublicKey() {
+export function getPublicKey() {
   return requireEnv(
     publicKey,
     [
@@ -62,12 +62,35 @@ function getServiceRoleKey() {
   );
 }
 
+export function hasSupabaseConfig() {
+  return Boolean(normalizeEnv(supabaseUrl) && normalizeEnv(publicKey));
+}
+
 export async function supabaseAuthFetch<T>(
   path: string,
   init: RequestInit = {}
 ) {
   const url = `${getSupabaseUrl()}/auth/v1${path}`;
   const key = getPublicKey();
+  const response = await safeFetch(url, {
+    ...init,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      ...(init.headers ?? {}),
+    },
+  });
+
+  return parseSupabaseResponse<T>(response);
+}
+
+export async function supabaseAuthAdminFetch<T>(
+  path: string,
+  init: RequestInit = {}
+) {
+  const url = `${getSupabaseUrl()}/auth/v1${path}`;
+  const key = getServiceRoleKey();
   const response = await safeFetch(url, {
     ...init,
     headers: {

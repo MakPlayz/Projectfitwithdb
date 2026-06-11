@@ -137,16 +137,20 @@
 .plansGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  align-items: stretch;
   gap: 24px;
   margin-top: 36px;
 }
 
 .planCard {
   position: relative;
+  min-height: 310px;
+  display: flex;
+  flex-direction: column;
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  padding: 32px 28px;
+  padding: 26px;
   box-shadow: var(--shadow);
   transition: box-shadow 0.3s, border-color 0.3s;
 }
@@ -157,9 +161,8 @@
 }
 
 .planBadge {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+  display: inline-flex;
+  align-self: flex-start;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
@@ -168,38 +171,69 @@
   background: var(--diet-accent-light);
   padding: 6px 12px;
   border-radius: 50px;
+  margin-bottom: 14px;
+  max-width: 100%;
+  line-height: 1.25;
 }
 
 .planCard h3 {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: 1.2rem;
   font-weight: 700;
-  margin-bottom: 8px;
+  line-height: 1.25;
+  margin-bottom: 0;
 }
 
-.planDuration {
-  color: var(--text-dim);
-  font-size: 14px;
-  margin-bottom: 4px;
+.planTop {
+  min-height: 86px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
-.planMeta {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
+.planDetails {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
 }
 
-.planPrice {
-  font-family: var(--font-display);
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text);
+.planInfoRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 22px;
 }
 
-.planPrice span {
-  font-size: 14px;
-  font-weight: 500;
+.planInfoRow span {
   color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.planInfoRow strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.planBody {
+  flex: 1;
+}
+
+.planAction {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.planAction :global(.btn-primary) {
+  width: 100%;
+  justify-content: center;
 }
 
 .mealsGrid {
@@ -207,6 +241,26 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 24px;
   margin-top: 36px;
+}
+
+.mealsEmpty {
+  margin-top: 36px;
+  text-align: center;
+  padding: 56px 24px;
+  background: var(--white);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.mealsEmpty h3 {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.mealsEmpty p {
+  color: var(--text-dim);
 }
 
 .mealCard {
@@ -368,9 +422,7 @@
   }
 
   .planBadge {
-    position: static;
     display: inline-flex;
-    margin-bottom: 14px;
   }
 
   .mealFooter {
@@ -392,13 +444,13 @@
 .customSelector {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin: 16px 0 20px;
+  gap: 10px;
+  margin: 0;
 }
 
 .customSelectorLabel {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-dim);
 }
 
@@ -410,10 +462,10 @@
 .customSelectorBtn {
   flex: 1;
   font-size: 13px;
-  font-weight: 600;
-  padding: 8px 12px;
+  font-weight: 800;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 999px;
   background: var(--surface-muted);
   cursor: pointer;
   transition: all 0.2s;

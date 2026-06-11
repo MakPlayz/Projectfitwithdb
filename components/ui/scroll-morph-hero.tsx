@@ -76,11 +76,12 @@ function ScrollMorphImage({
                     className="absolute inset-0 h-full w-full overflow-hidden rounded-[24px] shadow-[0_8px_30px_rgba(0,0,0,0.8)]"
                     style={{ backfaceVisibility: "hidden" }}
                 >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                         src={src}
                         alt={`hero-image-${index}`}
                         className="h-full w-full object-cover"
-                        onError={(e:any) => {
+                        onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
                             e.currentTarget.onerror = null;
                             e.currentTarget.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=120&q=80';
                         }}

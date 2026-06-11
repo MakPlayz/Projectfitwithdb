@@ -17,7 +17,7 @@ function getText(formData: FormData, key: string) {
   return String(formData.get(key) ?? '').trim();
 }
 
-function getPrice(formData: FormData) {
+function getPrice() {
   return 0;
 }
 
@@ -28,7 +28,7 @@ export async function saveMenuItem(formData: FormData) {
   const payload = {
     name: getText(formData, 'name'),
     description: getText(formData, 'description') || null,
-    price: getPrice(formData),
+    price: getPrice(),
     category: getText(formData, 'category'),
     active: formData.get('active') === 'on',
   };
@@ -59,7 +59,7 @@ export async function saveMealPlan(formData: FormData) {
   const payload = {
     name: getText(formData, 'name'),
     description: getText(formData, 'description') || null,
-    price: getPrice(formData),
+    price: getPrice(),
     duration: getText(formData, 'duration'),
     active: formData.get('active') === 'on',
   };

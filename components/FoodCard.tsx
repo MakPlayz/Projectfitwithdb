@@ -27,7 +27,6 @@ export default function FoodCard({ item }: { item: MenuItem }) {
             alt={item.name} 
             fill 
             className={styles.image} 
-            onError={(e: any) => { e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800&auto=format&fit=crop'; }}
           />
           {item.badge && <span className={styles.badge}>{item.badge}</span>}
           <div className={styles.typeTag}>

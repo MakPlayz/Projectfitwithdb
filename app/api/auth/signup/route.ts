@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabaseAuthFetch, supabaseRestFetch } from '@/lib/supabase-rest';
+import { createMockAuthResponse } from '@/lib/mock-auth';
+import {
+  hasSupabaseConfig,
+  supabaseAuthFetch,
+  supabaseRestFetch,
+} from '@/lib/supabase-rest';
 import { getRequestIp, isRateLimited } from '@/lib/rate-limit';
 import { formatWhatsAppPhone, getInternalApiSecret } from '@/lib/whatsapp';
-import type { AuthUser, ProjectFitUser, CustomerProfilePayload } from '@/lib/backend-types';
+import type { AuthUser, ProjectFitUser, CustomerProfilePayload, GenderIdentity } from '@/lib/backend-types';
 import { getRecommendedPath, buildRecommendationSummary, buildCoachNotes } from '@/lib/customer-profile';
 
 interface SignupBody {
@@ -13,6 +18,7 @@ interface SignupBody {
   whatsappOptIn?: boolean;
   gender?: string;
   age?: number;
+  height?: number;
   weight?: number;
   healthNotes?: string;
 }
@@ -44,10 +50,11 @@ export async function POST(request: Request) {
       !formattedPhone ||
       !body.gender ||
       body.age === undefined ||
+      body.height === undefined ||
       body.weight === undefined
     ) {
       return NextResponse.json(
-        { error: 'Name, email, password, WhatsApp phone number, age, gender, and weight are required.' },
+        { error: 'Name, email, password, WhatsApp phone number, age, height, gender, and weight are required.' },
         { status: 400 }
       );
     }
@@ -55,6 +62,11 @@ export async function POST(request: Request) {
     const age = Number(body.age);
     if (!Number.isFinite(age) || age < 13 || age > 100) {
       return NextResponse.json({ error: 'Age must be between 13 and 100.' }, { status: 400 });
+    }
+
+    const height = Number(body.height);
+    if (!Number.isFinite(height) || height < 100 || height > 250) {
+      return NextResponse.json({ error: 'Height must be between 100 cm and 250 cm.' }, { status: 400 });
     }
 
     const weight = Number(body.weight);
@@ -67,7 +79,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid gender selection.' }, { status: 400 });
     }
 
-    const { data, error, status } = await supabaseAuthFetch<SupabaseSignupResponse>('/signup', {
+    if (!hasSupabaseConfig()) {
+      return NextResponse.json(
+        createMockAuthResponse({
+          email: body.email,
+          name: body.name,
+          phone: formattedPhone,
+        }),
+        { status: 201 }
+      );
+    }
+
+    const origin = new URL(request.url).origin;
+    const redirectTo = `${origin}/login?confirmed=1`;
+
+    const { data, error, status } = await supabaseAuthFetch<SupabaseSignupResponse>(
+      `/signup?redirect_to=${encodeURIComponent(redirectTo)}`,
+      {
       method: 'POST',
       body: JSON.stringify({
         email: body.email,
@@ -77,10 +105,14 @@ export async function POST(request: Request) {
           phone: formattedPhone,
         },
       }),
-    });
+      }
+    );
 
     if (error) {
-      return NextResponse.json({ error }, { status });
+      const cleanError = /already registered|already exists|user already/i.test(error)
+        ? 'This email is already registered. Please sign in instead.'
+        : error;
+      return NextResponse.json({ error: cleanError }, { status });
     }
 
     const user = data?.user;
@@ -100,7 +132,11 @@ export async function POST(request: Request) {
         }),
       });
 
-      if (userInsertResult.error) {
+      const isUsersTableMissing =
+        userInsertResult.status === 404 &&
+        /public\.users|table .*users|schema cache/i.test(userInsertResult.error ?? '');
+
+      if (userInsertResult.error && !isUsersTableMissing) {
         return NextResponse.json(
           { error: userInsertResult.error },
           { status: userInsertResult.status || 500 }
@@ -111,8 +147,8 @@ export async function POST(request: Request) {
       const profile: CustomerProfilePayload = {
         full_name: body.name.trim(),
         age: age,
-        gender: body.gender as any,
-        height_cm: 170, // Default since not in signup
+        gender: body.gender as GenderIdentity,
+        height_cm: height,
         weight_kg: weight,
         activity_level: 'lightly-active',
         primary_goal: 'better-fitness',
@@ -142,8 +178,7 @@ export async function POST(request: Request) {
         );
       }
 
-      if (body.whatsappOptIn) {
-        const origin = new URL(request.url).origin;
+      if (body.whatsappOptIn && !isUsersTableMissing) {
         await fetch(`${origin}/api/whatsapp/welcome`, {
           method: 'POST',
           headers: {

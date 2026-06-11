@@ -39,3 +39,18 @@
   align-items: center;
   width: 100%;
 }
+
+@media (max-width: 640px) {
+  .main {
+    padding-top: calc(var(--nav-height) + 24px);
+    padding-bottom: 48px;
+  }
+
+  .back {
+    margin-bottom: 24px;
+  }
+
+  .leafWrap {
+    padding: 16px 0 48px;
+  }
+}

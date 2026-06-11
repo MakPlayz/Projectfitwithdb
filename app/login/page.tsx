@@ -5,7 +5,7 @@ import styles from '@/components/auth/auth-page.module.css';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Log in | Project Fit',
+  title: 'Sign in | Project Fit',
   description: 'Sign in to your Project Fit account.',
 };
 

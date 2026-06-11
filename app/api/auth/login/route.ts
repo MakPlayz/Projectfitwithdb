@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAuthFetch } from '@/lib/supabase-rest';
+import { createMockAuthResponse } from '@/lib/mock-auth';
+import { hasSupabaseConfig, supabaseAuthFetch } from '@/lib/supabase-rest';
 
 interface LoginBody {
   email?: string;
@@ -15,6 +16,10 @@ export async function POST(request: Request) {
         { error: 'Email and password are required.' },
         { status: 400 }
       );
+    }
+
+    if (!hasSupabaseConfig()) {
+      return NextResponse.json(createMockAuthResponse({ email: body.email }));
     }
 
     const { data, error, status } = await supabaseAuthFetch('/token?grant_type=password', {

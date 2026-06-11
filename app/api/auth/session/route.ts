@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabaseAuthFetch } from '@/lib/supabase-rest';
+import { createMockAuthResponse } from '@/lib/mock-auth';
+import { hasSupabaseConfig, supabaseAuthFetch } from '@/lib/supabase-rest';
 
 interface RefreshBody {
   refreshToken?: string;
@@ -14,6 +15,10 @@ export async function POST(request: Request) {
         { error: 'Refresh token is required.' },
         { status: 400 }
       );
+    }
+
+    if (!hasSupabaseConfig() && body.refreshToken.startsWith('local-refresh-')) {
+      return NextResponse.json(createMockAuthResponse({ email: 'local.user@projectfit.test' }));
     }
 
     const { data, error, status } = await supabaseAuthFetch('/token?grant_type=refresh_token', {

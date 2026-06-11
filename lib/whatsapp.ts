@@ -130,7 +130,7 @@ export async function logWhatsAppMessage(entry: {
   errorMessage?: string | null;
   payload?: unknown;
 }) {
-  await supabaseRestFetch<WhatsAppMessageLog[]>('/whatsapp_message_logs', {
+  const { error, status } = await supabaseRestFetch<WhatsAppMessageLog[]>('/whatsapp_message_logs', {
     method: 'POST',
     body: JSON.stringify({
       user_id: entry.userId ?? null,
@@ -145,6 +145,10 @@ export async function logWhatsAppMessage(entry: {
       payload: entry.payload ?? {},
     }),
   });
+
+  if (error && status !== 404) {
+    throw new Error(error);
+  }
 }
 
 export async function sendWelcomeTemplate(user: ProjectFitUser) {

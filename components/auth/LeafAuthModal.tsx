@@ -13,7 +13,6 @@ import styles from './LeafAuthModal.module.css';
 export default function LeafAuthModal() {
   const { isOpen, origin, close } = useAuthModalStore();
   const [mounted, setMounted] = useState(false);
-  const [ready, setReady] = useState(false);
 
   const overlayRef = useRef<HTMLDivElement>(null);
   const flyerRef = useRef<HTMLDivElement>(null);
@@ -22,13 +21,8 @@ export default function LeafAuthModal() {
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
 
   useEffect(() => {
-    setMounted(true);
+    queueMicrotask(() => setMounted(true));
   }, []);
-
-  useLayoutEffect(() => {
-    if (isOpen) setReady(true);
-    else setReady(false);
-  }, [isOpen]);
 
   const runCloseAnimation = useCallback(() => {
     const overlay = overlayRef.current;
@@ -91,7 +85,7 @@ export default function LeafAuthModal() {
   }, [close, origin]);
 
   useLayoutEffect(() => {
-    if (!ready || !isOpen || !origin || !mounted) return;
+    if (!isOpen || !origin || !mounted) return;
 
     const overlay = overlayRef.current;
     const flyer = flyerRef.current;
@@ -158,7 +152,7 @@ export default function LeafAuthModal() {
     return () => {
       timelineRef.current?.kill();
     };
-  }, [ready, isOpen, origin, mounted]);
+  }, [isOpen, origin, mounted]);
 
   useEffect(() => {
     if (!isOpen) return;

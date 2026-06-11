@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Check, FileDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
 import { categoryImages, type DietCategory, type DietPlan } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
 import { useCartStore } from '@/store/cartStore';
@@ -21,17 +21,15 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const handleAddPlanToCart = (plan: DietPlan) => {
     let price = plan.price;
     let name = plan.name;
-    let meals = plan.mealsPerDay;
 
     if (plan.customPrices) {
       const customMeals = selectedMeals[plan.id] ?? 1;
-      meals = customMeals;
       price = plan.customPrices[customMeals] ?? plan.price;
       name = `${plan.name} (${customMeals} Meal${customMeals > 1 ? 's' : ''}/Day)`;
     }
 
     addItem({
-      id: `${plan.id}-${Date.now()}`,
+      id: `${plan.id}-${name}`,
       name: `${diet.title} - ${name}`,
       basePrice: price,
       quantity: 1,
@@ -68,42 +66,59 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
         viewport={{ once: true }}
         transition={{ delay: i * 0.08 }}
       >
-        {plan.highlight && <span className={styles.planBadge}>{plan.highlight}</span>}
-        <h3>{plan.name}</h3>
-        <p className={styles.planDuration}>{plan.duration}</p>
-        
-        {hasCustomOption ? (
-          <div className={styles.customSelector}>
-            <span className={styles.customSelectorLabel}>Choose meal frequency:</span>
-            <div className={styles.customSelectorGroup}>
-              <button
-                type="button"
-                className={`${styles.customSelectorBtn} ${customMealsVal === 1 ? styles.customSelectorBtnActive : ''}`}
-                onClick={() => handleToggleMeals(plan.id, 1)}
-              >
-                1 Meal/Day
-              </button>
-              <button
-                type="button"
-                className={`${styles.customSelectorBtn} ${customMealsVal === 2 ? styles.customSelectorBtnActive : ''}`}
-                onClick={() => handleToggleMeals(plan.id, 2)}
-              >
-                2 Meals/Day
-              </button>
-            </div>
-          </div>
-        ) : (
-          <p className={styles.planMeta}>{displayMeals} meals / day</p>
-        )}
+        <div className={styles.planTop}>
+          {plan.highlight && <span className={styles.planBadge}>{plan.highlight}</span>}
+          <h3>{plan.name}</h3>
+        </div>
 
-        <button
-          type="button"
-          className="btn-primary"
-          style={{ width: '100%', marginTop: '20px', justifyContent: 'center' }}
-          onClick={() => handleAddPlanToCart(plan)}
-        >
-          Add to Cart
-        </button>
+        <div className={styles.planDetails}>
+          <div className={styles.planInfoRow}>
+            <span>Duration</span>
+            <strong>{plan.duration}</strong>
+          </div>
+          <div className={styles.planInfoRow}>
+            <span>Meals</span>
+            <strong>{displayMeals} / day</strong>
+          </div>
+          <div className={styles.planInfoRow}>
+            <span>Price</span>
+            <strong>{displayPrice > 0 ? `Rs ${displayPrice.toLocaleString('en-IN')}` : 'Updating soon'}</strong>
+          </div>
+        </div>
+
+        <div className={styles.planBody}>
+          {hasCustomOption && (
+            <div className={styles.customSelector}>
+              <span className={styles.customSelectorLabel}>Choose meal frequency</span>
+              <div className={styles.customSelectorGroup}>
+                <button
+                  type="button"
+                  className={`${styles.customSelectorBtn} ${customMealsVal === 1 ? styles.customSelectorBtnActive : ''}`}
+                  onClick={() => handleToggleMeals(plan.id, 1)}
+                >
+                  1 Meal
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.customSelectorBtn} ${customMealsVal === 2 ? styles.customSelectorBtnActive : ''}`}
+                  onClick={() => handleToggleMeals(plan.id, 2)}
+                >
+                  2 Meals
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.planAction}>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => handleAddPlanToCart(plan)}
+          >
+            Add to Cart
+          </button>
+        </div>
       </motion.article>
     );
   };
@@ -245,40 +260,47 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           <p className="section-subtitle">
             Sample meals from your {diet.plans[0]?.duration ? diet.plans[0].duration.replace(' days', '-day') : '6-day'} {diet.shortTitle.toLowerCase()} menu.
           </p>
-          <div className={styles.mealsGrid}>
-            {diet.meals.map((meal, i) => (
-              <motion.article
-                key={meal.id}
-                className={styles.mealCard}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <div className={styles.mealImage}>
-                  <DietImage src={meal.image} alt={meal.name} sizes="(max-width: 768px) 100vw, 400px" />
-                </div>
-                <div className={styles.mealBody}>
-                  {meal.mealType && (
-                    <span className={styles.mealType}>{meal.mealType}</span>
-                  )}
-                  <h3>{meal.name}</h3>
-                  <p>{meal.description}</p>
-                  <div className={styles.mealMacros}>
-                    <span>{meal.calories} kcal</span>
-                    <span>P {meal.protein}g</span>
-                    <span>C {meal.carbs}g</span>
-                    <span>F {meal.fat}g</span>
+          {diet.meals.length === 0 ? (
+            <div className={styles.mealsEmpty}>
+              <h3>No menu options added yet</h3>
+              <p>New featured meals can be added here when they are ready.</p>
+            </div>
+          ) : (
+            <div className={styles.mealsGrid}>
+              {diet.meals.map((meal, i) => (
+                <motion.article
+                  key={meal.id}
+                  className={styles.mealCard}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                >
+                  <div className={styles.mealImage}>
+                    <DietImage src={meal.image} alt={meal.name} sizes="(max-width: 768px) 100vw, 400px" />
                   </div>
-                  <div className={styles.mealFooter}>
-                    <button type="button" className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
-                      Add to cart
-                    </button>
+                  <div className={styles.mealBody}>
+                    {meal.mealType && (
+                      <span className={styles.mealType}>{meal.mealType}</span>
+                    )}
+                    <h3>{meal.name}</h3>
+                    <p>{meal.description}</p>
+                    <div className={styles.mealMacros}>
+                      <span>{meal.calories} kcal</span>
+                      <span>P {meal.protein}g</span>
+                      <span>C {meal.carbs}g</span>
+                      <span>F {meal.fat}g</span>
+                    </div>
+                    <div className={styles.mealFooter}>
+                      <button type="button" className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
+                        Add to cart
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </motion.article>
-            ))}
-          </div>
+                </motion.article>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
