@@ -47,7 +47,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
 
   const dayPlans = diet.plans.filter((p) => p.duration === '1 day');
   const weekPlans = diet.plans.filter((p) => p.duration === '6 days');
-  const monthPlans = diet.plans.filter((p) => p.id.includes('-month-'));
+  const monthPlans = diet.plans.filter((p) => p.id.includes('-month-') || p.id.includes('-custom-'));
 
   const renderPlanCard = (plan: DietPlan, i: number) => {
     const hasCustomOption = Boolean(plan.customPrices);
@@ -242,8 +242,8 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           {monthPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
-                <h3>💎 Month Plan (24-Day)</h3>
-                <p>A 24-day subscription block. Required if custom calorie/macro adjustments or ingredient swaps are needed.</p>
+                <h3>💎 Month Plan (26/27-Day)</h3>
+                <p>A 26/27-day subscription block. Required if custom calorie/macro adjustments or ingredient swaps are needed.</p>
               </div>
               <div className={styles.plansGrid}>
                 {monthPlans.map((plan, i) => renderPlanCard(plan, i))}
