@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { LocateFixed, MapPin, X } from 'lucide-react';
 import type { DeliveryAddress } from '@/lib/backend-types';
-import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { loadPublicConfig, usePublicConfig } from '@/lib/use-public-config';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import styles from './LocationPickerModal.module.css';
@@ -195,7 +195,11 @@ export default function LocationPickerModal({
   const [status, setStatus] = useState('Loading map...');
   const [selected, setSelected] = useState<SelectedAddress | null>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const isSelectedServiceable = selected?.pincode ? isServiceablePincode(selected.pincode) : true;
+  const isSelectedDeliverable = selected?.pincode ? isDeliverablePincode(selected.pincode) : true;
+  const needsRapidoFare =
+    selected?.pincode &&
+    isDeliverablePincode(selected.pincode) &&
+    !isIncludedDeliveryPincode(selected.pincode);
 
   const setPoint = (lat: number, lng: number) => {
     if (!window.google?.maps || !mapInstance.current || !markerRef.current || !geocoderRef.current) {
@@ -225,8 +229,10 @@ export default function LocationPickerModal({
       setSelected(nextAddress);
       if (!nextAddress.pincode) {
         setStatus('Location selected. Please enter pincode manually.');
-      } else if (!isServiceablePincode(nextAddress.pincode)) {
-        setStatus('Location selected. Additional delivery charges may apply for this area.');
+      } else if (!isDeliverablePincode(nextAddress.pincode)) {
+        setStatus('This pincode is outside our current deliverable areas.');
+      } else if (!isIncludedDeliveryPincode(nextAddress.pincode)) {
+        setStatus('Location selected. Rapido parcel fare will be added separately for this area.');
       } else {
         setStatus('Location selected.');
       }
@@ -372,9 +378,10 @@ export default function LocationPickerModal({
               {selected?.pincode ? ` · ${selected.pincode}` : ''}
             </span>
           </div>
-          {selected?.pincode && !isSelectedServiceable && (
-            <DeliveryAreaNotice compact />
+          {selected?.pincode && !isSelectedDeliverable && (
+            <p className={styles.status}>Your area is outside our current deliverable areas.</p>
           )}
+          {needsRapidoFare && <DeliveryAreaNotice compact />}
           {status && <p className={styles.status}>{status}</p>}
           <div className={styles.actions}>
             <button type="button" className={styles.secondaryBtn} onClick={useCurrentLocation} disabled={isLocating}>

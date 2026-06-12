@@ -37,6 +37,8 @@ export const DEFAULT_SERVICEABLE_PINCODES = [
   '531173',
 ];
 
+export const INCLUDED_DELIVERY_PINCODES = ['530041', '530045', '530048'];
+
 let runtimeServiceablePincodes: string[] | null = null;
 
 function normalizePincodeList(pincodes: string[]) {
@@ -70,6 +72,10 @@ export function getServiceablePincodes() {
 }
 
 export function isServiceablePincode(pincode: string) {
+  return isDeliverablePincode(pincode);
+}
+
+export function isDeliverablePincode(pincode: string) {
   const allowed = getServiceablePincodes();
 
   if (allowed.length === 0) {
@@ -77,4 +83,8 @@ export function isServiceablePincode(pincode: string) {
   }
 
   return allowed.includes(pincode.trim());
+}
+
+export function isIncludedDeliveryPincode(pincode: string) {
+  return INCLUDED_DELIVERY_PINCODES.includes(pincode.trim());
 }

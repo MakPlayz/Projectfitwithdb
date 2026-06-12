@@ -5,6 +5,7 @@ import {
 } from '@/lib/supabase-rest';
 import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
+import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
 
 interface CreateOrderBody {
   items?: CartItem[];
@@ -39,6 +40,13 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
     return {
       deliveryAddress: null,
       error: 'Enter a complete delivery address, 6-digit pincode, and 10-digit phone number.',
+    };
+  }
+
+  if (!isDeliverablePincode(deliveryAddress.pincode)) {
+    return {
+      deliveryAddress: null,
+      error: 'Your area is outside our current deliverable areas. Please enter a supported delivery pincode.',
     };
   }
 

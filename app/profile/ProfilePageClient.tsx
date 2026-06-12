@@ -20,7 +20,7 @@ import {
   type StoredProfile,
   writeStoredProfile,
 } from '@/lib/profile-storage';
-import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { usePublicConfig } from '@/lib/use-public-config';
 import DeliveryAreaNotice from '@/components/DeliveryAreaNotice';
 import LocationPickerModal from '@/components/LocationPickerModal';
@@ -105,9 +105,13 @@ export default function ProfilePageClient() {
       .map((part) => part[0]?.toUpperCase())
       .join('');
   }, [profile.fullName, session?.user.email]);
-  const isOutsideSupportedDelivery =
-    /^[1-9][0-9]{5}$/.test(profile.deliveryAddress.pincode.trim()) &&
-    !isServiceablePincode(profile.deliveryAddress.pincode);
+  const hasValidDeliveryPincode = /^[1-9][0-9]{5}$/.test(profile.deliveryAddress.pincode.trim());
+  const isOutsideDeliverableArea =
+    hasValidDeliveryPincode && !isDeliverablePincode(profile.deliveryAddress.pincode);
+  const requiresRapidoFare =
+    hasValidDeliveryPincode &&
+    isDeliverablePincode(profile.deliveryAddress.pincode) &&
+    !isIncludedDeliveryPincode(profile.deliveryAddress.pincode);
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -434,7 +438,12 @@ export default function ProfilePageClient() {
                   />
                 </label>
               </div>
-              {isOutsideSupportedDelivery && <DeliveryAreaNotice compact />}
+              {isOutsideDeliverableArea && (
+                <span className={styles.status}>
+                  Your area is outside our current deliverable areas. Please enter a supported delivery pincode.
+                </span>
+              )}
+              {requiresRapidoFare && <DeliveryAreaNotice compact />}
             </div>
 
             <div className={styles.securityNote}>

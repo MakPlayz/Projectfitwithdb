@@ -6,6 +6,7 @@ import { setRuntimeServiceablePincodes } from './serviceable-pincodes';
 type PublicConfig = {
   googleMapsApiKey: string;
   serviceablePincodes: string[];
+  includedDeliveryPincodes: string[];
 };
 
 let publicConfigPromise: Promise<PublicConfig> | null = null;

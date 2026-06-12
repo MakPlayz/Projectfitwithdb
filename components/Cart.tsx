@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/auth-client';
 import type { DeliveryAddress } from '@/lib/backend-types';
-import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { usePublicConfig } from '@/lib/use-public-config';
 import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
@@ -64,6 +64,10 @@ function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
     return 'Enter a valid 6-digit pincode.';
   }
 
+  if (!isDeliverablePincode(deliveryAddress.pincode)) {
+    return 'Your area is outside our current deliverable areas. Please enter a supported delivery pincode.';
+  }
+
   if (!/^[6-9][0-9]{9}$/.test(deliveryAddress.phone.trim())) {
     return 'Enter a valid 10-digit mobile number.';
   }
@@ -98,9 +102,13 @@ export default function Cart() {
   if (!isOpen) return null;
 
   const total = getTotal();
-  const isOutsideSupportedDelivery =
-    /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim()) &&
-    !isServiceablePincode(deliveryAddress.pincode);
+  const hasValidPincode = /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim());
+  const isOutsideDeliverableArea =
+    hasValidPincode && !isDeliverablePincode(deliveryAddress.pincode);
+  const requiresRapidoFare =
+    hasValidPincode &&
+    isDeliverablePincode(deliveryAddress.pincode) &&
+    !isIncludedDeliveryPincode(deliveryAddress.pincode);
 
   const updateAddressField = (field: keyof DeliveryAddress, value: string) => {
     setDeliveryAddress((current) => {
@@ -131,7 +139,7 @@ export default function Cart() {
     });
     setIsMapOpen(false);
 
-    if (address.pincode && !isServiceablePincode(address.pincode)) {
+    if (address.pincode && !isDeliverablePincode(address.pincode)) {
       setError('');
     }
   };
@@ -310,7 +318,12 @@ export default function Cart() {
                   </label>
                 </div>
 
-                {isOutsideSupportedDelivery && <DeliveryAreaNotice compact />}
+                {isOutsideDeliverableArea && (
+                  <p className={styles.error}>
+                    Your area is outside our current deliverable areas. Please enter a supported delivery pincode.
+                  </p>
+                )}
+                {requiresRapidoFare && <DeliveryAreaNotice compact />}
 
                 <label className={styles.field}>
                   <span>Phone</span>
