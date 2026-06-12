@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LockKeyhole, AlertCircle } from 'lucide-react';
-import { getAccessTokenExpiry, saveSession, clearSession } from '@/lib/auth-client';
+import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
 export default function ChefLogin() {
@@ -36,12 +36,6 @@ export default function ChefLogin() {
 
       if (!data.access_token || !data.user) {
         throw new Error('Invalid authentication response.');
-      }
-
-      const userEmail = data.user.email ?? '';
-      if (!userEmail.toLowerCase().endsWith('@projectfitvizag.com')) {
-        clearSession();
-        throw new Error('Access denied. Only @projectfitvizag.com accounts can access the kitchen portal.');
       }
 
       saveSession({

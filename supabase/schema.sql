@@ -85,6 +85,16 @@ create table if not exists public.whatsapp_message_logs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.program_plan_overrides (
+  plan_id text primary key,
+  name text,
+  duration text,
+  price integer check (price is null or price >= 0),
+  highlight text,
+  active boolean not null default true,
+  updated_at timestamptz not null default now()
+);
+
 alter table public.orders
   add column if not exists payment_status text not null default 'pending'
     check (payment_status in ('pending', 'paid', 'failed')),
@@ -103,6 +113,7 @@ create index if not exists meal_plans_active_idx on public.meal_plans (active);
 create index if not exists whatsapp_message_logs_created_at_idx on public.whatsapp_message_logs (created_at desc);
 create index if not exists whatsapp_message_logs_status_idx on public.whatsapp_message_logs (status);
 create index if not exists whatsapp_message_logs_phone_idx on public.whatsapp_message_logs (phone);
+create index if not exists program_plan_overrides_active_idx on public.program_plan_overrides (active);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -116,6 +127,7 @@ drop trigger if exists orders_set_updated_at on public.orders;
 drop trigger if exists customer_profiles_set_updated_at on public.customer_profiles;
 drop trigger if exists menu_items_set_updated_at on public.menu_items;
 drop trigger if exists meal_plans_set_updated_at on public.meal_plans;
+drop trigger if exists program_plan_overrides_set_updated_at on public.program_plan_overrides;
 
 create trigger orders_set_updated_at
 before update on public.orders
@@ -137,12 +149,18 @@ before update on public.meal_plans
 for each row
 execute function public.set_updated_at();
 
+create trigger program_plan_overrides_set_updated_at
+before update on public.program_plan_overrides
+for each row
+execute function public.set_updated_at();
+
 alter table public.users enable row level security;
 alter table public.orders enable row level security;
 alter table public.customer_profiles enable row level security;
 alter table public.menu_items enable row level security;
 alter table public.meal_plans enable row level security;
 alter table public.whatsapp_message_logs enable row level security;
+alter table public.program_plan_overrides enable row level security;
 
 drop policy if exists "Users can read their own app user row" on public.users;
 create policy "Users can read their own app user row"

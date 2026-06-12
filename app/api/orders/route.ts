@@ -6,6 +6,8 @@ import {
 import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
 import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
+import { requireAdminUser } from '@/lib/admin-auth';
+import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
 
 interface CreateOrderBody {
   items?: CartItem[];
@@ -101,30 +103,9 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
 }
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  const accessToken = authHeader?.replace(/^Bearer\s+/i, '');
-
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: 'Authentication required. Please log in.' },
-      { status: 401 }
-    );
-  }
-
-  const userResult = await getUserFromAccessToken(accessToken);
-  if (userResult.error || !userResult.data) {
-    return NextResponse.json(
-      { error: userResult.error ?? 'Invalid login session.' },
-      { status: userResult.status || 401 }
-    );
-  }
-
-  const user = userResult.data;
-  if (!user.email?.toLowerCase().endsWith('@projectfitvizag.com')) {
-    return NextResponse.json(
-      { error: 'Access denied. Only kitchen staff can access orders.' },
-      { status: 403 }
-    );
+  const admin = await requireAdminUser(request);
+  if (admin.error) {
+    return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
   const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
@@ -238,6 +219,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: 'Manual payment WhatsApp number is not configured.' },
       { status: 500 }
+    );
+  }
+
+  const addressPincodeValidation = await validateAddressPincodeMatch(addressValidation.deliveryAddress);
+  if (!addressPincodeValidation.valid) {
+    return NextResponse.json(
+      { error: addressPincodeValidation.error },
+      { status: 400 }
     );
   }
 
