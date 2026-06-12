@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/auth-client';
 import type { DeliveryAddress } from '@/lib/backend-types';
 import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { usePublicConfig } from '@/lib/use-public-config';
 import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
@@ -71,10 +72,11 @@ function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
 }
 
 export default function Cart() {
+  usePublicConfig();
+
   const { items, isOpen, toggleCart, updateQuantity, removeItem, getTotal, clearCart } = useCartStore();
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(initialDeliveryAddress);
   const router = useRouter();
@@ -111,36 +113,6 @@ export default function Cart() {
   const openLocationPicker = () => {
     setError('');
     setIsMapOpen(true);
-  };
-
-  const useCurrentLocationFallback = () => {
-    setError('');
-
-    if (!navigator.geolocation) {
-      setError('Location access is not available in this browser. Please enter your address manually.');
-      return;
-    }
-
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setDeliveryAddress((current) => {
-          const next = {
-            ...current,
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          };
-          mergeStoredProfile({ deliveryAddress: next });
-          return next;
-        });
-        setIsLocating(false);
-      },
-      () => {
-        setError('Could not get your current location. Please enter your address manually.');
-        setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
   };
 
   const handleMapAddressSelect = (address: Partial<DeliveryAddress>) => {
@@ -291,20 +263,11 @@ export default function Cart() {
               <div className={styles.addressBlock}>
                 <div className={styles.addressHeader}>
                   <h3>Delivery Address</h3>
-                  <button type="button" className={styles.locationBtn} onClick={openLocationPicker} disabled={isLocating}>
+                  <button type="button" className={styles.locationBtn} onClick={openLocationPicker}>
                     <MapPin size={16} />
                     {deliveryAddress.latitude ? 'Change location' : 'Detect location'}
                   </button>
                 </div>
-                {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-                  <div className={styles.mapFallback}>
-                    <span>Map key not configured yet.</span>
-                    <button type="button" onClick={useCurrentLocationFallback} disabled={isLocating}>
-                      {isLocating ? 'Locating...' : 'Use GPS only'}
-                    </button>
-                  </div>
-                )}
-
                 <label className={styles.field}>
                   <span>Address</span>
                   <input

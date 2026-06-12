@@ -37,16 +37,34 @@ export const DEFAULT_SERVICEABLE_PINCODES = [
   '531173',
 ];
 
+let runtimeServiceablePincodes: string[] | null = null;
+
+function normalizePincodeList(pincodes: string[]) {
+  return Array.from(
+    new Set(
+      pincodes
+        .map((pincode) => pincode.trim())
+        .filter((pincode) => /^[1-9][0-9]{5}$/.test(pincode))
+    )
+  );
+}
+
+export function setRuntimeServiceablePincodes(pincodes: string[]) {
+  const normalized = normalizePincodeList(pincodes);
+  runtimeServiceablePincodes = normalized.length > 0 ? normalized : null;
+}
+
 export function getServiceablePincodes() {
+  if (runtimeServiceablePincodes) {
+    return runtimeServiceablePincodes;
+  }
+
   const raw =
     process.env.SERVICEABLE_PINCODES ||
     process.env.NEXT_PUBLIC_SERVICEABLE_PINCODES ||
     '';
 
-  const envPincodes = raw
-    .split(',')
-    .map((pincode) => pincode.trim())
-    .filter(Boolean);
+  const envPincodes = normalizePincodeList(raw.split(','));
 
   return envPincodes.length > 0 ? envPincodes : DEFAULT_SERVICEABLE_PINCODES;
 }

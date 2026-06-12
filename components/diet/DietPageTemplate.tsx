@@ -47,7 +47,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
 
   const dayPlans = diet.plans.filter((p) => p.duration === '1 day');
   const weekPlans = diet.plans.filter((p) => p.duration === '6 days');
-  const monthPlans = diet.plans.filter((p) => p.duration === '24 days');
+  const monthPlans = diet.plans.filter((p) => p.id.includes('-month-'));
 
   const renderPlanCard = (plan: DietPlan, i: number) => {
     const hasCustomOption = Boolean(plan.customPrices);

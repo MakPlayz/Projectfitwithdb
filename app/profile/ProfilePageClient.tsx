@@ -21,11 +21,14 @@ import {
   writeStoredProfile,
 } from '@/lib/profile-storage';
 import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { usePublicConfig } from '@/lib/use-public-config';
 import DeliveryAreaNotice from '@/components/DeliveryAreaNotice';
 import LocationPickerModal from '@/components/LocationPickerModal';
 import styles from './profile.module.css';
 
 export default function ProfilePageClient() {
+  usePublicConfig();
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const [session, setSession] = useState<ProjectFitSession | null>(null);

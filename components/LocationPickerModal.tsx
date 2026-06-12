@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LocateFixed, MapPin, X } from 'lucide-react';
 import type { DeliveryAddress } from '@/lib/backend-types';
 import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import { loadPublicConfig, usePublicConfig } from '@/lib/use-public-config';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import styles from './LocationPickerModal.module.css';
 
@@ -109,11 +110,7 @@ const vizagBounds = {
 };
 
 function loadGoogleMaps() {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-  if (!apiKey) {
-    return Promise.reject(new Error('Google Maps API key is not configured.'));
-  }
+  const bundledApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   if (window.google?.maps) {
     return Promise.resolve();
@@ -123,7 +120,14 @@ function loadGoogleMaps() {
     return window.__projectFitGoogleMapsPromise;
   }
 
-  window.__projectFitGoogleMapsPromise = new Promise((resolve, reject) => {
+  window.__projectFitGoogleMapsPromise = loadPublicConfig().then((config) => new Promise<void>((resolve, reject) => {
+    const apiKey = bundledApiKey || config.googleMapsApiKey;
+
+    if (!apiKey) {
+      reject(new Error('Google Maps API key is not configured.'));
+      return;
+    }
+
     const existing = document.querySelector<HTMLScriptElement>('script[data-projectfit-google-maps]');
     if (existing) {
       existing.addEventListener('load', () => resolve(), { once: true });
@@ -139,7 +143,7 @@ function loadGoogleMaps() {
     script.onload = () => resolve();
     script.onerror = () => reject(new Error('Could not load Google Maps.'));
     document.head.appendChild(script);
-  });
+  }));
 
   return window.__projectFitGoogleMapsPromise;
 }
@@ -180,6 +184,8 @@ export default function LocationPickerModal({
   onCancel,
   onSelect,
 }: LocationPickerModalProps) {
+  usePublicConfig();
+
   const mapRef = useRef<HTMLDivElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const mapInstance = useRef<InstanceType<GoogleMapsLike['maps']['Map']> | null>(null);
