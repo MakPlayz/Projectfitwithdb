@@ -162,7 +162,8 @@ export default function Cart() {
       setDeliveryAddress(initialDeliveryAddress);
       toggleCart();
       if (data.whatsappUrl) {
-        window.location.href = data.whatsappUrl;
+        window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
+        router.push(`/order-confirmed?id=${data.order.id}&payment=manual`);
         return;
       }
 
