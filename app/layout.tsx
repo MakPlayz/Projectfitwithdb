@@ -1,11 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
-import Navbar from '@/components/Navbar';
-import Cart from '@/components/Cart';
-import BackgroundDecor from '@/components/layout/BackgroundDecor';
-import Footer from '@/components/layout/Footer';
-import AuthGuard from '@/components/auth/AuthGuard';
-import AuthUrlScrubber from '@/components/auth/AuthUrlScrubber';
+import AppChrome from '@/components/layout/AppChrome';
 
 export const metadata: Metadata = {
   title: 'Project Fit | Premium Health & Diet Nutrition',
@@ -21,12 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <AuthUrlScrubber />
-        <BackgroundDecor />
-        <Navbar />
-        <AuthGuard>{children}</AuthGuard>
-        <Footer />
-        <Cart />
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );

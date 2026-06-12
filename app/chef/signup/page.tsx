@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
+import { clearSession, getAccessTokenExpiry, getAuthHeaders, saveSession } from '@/lib/auth-client';
 import styles from '../page.module.css';
 
 export default function ChefSignup() {
@@ -42,6 +42,17 @@ export default function ChefSignup() {
           expiresAt: getAccessTokenExpiry(data.access_token),
           user: data.user,
         });
+
+        const adminCheck = await fetch('/api/admin/me', {
+          cache: 'no-store',
+          headers: await getAuthHeaders(),
+        });
+
+        if (!adminCheck.ok) {
+          clearSession();
+          throw new Error('Chef account was created, but admin access is not enabled for this email.');
+        }
+
         router.push('/chef/dashboard');
         return;
       }

@@ -40,14 +40,44 @@ export default function ChefDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
+    let cancelled = false;
 
-    if (!session) {
-      router.push('/chef');
-      return;
+    async function verifyAdmin() {
+      const session = getSession();
+
+      if (!session) {
+        router.replace('/chef');
+        return;
+      }
+
+      const response = await fetch('/api/admin/me', {
+        cache: 'no-store',
+        headers: await getAuthHeaders(),
+      });
+
+      if (cancelled) return;
+
+      if (!response.ok) {
+        setIsAuthorized(false);
+        setIsLoading(false);
+        router.replace('/chef');
+        return;
+      }
+
+      setIsAuthorized(true);
     }
 
-    setIsAuthorized(true);
+    verifyAdmin().catch(() => {
+      if (!cancelled) {
+        setIsAuthorized(false);
+        setIsLoading(false);
+        router.replace('/chef');
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const loadOverview = useCallback(async () => {

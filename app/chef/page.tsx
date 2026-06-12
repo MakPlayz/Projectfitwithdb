@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { getAccessTokenExpiry, getSession, saveSession } from '@/lib/auth-client';
+import { clearSession, getAccessTokenExpiry, getAuthHeaders, getSession, saveSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
-export default function ChefLogin() {
+function ChefLoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,9 +16,28 @@ export default function ChefLogin() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (getSession()) {
-      router.replace('/chef/dashboard');
+    let cancelled = false;
+
+    async function redirectIfChef() {
+      if (!getSession()) return;
+
+      const response = await fetch('/api/admin/me', {
+        cache: 'no-store',
+        headers: await getAuthHeaders(),
+      });
+
+      if (cancelled) return;
+
+      if (response.ok) {
+        router.replace('/chef/dashboard');
+      }
     }
+
+    redirectIfChef().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   const handleLogin = async (event: React.FormEvent) => {
@@ -48,6 +67,17 @@ export default function ChefLogin() {
         expiresAt: getAccessTokenExpiry(data.access_token),
         user: data.user,
       });
+
+      const adminCheck = await fetch('/api/admin/me', {
+        cache: 'no-store',
+        headers: await getAuthHeaders(),
+      });
+
+      if (!adminCheck.ok) {
+        clearSession();
+        const adminData = await adminCheck.json().catch(() => ({}));
+        throw new Error(adminData.error ?? 'This account is not allowed to access the chef portal.');
+      }
 
       router.push('/chef/dashboard');
     } catch (err) {
@@ -140,5 +170,13 @@ export default function ChefLogin() {
         </form>
       </section>
     </main>
+  );
+}
+
+export default function ChefLogin() {
+  return (
+    <Suspense fallback={<main className={styles.shell} />}>
+      <ChefLoginContent />
+    </Suspense>
   );
 }
