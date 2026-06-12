@@ -1,6 +1,6 @@
 import type { CartItem } from '@/store/cartStore';
 
-export type ApiOrderStatus = 'new' | 'preparing' | 'ready';
+export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type CustomerGoal =
   | 'weight-loss'
@@ -76,6 +76,11 @@ export interface MenuItem {
   description: string | null;
   price: number;
   category: string;
+  program_slug: string;
+  photo_url: string | null;
+  servings: number;
+  protein_grams: number | null;
+  ingredients: string[];
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -133,7 +138,12 @@ export interface ApiOrder {
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   delivery_address: DeliveryAddress;
+  plan_activated_at: string | null;
+  plan_expires_at: string | null;
+  confirmed_at: string | null;
+  confirmed_by: string | null;
   created_at: string;
+  updated_at?: string;
   customer_profile?: CustomerProfile | null;
 }
 

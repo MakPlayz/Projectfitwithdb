@@ -2,7 +2,20 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Clock, LogOut, Pencil, RefreshCw, Search, ShieldCheck } from 'lucide-react';
+import {
+  CalendarCheck,
+  CheckCircle2,
+  ChevronRight,
+  ClipboardList,
+  LogOut,
+  Pencil,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Soup,
+  UsersRound,
+  WalletCards,
+} from 'lucide-react';
 import { dietCategories } from '@/data/diets';
 import type { ApiOrder, ApiOrderStatus, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
@@ -16,9 +29,10 @@ type AdminOverview = {
   menuItems: MenuItem[];
   mealPlans: MealPlan[];
   programOverrides: ProgramPlanOverride[];
+  warnings?: string[];
 };
 
-type Tab = 'orders' | 'users' | 'menu' | 'plans' | 'programs';
+type Tab = 'pending' | 'active' | 'users' | 'menu' | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
@@ -27,17 +41,57 @@ const emptyOverview: AdminOverview = {
   menuItems: [],
   mealPlans: [],
   programOverrides: [],
+  warnings: [],
 };
+
+const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
+  { id: 'pending', label: 'Pending orders', icon: ClipboardList },
+  { id: 'active', label: 'Active plans', icon: CalendarCheck },
+  { id: 'users', label: 'Users', icon: UsersRound },
+  { id: 'menu', label: 'Menus', icon: Soup },
+  { id: 'pricing', label: 'Pricing', icon: WalletCards },
+];
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function formatDateTime(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function daysLeft(value: string | null | undefined) {
+  if (!value) return null;
+  const diff = new Date(value).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86400000));
+}
+
+function getPrimaryPlan(order: ApiOrder) {
+  return order.items[0]?.name ?? 'Meal plan';
+}
 
 export default function ChefDashboard() {
   const router = useRouter();
   const [data, setData] = useState<AdminOverview>(emptyOverview);
-  const [activeTab, setActiveTab] = useState<Tab>('orders');
+  const [activeTab, setActiveTab] = useState<Tab>('pending');
   const [query, setQuery] = useState('');
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [menuProgram, setMenuProgram] = useState('main');
 
   useEffect(() => {
     let cancelled = false;
@@ -86,13 +140,13 @@ export default function ChefDashboard() {
         cache: 'no-store',
         headers: await getAuthHeaders(),
       });
-      const nextData = await response.json();
+      const nextData = (await response.json()) as AdminOverview & { error?: string };
 
       if (!response.ok) {
         throw new Error(nextData.error ?? 'Could not load chef portal.');
       }
 
-      setData(nextData);
+      setData({ ...emptyOverview, ...nextData });
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load chef portal.');
@@ -116,10 +170,25 @@ export default function ChefDashboard() {
   );
   const normalizedQuery = query.trim().toLowerCase();
 
-  const filteredOrders = data.orders.filter((order) => {
+  const pendingOrders = data.orders.filter((order) => order.status === 'new' || order.payment_status === 'pending');
+  const activePlans = data.orders.filter((order) => order.status === 'confirmed' && order.plan_expires_at && new Date(order.plan_expires_at) >= new Date());
+  const selectedUser = data.users.find((user) => user.id === selectedUserId) ?? data.users[0] ?? null;
+  const selectedProfile = selectedUser ? profilesByUserId.get(selectedUser.id) ?? null : null;
+  const selectedUserOrders = selectedUser ? data.orders.filter((order) => order.user_id === selectedUser.id) : [];
+
+  const filteredUsers = data.users.filter((user) => {
+    if (!normalizedQuery) return true;
+    const profile = profilesByUserId.get(user.id);
+    return [user.id, user.name, user.email, user.phone, profile?.primary_goal, profile?.health_focus].some((value) =>
+      String(value ?? '').toLowerCase().includes(normalizedQuery)
+    );
+  });
+
+  const filteredOrders = pendingOrders.filter((order) => {
     if (!normalizedQuery) return true;
     return [
       order.id,
+      order.user_id,
       order.customer_name,
       order.delivery_address?.phone,
       order.delivery_address?.pincode,
@@ -127,15 +196,12 @@ export default function ChefDashboard() {
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
 
-  const filteredUsers = data.users.filter((user) => {
-    if (!normalizedQuery) return true;
-    const profile = profilesByUserId.get(user.id);
-    return [user.name, user.email, user.phone, profile?.primary_goal, profile?.health_focus].some((value) =>
-      String(value ?? '').toLowerCase().includes(normalizedQuery)
-    );
-  });
+  const visibleMenuItems = data.menuItems.filter((item) => (item.program_slug || 'main') === menuProgram);
 
-  async function patchOrder(orderId: string, payload: { status?: ApiOrderStatus; payment_status?: PaymentStatus }) {
+  async function patchOrder(
+    orderId: string,
+    payload: { status?: ApiOrderStatus; payment_status?: PaymentStatus; action?: 'confirm' }
+  ) {
     setStatus('');
     setError('');
     const response = await fetch(`/api/orders/${orderId}/status`, {
@@ -157,7 +223,7 @@ export default function ChefDashboard() {
       ...current,
       orders: current.orders.map((order) => (order.id === orderId ? result.order : order)),
     }));
-    setStatus('Order updated.');
+    setStatus(payload.action === 'confirm' ? 'Order confirmed and plan dates were set.' : 'Order updated.');
   }
 
   async function submitJson(path: string, method: 'POST' | 'PATCH', payload: Record<string, unknown>) {
@@ -192,6 +258,11 @@ export default function ChefDashboard() {
       description: form.get('description'),
       price: Number(form.get('price') ?? 0),
       category: form.get('category'),
+      program_slug: form.get('program_slug') || menuProgram,
+      photo_url: form.get('photo_url'),
+      servings: Number(form.get('servings') ?? 1),
+      protein_grams: form.get('protein_grams') ? Number(form.get('protein_grams')) : null,
+      ingredients: String(form.get('ingredients') ?? ''),
       active: form.get('active') === 'on',
     });
   }
@@ -231,219 +302,505 @@ export default function ChefDashboard() {
 
   return (
     <main className={styles.dashboard}>
-      <header className={styles.header}>
-        <div>
-          <p className={styles.eyebrow}>Chef Portal</p>
-          <h1>Project Fit Admin</h1>
-          <p>Manage orders, customers, menus, meal plans, and program pricing.</p>
-        </div>
-        <div className={styles.headerActions}>
-          <button type="button" className={styles.secondaryBtn} onClick={loadOverview}>
-            <RefreshCw size={16} />
-            Refresh
-          </button>
-          <button type="button" className={styles.secondaryBtn} onClick={handleLogout}>
-            <LogOut size={16} />
-            Sign out
-          </button>
-        </div>
-      </header>
+      <section className={styles.shell}>
+        <aside className={styles.sideRail}>
+          <div className={styles.brandBlock}>
+            <span>PF</span>
+            <div>
+              <strong>Chef Portal</strong>
+              <small>Kitchen command</small>
+            </div>
+          </div>
 
-      <section className={styles.stats}>
-        <div><span>Orders</span><strong>{data.orders.length}</strong></div>
-        <div><span>Pending Pay</span><strong>{data.orders.filter((order) => order.payment_status === 'pending').length}</strong></div>
-        <div><span>Paid</span><strong>{data.orders.filter((order) => order.payment_status === 'paid').length}</strong></div>
-        <div><span>Users</span><strong>{data.users.length}</strong></div>
-        <div><span>Profiles</span><strong>{data.profiles.filter((profile) => profile.is_profile_complete).length}</strong></div>
-      </section>
+          <nav className={styles.railNav} aria-label="Chef workspace">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={activeTab === tab.id ? styles.railActive : styles.railButton}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  <Icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-      <section className={styles.toolbar}>
-        <div className={styles.tabs}>
-          {(['orders', 'users', 'menu', 'plans', 'programs'] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              className={activeTab === tab ? styles.tabActive : styles.tab}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
+          <div className={styles.railCard}>
+            <span>Today</span>
+            <strong>{pendingOrders.length}</strong>
+            <small>orders need confirmation</small>
+          </div>
+        </aside>
+
+        <section className={styles.workspace}>
+          <header className={styles.header}>
+            <div>
+              <p className={styles.eyebrow}>Project Fit Vizag</p>
+              <h1>Chef operations</h1>
+              <p>Confirm paid plans, inspect customer details, and keep menus and pricing current.</p>
+            </div>
+            <div className={styles.headerActions}>
+              <button type="button" className={styles.secondaryBtn} onClick={loadOverview}>
+                <RefreshCw size={16} />
+                Refresh
+              </button>
+              <button type="button" className={styles.secondaryBtn} onClick={handleLogout}>
+                <LogOut size={16} />
+                Sign out
+              </button>
+            </div>
+          </header>
+
+          <section className={styles.stats}>
+            <Metric label="Registered users" value={data.users.length} />
+            <Metric label="Active plans" value={activePlans.length} />
+            <Metric label="Pending confirmation" value={pendingOrders.length} />
+            <Metric label="Paid orders" value={data.orders.filter((order) => order.payment_status === 'paid').length} />
+          </section>
+
+          <section className={styles.toolbar}>
+            <div className={styles.mobileTabs}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={activeTab === tab.id ? styles.tabActive : styles.tab}
+                  onClick={() => setActiveTab(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <label className={styles.search}>
+              <Search size={16} />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search user, order, phone, pincode" />
+            </label>
+          </section>
+
+          {data.warnings?.map((warning) => (
+            <p key={warning} className={styles.warning}>{warning}</p>
           ))}
-        </div>
-        <label className={styles.search}>
-          <Search size={16} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search orders or users" />
-        </label>
-      </section>
+          {error && <p className={styles.error}>{error}</p>}
+          {status && <p className={styles.status}>{status}</p>}
 
-      {error && <p className={styles.error}>{error}</p>}
-      {status && <p className={styles.status}>{status}</p>}
-
-      {isLoading ? (
-        <section className={styles.empty}>Loading chef portal...</section>
-      ) : (
-        <>
-          {activeTab === 'orders' && (
-            <section className={styles.cardGrid}>
-              {filteredOrders.map((order) => (
-                <article key={order.id} className={styles.orderCard}>
-                  <div className={styles.cardHeader}>
+          {isLoading ? (
+            <LoadingState />
+          ) : (
+            <>
+              {activeTab === 'pending' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
                     <div>
-                      <h2>{order.id}</h2>
-                      <span>{new Date(order.created_at).toLocaleString()}</span>
+                      <h2>Pending orders</h2>
+                      <p>Confirm only after matching WhatsApp payment screenshot, order ID, user ID, and amount.</p>
                     </div>
-                    <div className={styles.badges}>
-                      <span>{order.status}</span>
-                      <span className={order.payment_status === 'paid' ? styles.paid : styles.pending}>
-                        {order.payment_status}
-                      </span>
-                    </div>
+                    <span>{filteredOrders.length} waiting</span>
                   </div>
-                  <div className={styles.detailBlock}>
-                    <strong>{order.customer_name ?? 'Customer'}</strong>
-                    <p>{order.delivery_address.phone} · {order.delivery_address.city} · {order.delivery_address.pincode}</p>
-                    <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
-                  </div>
-                  <div className={styles.items}>
-                    {order.items.map((item) => (
-                      <p key={`${order.id}-${item.id}`}>{item.quantity}x {item.name} · Rs {item.totalPrice.toLocaleString('en-IN')}</p>
-                    ))}
-                  </div>
-                  <div className={styles.total}>Total Rs {order.total.toLocaleString('en-IN')}</div>
-                  {order.customer_profile && (
-                    <div className={styles.profileMini}>
-                      <span>{order.customer_profile.primary_goal}</span>
-                      <span>{order.customer_profile.health_focus}</span>
-                      <span>{order.customer_profile.diet_preference}</span>
+
+                  {filteredOrders.length === 0 ? (
+                    <EmptyState title="No pending orders" text="New manual payment orders will appear here after checkout." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredOrders.map((order) => (
+                        <OrderCard key={order.id} order={order} profile={order.user_id ? profilesByUserId.get(order.user_id) : null} onPatch={patchOrder} />
+                      ))}
                     </div>
                   )}
-                  <div className={styles.actions}>
-                    {order.payment_status !== 'paid' && (
-                      <button type="button" onClick={() => patchOrder(order.id, { payment_status: 'paid' })}>
-                        <ShieldCheck size={15} />
-                        Confirm payment
-                      </button>
-                    )}
-                    {order.status === 'new' && (
-                      <button type="button" onClick={() => patchOrder(order.id, { status: 'preparing' })}>
-                        <Clock size={15} />
-                        Preparing
-                      </button>
-                    )}
-                    {order.status === 'preparing' && (
-                      <button type="button" onClick={() => patchOrder(order.id, { status: 'ready' })}>
-                        <CheckCircle2 size={15} />
-                        Ready
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </section>
-          )}
-
-          {activeTab === 'users' && (
-            <section className={styles.tableWrap}>
-              <table>
-                <thead><tr><th>User</th><th>Phone</th><th>Profile</th><th>Goal</th><th>Notes</th></tr></thead>
-                <tbody>
-                  {filteredUsers.map((user) => {
-                    const profile = profilesByUserId.get(user.id);
-                    return (
-                      <tr key={user.id}>
-                        <td><strong>{user.name}</strong><span>{user.email}</span><span className={styles.mono}>{user.id}</span></td>
-                        <td>{user.phone}</td>
-                        <td>{profile?.is_profile_complete ? 'Complete' : 'Incomplete'}</td>
-                        <td>{profile ? `${profile.primary_goal} / ${profile.health_focus}` : '-'}</td>
-                        <td>{profile?.health_notes || profile?.recommendation_summary || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </section>
-          )}
-
-          {activeTab === 'menu' && (
-            <section className={styles.editorGrid}>
-              <EditorPanel title="Add menu item" onSubmit={handleMenuSubmit} fields={['name', 'description', 'category', 'price']} />
-              {data.menuItems.map((item) => (
-                <EditorPanel key={item.id} title={item.name} onSubmit={(event) => handleMenuSubmit(event, item.id)} item={{ ...item }} fields={['name', 'description', 'category', 'price']} />
-              ))}
-            </section>
-          )}
-
-          {activeTab === 'plans' && (
-            <section className={styles.editorGrid}>
-              <EditorPanel title="Add meal plan" onSubmit={handleMealPlanSubmit} fields={['name', 'description', 'duration', 'price']} />
-              {data.mealPlans.map((plan) => (
-                <EditorPanel key={plan.id} title={plan.name} onSubmit={(event) => handleMealPlanSubmit(event, plan.id)} item={{ ...plan }} fields={['name', 'description', 'duration', 'price']} />
-              ))}
-            </section>
-          )}
-
-          {activeTab === 'programs' && (
-            <section className={styles.editorGrid}>
-              {dietCategories.flatMap((diet) =>
-                diet.plans.map((plan) => {
-                  const override = overridesByPlanId.get(plan.id);
-                  const item = {
-                    name: override?.name || plan.name,
-                    duration: override?.duration || plan.duration,
-                    price: override?.price ?? plan.price,
-                    highlight: override?.highlight || plan.highlight,
-                    active: override?.active ?? true,
-                  };
-                  return (
-                    <EditorPanel
-                      key={plan.id}
-                      title={`${diet.shortTitle} · ${plan.name}`}
-                      onSubmit={(event) => handleProgramSubmit(event, plan.id)}
-                      item={item}
-                      fields={['name', 'duration', 'highlight', 'price']}
-                    />
-                  );
-                })
+                </section>
               )}
-            </section>
+
+              {activeTab === 'active' && (
+                <section className={styles.planGrid}>
+                  {activePlans.length === 0 ? (
+                    <EmptyState title="No active plans" text="Confirmed orders with plan dates will appear here." />
+                  ) : (
+                    activePlans.map((order) => (
+                      <article key={order.id} className={styles.planCard}>
+                        <div>
+                          <span className={styles.badgeGreen}>Active</span>
+                          <h2>{order.customer_name ?? 'Customer'}</h2>
+                          <p>{getPrimaryPlan(order)}</p>
+                        </div>
+                        <dl className={styles.planMeta}>
+                          <div><dt>Order</dt><dd>{order.id}</dd></div>
+                          <div><dt>User ID</dt><dd>{order.user_id ?? 'Guest'}</dd></div>
+                          <div><dt>Phone</dt><dd>{order.delivery_address.phone}</dd></div>
+                          <div><dt>Activated</dt><dd>{formatDate(order.plan_activated_at)}</dd></div>
+                          <div><dt>Expiry</dt><dd>{formatDate(order.plan_expires_at)}</dd></div>
+                          <div><dt>Days left</dt><dd>{daysLeft(order.plan_expires_at) ?? 'Not set'}</dd></div>
+                        </dl>
+                      </article>
+                    ))
+                  )}
+                </section>
+              )}
+
+              {activeTab === 'users' && (
+                <section className={styles.userLayout}>
+                  <div className={styles.userList}>
+                    <div className={styles.sectionHead}>
+                      <div>
+                        <h2>Users</h2>
+                        <p>Click a user ID to inspect signup and profile details.</p>
+                      </div>
+                    </div>
+                    {filteredUsers.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        className={selectedUser?.id === user.id ? styles.userRowActive : styles.userRow}
+                        onClick={() => setSelectedUserId(user.id)}
+                      >
+                        <span className={styles.mono}>{user.id}</span>
+                        <strong>{user.name}</strong>
+                        <small>{user.phone || user.email}</small>
+                        <ChevronRight size={16} />
+                      </button>
+                    ))}
+                  </div>
+                  <UserDetail user={selectedUser} profile={selectedProfile} orders={selectedUserOrders} />
+                </section>
+              )}
+
+              {activeTab === 'menu' && (
+                <section className={styles.menuStudio}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Menu management</h2>
+                      <p>Edit the main menu or program-specific menus for all six programs.</p>
+                    </div>
+                  </div>
+                  <div className={styles.programSwitch}>
+                    <button type="button" className={menuProgram === 'main' ? styles.switchActive : styles.switchButton} onClick={() => setMenuProgram('main')}>
+                      Main menu
+                    </button>
+                    {dietCategories.map((diet) => (
+                      <button key={diet.slug} type="button" className={menuProgram === diet.slug ? styles.switchActive : styles.switchButton} onClick={() => setMenuProgram(diet.slug)}>
+                        {diet.shortTitle}
+                      </button>
+                    ))}
+                  </div>
+                  <section className={styles.editorGrid}>
+                    <MenuEditor title={`Add item to ${menuProgram === 'main' ? 'main menu' : menuProgram}`} programSlug={menuProgram} onSubmit={handleMenuSubmit} />
+                    {visibleMenuItems.map((item) => (
+                      <MenuEditor key={item.id} title={item.name} item={item} programSlug={menuProgram} onSubmit={(event) => handleMenuSubmit(event, item.id)} />
+                    ))}
+                  </section>
+                </section>
+              )}
+
+              {activeTab === 'pricing' && (
+                <section className={styles.pricingGrid}>
+                  {dietCategories.map((diet) => (
+                    <article key={diet.slug} className={styles.programCard}>
+                      <div className={styles.programTitle}>
+                        <h2>{diet.shortTitle}</h2>
+                        <span>{diet.plans.length} plan entries</span>
+                      </div>
+                      <div className={styles.programPlans}>
+                        {diet.plans.map((plan) => {
+                          const override = overridesByPlanId.get(plan.id);
+                          const item = {
+                            name: override?.name || plan.name,
+                            duration: override?.duration || plan.duration,
+                            price: override?.price ?? plan.price,
+                            highlight: override?.highlight || plan.highlight,
+                            active: override?.active ?? true,
+                          };
+
+                          return (
+                            <ProgramPlanEditor
+                              key={plan.id}
+                              title={plan.name}
+                              item={item}
+                              onSubmit={(event) => handleProgramSubmit(event, plan.id)}
+                            />
+                          );
+                        })}
+                      </div>
+                    </article>
+                  ))}
+                </section>
+              )}
+
+              {activeTab === 'pricing' && data.mealPlans.length > 0 && (
+                <section className={styles.legacyPlans}>
+                  <h2>General meal plans</h2>
+                  <div className={styles.editorGrid}>
+                    <MealPlanEditor title="Add general plan" onSubmit={handleMealPlanSubmit} />
+                    {data.mealPlans.map((plan) => (
+                      <MealPlanEditor key={plan.id} title={plan.name} item={plan} onSubmit={(event) => handleMealPlanSubmit(event, plan.id)} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
           )}
-        </>
-      )}
+        </section>
+      </section>
     </main>
   );
 }
 
-type EditorPanelProps = {
-  title: string;
-  fields: string[];
-  item?: Record<string, unknown>;
-  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-};
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className={styles.metric}>
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
 
-function EditorPanel({ title, fields, item, onSubmit }: EditorPanelProps) {
+function OrderCard({
+  order,
+  profile,
+  onPatch,
+}: {
+  order: ApiOrder;
+  profile?: CustomerProfile | null;
+  onPatch: (orderId: string, payload: { status?: ApiOrderStatus; payment_status?: PaymentStatus; action?: 'confirm' }) => void;
+}) {
+  return (
+    <article className={styles.orderCard}>
+      <div className={styles.cardHeader}>
+        <div>
+          <span className={styles.mono}>{order.id}</span>
+          <h3>{order.customer_name ?? 'Project Fit customer'}</h3>
+          <p>{formatDateTime(order.created_at)}</p>
+        </div>
+        <div className={styles.badges}>
+          <span>{order.status}</span>
+          <span className={order.payment_status === 'paid' ? styles.paid : styles.pending}>{order.payment_status}</span>
+        </div>
+      </div>
+      <div className={styles.orderPlan}>
+        <strong>{getPrimaryPlan(order)}</strong>
+        <span>Rs {order.total.toLocaleString('en-IN')}</span>
+      </div>
+      <div className={styles.detailBlock}>
+        <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
+        <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
+      </div>
+      <div className={styles.items}>
+        {order.items.map((item) => (
+          <p key={`${order.id}-${item.id}`}>{item.quantity}x {item.name} | Rs {item.totalPrice.toLocaleString('en-IN')}</p>
+        ))}
+      </div>
+      {profile && (
+        <div className={styles.profileMini}>
+          <span>{profile.primary_goal}</span>
+          <span>{profile.health_focus}</span>
+          <span>{profile.diet_preference}</span>
+        </div>
+      )}
+      <div className={styles.actions}>
+        <button type="button" onClick={() => onPatch(order.id, { action: 'confirm' })}>
+          <ShieldCheck size={15} />
+          Confirm order
+        </button>
+        {order.status === 'confirmed' && (
+          <button type="button" onClick={() => onPatch(order.id, { status: 'preparing' })}>
+            <ClipboardList size={15} />
+            Preparing
+          </button>
+        )}
+        {order.status === 'preparing' && (
+          <button type="button" onClick={() => onPatch(order.id, { status: 'ready' })}>
+            <CheckCircle2 size={15} />
+            Ready
+          </button>
+        )}
+      </div>
+    </article>
+  );
+}
+
+function UserDetail({ user, profile, orders }: { user: ProjectFitUser | null; profile: CustomerProfile | null; orders: ApiOrder[] }) {
+  if (!user) {
+    return <EmptyState title="No user selected" text="Registered users will appear here." />;
+  }
+
+  return (
+    <aside className={styles.userDetail}>
+      <div className={styles.detailHero}>
+        <span className={styles.avatar}>{user.name.slice(0, 1).toUpperCase()}</span>
+        <div>
+          <h2>{user.name}</h2>
+          <p>{user.email}</p>
+          <span className={styles.mono}>{user.id}</span>
+        </div>
+      </div>
+      <dl className={styles.detailGrid}>
+        <div><dt>Phone</dt><dd>{user.phone || 'Not provided'}</dd></div>
+        <div><dt>WhatsApp opt-in</dt><dd>{user.whatsapp_opt_in ? 'Yes' : 'No'}</dd></div>
+        <div><dt>Joined</dt><dd>{formatDate(user.created_at)}</dd></div>
+        <div><dt>Profile</dt><dd>{profile?.is_profile_complete ? 'Complete' : 'Incomplete'}</dd></div>
+        <div><dt>Age</dt><dd>{profile?.age ?? 'Not set'}</dd></div>
+        <div><dt>Gender</dt><dd>{profile?.gender ?? 'Not set'}</dd></div>
+        <div><dt>Height</dt><dd>{profile ? `${profile.height_cm} cm` : 'Not set'}</dd></div>
+        <div><dt>Weight</dt><dd>{profile ? `${profile.weight_kg} kg` : 'Not set'}</dd></div>
+        <div><dt>Goal</dt><dd>{profile?.primary_goal ?? 'Not set'}</dd></div>
+        <div><dt>Health focus</dt><dd>{profile?.health_focus ?? 'Not set'}</dd></div>
+        <div><dt>Diet</dt><dd>{profile?.diet_preference ?? 'Not set'}</dd></div>
+        <div><dt>Allergies</dt><dd>{profile?.allergies?.join(', ') || 'None listed'}</dd></div>
+      </dl>
+      <div className={styles.notesBox}>
+        <strong>Notes</strong>
+        <p>{profile?.health_notes || profile?.recommendation_summary || 'No profile notes yet.'}</p>
+      </div>
+      <div className={styles.orderHistory}>
+        <strong>Orders</strong>
+        {orders.length === 0 ? (
+          <p>No orders yet.</p>
+        ) : (
+          orders.map((order) => (
+            <div key={order.id}>
+              <span className={styles.mono}>{order.id}</span>
+              <small>{getPrimaryPlan(order)} | {order.status} | Rs {order.total.toLocaleString('en-IN')}</small>
+            </div>
+          ))
+        )}
+      </div>
+    </aside>
+  );
+}
+
+function MenuEditor({
+  title,
+  programSlug,
+  item,
+  onSubmit,
+}: {
+  title: string;
+  programSlug: string;
+  item?: MenuItem;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
   return (
     <form className={styles.editorCard} onSubmit={onSubmit}>
       <div className={styles.editorTitle}>
         <Pencil size={16} />
         <h3>{title}</h3>
       </div>
-      {fields.map((field) => (
-        <label key={field}>
-          <span>{field}</span>
-          <input
-            name={field}
-            type={field === 'price' ? 'number' : 'text'}
-            min={field === 'price' ? 0 : undefined}
-            defaultValue={String(item?.[field] ?? '')}
-            required={field === 'name' || field === 'duration' || field === 'category'}
-          />
-        </label>
-      ))}
+      <input type="hidden" name="program_slug" value={item?.program_slug ?? programSlug} />
+      <Field name="name" label="Item name" defaultValue={item?.name} required />
+      <Field name="photo_url" label="Item photo URL" defaultValue={item?.photo_url ?? ''} />
+      <Field name="category" label="Category" defaultValue={item?.category} required />
+      <Field name="servings" label="Servings or portions" type="number" defaultValue={item?.servings ?? 1} required />
+      <Field name="protein_grams" label="Protein grams" type="number" defaultValue={item?.protein_grams ?? ''} />
+      <Field name="ingredients" label="Ingredients, comma separated" defaultValue={item?.ingredients?.join(', ') ?? ''} />
+      <label>
+        <span>Description</span>
+        <textarea name="description" defaultValue={item?.description ?? ''} rows={3} />
+      </label>
+      <Field name="price" label="Price" type="number" defaultValue={item?.price ?? 0} required />
       <label className={styles.checkRow}>
         <input name="active" type="checkbox" defaultChecked={item?.active !== false} />
         Active
       </label>
+      <button type="submit">Save menu item</button>
+    </form>
+  );
+}
+
+function MealPlanEditor({
+  title,
+  item,
+  onSubmit,
+}: {
+  title: string;
+  item?: MealPlan;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className={styles.editorCard} onSubmit={onSubmit}>
+      <div className={styles.editorTitle}>
+        <Pencil size={16} />
+        <h3>{title}</h3>
+      </div>
+      <Field name="name" label="Name" defaultValue={item?.name} required />
+      <Field name="duration" label="Duration" defaultValue={item?.duration} required />
+      <Field name="price" label="Price" type="number" defaultValue={item?.price ?? 0} required />
+      <label>
+        <span>Description</span>
+        <textarea name="description" defaultValue={item?.description ?? ''} rows={3} />
+      </label>
+      <label className={styles.checkRow}>
+        <input name="active" type="checkbox" defaultChecked={item?.active !== false} />
+        Active
+      </label>
+      <button type="submit">Save plan</button>
+    </form>
+  );
+}
+
+function ProgramPlanEditor({
+  title,
+  item,
+  onSubmit,
+}: {
+  title: string;
+  item: { name: string; duration: string; price: number; highlight: string; active: boolean };
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className={styles.compactEditor} onSubmit={onSubmit}>
+      <h3>{title}</h3>
+      <div className={styles.compactFields}>
+        <Field name="name" label="Name" defaultValue={item.name} required />
+        <Field name="duration" label="Duration" defaultValue={item.duration} required />
+        <Field name="price" label="Price" type="number" defaultValue={item.price} required />
+        <Field name="highlight" label="Highlight" defaultValue={item.highlight} />
+      </div>
+      <label className={styles.checkRow}>
+        <input name="active" type="checkbox" defaultChecked={item.active} />
+        Active
+      </label>
       <button type="submit">Save</button>
     </form>
+  );
+}
+
+function Field({
+  name,
+  label,
+  type = 'text',
+  defaultValue = '',
+  required = false,
+}: {
+  name: string;
+  label: string;
+  type?: string;
+  defaultValue?: string | number;
+  required?: boolean;
+}) {
+  return (
+    <label>
+      <span>{label}</span>
+      <input name={name} type={type} min={type === 'number' ? 0 : undefined} defaultValue={defaultValue} required={required} />
+    </label>
+  );
+}
+
+function EmptyState({ title, text }: { title: string; text: string }) {
+  return (
+    <section className={styles.empty}>
+      <strong>{title}</strong>
+      <p>{text}</p>
+    </section>
+  );
+}
+
+function LoadingState() {
+  return (
+    <section className={styles.loadingGrid}>
+      <div />
+      <div />
+      <div />
+    </section>
   );
 }

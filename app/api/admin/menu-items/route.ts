@@ -3,14 +3,50 @@ import { requireAdminUser } from '@/lib/admin-auth';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { MenuItem } from '@/lib/backend-types';
 
-type MenuItemBody = Partial<Pick<MenuItem, 'id' | 'name' | 'description' | 'price' | 'category' | 'active'>>;
+type MenuItemBody = Partial<
+  Pick<
+    MenuItem,
+    | 'id'
+    | 'name'
+    | 'description'
+    | 'price'
+    | 'category'
+    | 'program_slug'
+    | 'photo_url'
+    | 'servings'
+    | 'protein_grams'
+    | 'ingredients'
+    | 'active'
+  >
+>;
+
+function normalizeIngredients(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  return String(value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 function normalizeMenuItem(body: MenuItemBody) {
+  const proteinValue = body.protein_grams as unknown;
+
   return {
     name: String(body.name ?? '').trim(),
     description: String(body.description ?? '').trim() || null,
     price: Number(body.price ?? 0),
     category: String(body.category ?? '').trim(),
+    program_slug: String(body.program_slug ?? 'main').trim() || 'main',
+    photo_url: String(body.photo_url ?? '').trim() || null,
+    servings: Math.max(1, Number(body.servings ?? 1)),
+    protein_grams:
+      proteinValue === null || proteinValue === undefined || proteinValue === ''
+        ? null
+        : Number(proteinValue),
+    ingredients: normalizeIngredients(body.ingredients),
     active: Boolean(body.active),
   };
 }
@@ -21,8 +57,16 @@ export async function POST(request: Request) {
 
   const body = (await request.json()) as MenuItemBody;
   const payload = normalizeMenuItem(body);
-  if (!payload.name || !payload.category || !Number.isFinite(payload.price) || payload.price < 0) {
-    return NextResponse.json({ error: 'Menu item name, category, and valid price are required.' }, { status: 400 });
+  if (
+    !payload.name ||
+    !payload.category ||
+    !Number.isFinite(payload.price) ||
+    payload.price < 0 ||
+    !Number.isFinite(payload.servings) ||
+    payload.servings < 1 ||
+    (payload.protein_grams !== null && !Number.isFinite(payload.protein_grams))
+  ) {
+    return NextResponse.json({ error: 'Menu item name, category, servings, and valid price are required.' }, { status: 400 });
   }
 
   const result = await supabaseRestFetch<MenuItem[]>('/menu_items', {
@@ -42,8 +86,16 @@ export async function PATCH(request: Request) {
   if (!body.id) return NextResponse.json({ error: 'Menu item id is required.' }, { status: 400 });
 
   const payload = normalizeMenuItem(body);
-  if (!payload.name || !payload.category || !Number.isFinite(payload.price) || payload.price < 0) {
-    return NextResponse.json({ error: 'Menu item name, category, and valid price are required.' }, { status: 400 });
+  if (
+    !payload.name ||
+    !payload.category ||
+    !Number.isFinite(payload.price) ||
+    payload.price < 0 ||
+    !Number.isFinite(payload.servings) ||
+    payload.servings < 1 ||
+    (payload.protein_grams !== null && !Number.isFinite(payload.protein_grams))
+  ) {
+    return NextResponse.json({ error: 'Menu item name, category, servings, and valid price are required.' }, { status: 400 });
   }
 
   const result = await supabaseRestFetch<MenuItem[]>(`/menu_items?id=eq.${encodeURIComponent(body.id)}`, {

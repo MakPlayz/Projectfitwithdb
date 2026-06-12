@@ -1,14 +1,12 @@
 create extension if not exists pgcrypto;
 
-create table if not exists public.users (
-  id uuid primary key references auth.users(id) on delete cascade,
-  name text not null,
-  email text not null unique,
-  phone text not null,
-  whatsapp_opt_in boolean not null default false,
-  whatsapp_opt_in_at timestamptz,
-  created_at timestamptz not null default now()
-);
+create or replace function public.set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
 
 create table if not exists public.customer_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
@@ -39,8 +37,8 @@ create table if not exists public.orders (
   subtotal integer not null,
   tax integer not null,
   total integer not null,
-  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready')),
-  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
+  status text not null default 'new',
+  payment_status text not null default 'pending',
   razorpay_order_id text,
   razorpay_payment_id text,
   delivery_address jsonb not null default '{}'::jsonb,
@@ -52,11 +50,31 @@ create table if not exists public.orders (
   updated_at timestamptz not null default now()
 );
 
+alter table public.orders
+  add column if not exists payment_status text not null default 'pending',
+  add column if not exists razorpay_order_id text,
+  add column if not exists razorpay_payment_id text,
+  add column if not exists delivery_address jsonb not null default '{}'::jsonb,
+  add column if not exists plan_activated_at timestamptz,
+  add column if not exists plan_expires_at timestamptz,
+  add column if not exists confirmed_at timestamptz,
+  add column if not exists confirmed_by uuid references auth.users(id) on delete set null;
+
+alter table public.orders drop constraint if exists orders_status_check;
+alter table public.orders
+  add constraint orders_status_check
+  check (status in ('new', 'confirmed', 'preparing', 'ready'));
+
+alter table public.orders drop constraint if exists orders_payment_status_check;
+alter table public.orders
+  add constraint orders_payment_status_check
+  check (payment_status in ('pending', 'paid', 'failed'));
+
 create table if not exists public.menu_items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
-  price integer not null check (price >= 0),
+  price integer not null default 0 check (price >= 0),
   category text not null,
   program_slug text not null default 'main',
   photo_url text,
@@ -67,6 +85,13 @@ create table if not exists public.menu_items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.menu_items
+  add column if not exists program_slug text not null default 'main',
+  add column if not exists photo_url text,
+  add column if not exists servings integer not null default 1,
+  add column if not exists protein_grams numeric(6, 2),
+  add column if not exists ingredients text[] not null default '{}';
 
 create table if not exists public.meal_plans (
   id uuid primary key default gen_random_uuid(),
@@ -94,133 +119,40 @@ create table if not exists public.whatsapp_message_logs (
   created_at timestamptz not null default now()
 );
 
-create table if not exists public.program_plan_overrides (
-  plan_id text primary key,
-  name text,
-  duration text,
-  price integer check (price is null or price >= 0),
-  highlight text,
-  active boolean not null default true,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.orders
-  add column if not exists payment_status text not null default 'pending'
-    check (payment_status in ('pending', 'paid', 'failed')),
-  add column if not exists razorpay_order_id text,
-  add column if not exists razorpay_payment_id text,
-  add column if not exists delivery_address jsonb not null default '{}'::jsonb,
-  add column if not exists plan_activated_at timestamptz,
-  add column if not exists plan_expires_at timestamptz,
-  add column if not exists confirmed_at timestamptz,
-  add column if not exists confirmed_by uuid references auth.users(id) on delete set null;
-
-alter table public.orders drop constraint if exists orders_status_check;
-alter table public.orders
-  add constraint orders_status_check
-  check (status in ('new', 'confirmed', 'preparing', 'ready'));
-
-alter table public.menu_items
-  add column if not exists program_slug text not null default 'main',
-  add column if not exists photo_url text,
-  add column if not exists servings integer not null default 1,
-  add column if not exists protein_grams numeric(6, 2),
-  add column if not exists ingredients text[] not null default '{}';
-
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
 create index if not exists orders_payment_status_idx on public.orders (payment_status);
 create index if not exists orders_plan_expires_at_idx on public.orders (plan_expires_at);
-create index if not exists users_whatsapp_opt_in_idx on public.users (whatsapp_opt_in);
 create index if not exists customer_profiles_goal_idx on public.customer_profiles (primary_goal);
 create index if not exists customer_profiles_focus_idx on public.customer_profiles (health_focus);
 create index if not exists menu_items_active_idx on public.menu_items (active);
 create index if not exists menu_items_program_slug_idx on public.menu_items (program_slug);
 create index if not exists meal_plans_active_idx on public.meal_plans (active);
 create index if not exists whatsapp_message_logs_created_at_idx on public.whatsapp_message_logs (created_at desc);
-create index if not exists whatsapp_message_logs_status_idx on public.whatsapp_message_logs (status);
-create index if not exists whatsapp_message_logs_phone_idx on public.whatsapp_message_logs (phone);
-create index if not exists program_plan_overrides_active_idx on public.program_plan_overrides (active);
-
-create or replace function public.set_updated_at()
-returns trigger as $$
-begin
-  new.updated_at = now();
-  return new;
-end;
-$$ language plpgsql;
 
 drop trigger if exists orders_set_updated_at on public.orders;
 drop trigger if exists customer_profiles_set_updated_at on public.customer_profiles;
 drop trigger if exists menu_items_set_updated_at on public.menu_items;
 drop trigger if exists meal_plans_set_updated_at on public.meal_plans;
-drop trigger if exists program_plan_overrides_set_updated_at on public.program_plan_overrides;
 
 create trigger orders_set_updated_at
 before update on public.orders
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 create trigger customer_profiles_set_updated_at
 before update on public.customer_profiles
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 create trigger menu_items_set_updated_at
 before update on public.menu_items
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
 create trigger meal_plans_set_updated_at
 before update on public.meal_plans
-for each row
-execute function public.set_updated_at();
+for each row execute function public.set_updated_at();
 
-create trigger program_plan_overrides_set_updated_at
-before update on public.program_plan_overrides
-for each row
-execute function public.set_updated_at();
-
-alter table public.users enable row level security;
 alter table public.orders enable row level security;
 alter table public.customer_profiles enable row level security;
 alter table public.menu_items enable row level security;
 alter table public.meal_plans enable row level security;
 alter table public.whatsapp_message_logs enable row level security;
-alter table public.program_plan_overrides enable row level security;
-
-drop policy if exists "Users can read their own app user row" on public.users;
-create policy "Users can read their own app user row"
-on public.users
-for select
-to authenticated
-using (auth.uid() = id);
-
-drop policy if exists "Users can read their own orders" on public.orders;
-create policy "Users can read their own orders"
-on public.orders
-for select
-to authenticated
-using (auth.uid() = user_id);
-
-drop policy if exists "Users can read their own profile" on public.customer_profiles;
-create policy "Users can read their own profile"
-on public.customer_profiles
-for select
-to authenticated
-using (auth.uid() = user_id);
-
-drop policy if exists "Users can insert their own profile" on public.customer_profiles;
-create policy "Users can insert their own profile"
-on public.customer_profiles
-for insert
-to authenticated
-with check (auth.uid() = user_id);
-
-drop policy if exists "Users can update their own profile" on public.customer_profiles;
-create policy "Users can update their own profile"
-on public.customer_profiles
-for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);

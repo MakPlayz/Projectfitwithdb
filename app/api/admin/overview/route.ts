@@ -20,20 +20,23 @@ export async function GET(request: Request) {
       getProgramPlanOverrides(),
     ]);
 
-  const failed = [usersResult, profilesResult, ordersResult, menuResult, mealPlansResult].find(
-    (result) => result.error
-  );
+  const failed = [usersResult, profilesResult, ordersResult].find((result) => result.error);
 
   if (failed?.error) {
     return NextResponse.json({ error: failed.error }, { status: failed.status });
   }
 
+  const warnings = [menuResult, mealPlansResult]
+    .filter((result) => result.error)
+    .map((result) => result.error as string);
+
   return NextResponse.json({
     users: usersResult.data ?? [],
     profiles: profilesResult.data ?? [],
     orders: ordersResult.data ?? [],
-    menuItems: menuResult.data ?? [],
-    mealPlans: mealPlansResult.data ?? [],
+    menuItems: menuResult.error ? [] : menuResult.data ?? [],
+    mealPlans: mealPlansResult.error ? [] : mealPlansResult.data ?? [],
     programOverrides,
+    warnings,
   });
 }
