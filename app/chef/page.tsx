@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { LockKeyhole, AlertCircle } from 'lucide-react';
-import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { AlertCircle, ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { getAccessTokenExpiry, getSession, saveSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
 export default function ChefLogin() {
@@ -12,23 +13,26 @@ export default function ChefLogin() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (getSession()) {
+      router.replace('/chef/dashboard');
+    }
+  }, [router]);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
     setIsSubmitting(true);
 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-
-      const text = await response.text();
-      const data = text ? JSON.parse(text) : {};
+      const data = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error ?? 'Authentication failed.');
@@ -54,66 +58,87 @@ export default function ChefLogin() {
   };
 
   return (
-    <div className={styles.container}>
-      <form className={styles.form} onSubmit={handleLogin}>
-        <div className={styles.iconWrap}>
-          <LockKeyhole size={32} />
+    <main className={styles.shell}>
+      <section className={styles.brandPanel}>
+        <div className={styles.brandTop}>
+          <span className={styles.mark}>PF</span>
+          <span>Kitchen Console</span>
         </div>
-        
-        <h1 className={styles.title}>Chef Portal</h1>
-        <p className={styles.subtitle}>Enter kitchen credentials to access orders.</p>
-        
-        <div className={styles.inputGroup}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>
-            Email Address
-          </label>
-          <input 
-            type="email" 
-            placeholder="chef@projectfitvizag.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError('');
-            }}
-            className={`${styles.input} ${error ? styles.error : ''}`}
-            required
-            autoFocus
-          />
+        <div className={styles.brandCopy}>
+          <p>Chef Portal</p>
+          <h1>Review orders, confirm payments, and manage plan operations.</h1>
         </div>
-
-        <div className={styles.inputGroup} style={{ marginBottom: '32px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', color: 'var(--text-dim)' }}>
-            Password
-          </label>
-          <input 
-            type="password" 
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setError('');
-            }}
-            className={`${styles.input} ${error ? styles.error : ''}`}
-            required
-          />
-        </div>
-
-        {error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ff4d4d', fontSize: '13px', marginBottom: '24px', textAlign: 'left' }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
-            <p>{error}</p>
+        <div className={styles.signalGrid}>
+          <div>
+            <ShieldCheck size={18} />
+            <span>Admin allow-list</span>
           </div>
-        )}
+          <div>
+            <LockKeyhole size={18} />
+            <span>Password protected</span>
+          </div>
+        </div>
+      </section>
 
-        <button 
-          type="submit" 
-          disabled={isSubmitting} 
-          className="btn-primary" 
-          style={{ width: '100%', justifyContent: 'center', opacity: isSubmitting ? 0.7 : 1 }}
-        >
-          {isSubmitting ? 'Verifying...' : 'Access Dashboard'}
-        </button>
-      </form>
-    </div>
+      <section className={styles.authPanel}>
+        <form className={styles.form} onSubmit={handleLogin}>
+          <div className={styles.formHeader}>
+            <p>Secure Access</p>
+            <h2>Sign in to chef portal</h2>
+            <span>Use the chef account created with the approved admin email.</span>
+          </div>
+
+          {searchParams.get('confirmed') === '1' && (
+            <div className={styles.success}>Email confirmed. Sign in to continue.</div>
+          )}
+
+          <label>
+            <span>Email address</span>
+            <input
+              type="email"
+              placeholder="chef@projectfitvizag.com"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                setError('');
+              }}
+              required
+              autoFocus
+            />
+          </label>
+
+          <label>
+            <span>Password</span>
+            <input
+              type="password"
+              placeholder="Enter password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setError('');
+              }}
+              required
+            />
+          </label>
+
+          {error && (
+            <div className={styles.error}>
+              <AlertCircle size={16} />
+              <p>{error}</p>
+            </div>
+          )}
+
+          <button type="submit" className={styles.submitBtn} disabled={isSubmitting}>
+            {isSubmitting ? 'Verifying...' : 'Open dashboard'}
+            <ArrowRight size={17} />
+          </button>
+
+          <div className={styles.switchLine}>
+            Chef account not created?
+            <Link href="/chef/signup">Create chef access</Link>
+          </div>
+        </form>
+      </section>
+    </main>
   );
 }
