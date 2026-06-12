@@ -13,38 +13,6 @@ import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
 
-type RazorpayCheckoutResponse = {
-  razorpay_order_id: string;
-  razorpay_payment_id: string;
-  razorpay_signature: string;
-};
-
-type RazorpayOptions = {
-  key: string;
-  amount: number;
-  currency: string;
-  name: string;
-  description: string;
-  order_id: string;
-  handler: (response: RazorpayCheckoutResponse) => void;
-  prefill: {
-    contact: string;
-  };
-  notes: Record<string, string>;
-  theme: {
-    color: string;
-  };
-  modal: {
-    ondismiss: () => void;
-  };
-};
-
-declare global {
-  interface Window {
-    Razorpay?: new (options: RazorpayOptions) => { open: () => void };
-  }
-}
-
 const initialDeliveryAddress: DeliveryAddress = {
   addressLine1: '',
   addressLine2: '',
@@ -193,6 +161,11 @@ export default function Cart() {
       clearCart();
       setDeliveryAddress(initialDeliveryAddress);
       toggleCart();
+      if (data.whatsappUrl) {
+        window.location.href = data.whatsappUrl;
+        return;
+      }
+
       router.push(`/order-confirmed?id=${data.order.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not place your order.');

@@ -5,7 +5,7 @@ import {
 } from '@/lib/supabase-rest';
 import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
-import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
+import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 
 interface CreateOrderBody {
   items?: CartItem[];
@@ -15,6 +15,53 @@ interface CreateOrderBody {
 
 function normalizeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function getManualPaymentWhatsAppNumber() {
+  const raw = process.env.MY_NUMBER?.trim() ?? '';
+  const digits = raw.replace(/\D/g, '');
+
+  if (!digits) {
+    return null;
+  }
+
+  return digits.startsWith('91') ? digits : `91${digits}`;
+}
+
+function buildManualPaymentMessage({
+  order,
+  userId,
+  customerName,
+  deliveryAddress,
+}: {
+  order: ApiOrder;
+  userId: string;
+  customerName: string | null;
+  deliveryAddress: DeliveryAddress;
+}) {
+  const items = order.items
+    .map((item) => `${item.quantity}x ${item.name}`)
+    .join('\n');
+  const deliveryNote = isIncludedDeliveryPincode(deliveryAddress.pincode)
+    ? 'Delivery included in selected plan area'
+    : 'Rapido parcel fare applies separately';
+
+  return [
+    'Hi Project Fit, I want to confirm my order.',
+    '',
+    `Order ID: ${order.id}`,
+    `User ID: ${userId}`,
+    `Name: ${customerName ?? 'Project Fit customer'}`,
+    `Phone: ${deliveryAddress.phone}`,
+    `Pincode: ${deliveryAddress.pincode}`,
+    `Amount: Rs ${order.total.toLocaleString('en-IN')}`,
+    `Delivery: ${deliveryNote}`,
+    '',
+    'Plan/items:',
+    items,
+    '',
+    'Please send the QR payment scanner. I will share the payment screenshot after payment.',
+  ].join('\n');
 }
 
 function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
@@ -81,7 +128,7 @@ export async function GET(request: Request) {
   }
 
   const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
-    '/orders?select=*&payment_status=eq.paid&order=created_at.desc'
+    '/orders?select=*&order=created_at.desc'
   );
 
   if (error) {
@@ -185,6 +232,14 @@ export async function POST(request: Request) {
     user.user_metadata?.full_name ||
     user.email ||
     null;
+  const whatsappNumber = getManualPaymentWhatsAppNumber();
+
+  if (!whatsappNumber) {
+    return NextResponse.json(
+      { error: 'Manual payment WhatsApp number is not configured.' },
+      { status: 500 }
+    );
+  }
 
   const { data, error, status } = await supabaseRestFetch<ApiOrder[]>('/orders', {
     method: 'POST',
@@ -196,7 +251,7 @@ export async function POST(request: Request) {
       tax,
       total,
       status: 'new',
-      payment_status: 'paid',
+      payment_status: 'pending',
       delivery_address: addressValidation.deliveryAddress,
     }),
   });
@@ -211,5 +266,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Could not create local order.' }, { status: 500 });
   }
 
-  return NextResponse.json({ order }, { status: 201 });
+  const message = buildManualPaymentMessage({
+    order,
+    userId: user.id,
+    customerName,
+    deliveryAddress: addressValidation.deliveryAddress,
+  });
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
+  return NextResponse.json({ order, whatsappUrl }, { status: 201 });
 }

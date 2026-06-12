@@ -132,6 +132,10 @@ export default function ChefDashboard() {
               <strong>{orders.filter(o => o.status === 'new').length}</strong>
             </div>
             <div className={styles.statBox}>
+              <span>Pending Pay</span>
+              <strong>{orders.filter(o => o.payment_status === 'pending').length}</strong>
+            </div>
+            <div className={styles.statBox}>
               <span>Preparing</span>
               <strong>{orders.filter(o => o.status === 'preparing').length}</strong>
             </div>
@@ -170,6 +174,9 @@ export default function ChefDashboard() {
                   <div className={styles.statusBadge}>
                     {getStatusIcon(order.status)}
                     <span style={{ textTransform: 'capitalize' }}>{order.status}</span>
+                  </div>
+                  <div className={styles.statusBadge}>
+                    <span style={{ textTransform: 'capitalize' }}>Payment: {order.payment_status}</span>
                   </div>
                 </div>
 
