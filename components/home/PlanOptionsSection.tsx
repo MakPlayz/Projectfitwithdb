@@ -15,10 +15,6 @@ const sections = [
         name: '6-Day Plan',
         desc: 'Delivered Monday to Saturday (Sundays off). Perfect for staying clean during the workweek.',
       },
-      {
-        name: '7-Day Plan',
-        desc: 'Delivered Monday to Sunday (full week). Complete daily nutrition with zero gaps.',
-      },
     ],
   },
   {
@@ -32,12 +28,12 @@ const sections = [
         desc: 'A standard single-day plan. Order whenever you just need healthy meals for one day.',
       },
       {
-        name: 'Week Plan',
-        desc: 'A 6-day or 7-day subscription block to jumpstart your healthy eating habit.',
+        name: 'Weekly Plan',
+        desc: '6-Day Meal Plan. Delivered Monday to Saturday with Sundays off.',
       },
       {
-        name: 'Month Plan',
-        desc: 'A 24-day or 28-day subscription block. Required if custom calorie/macro adjustments or dietary swaps are needed.',
+        name: 'Monthly Plan',
+        desc: '26/27-Day Meal Plan. Required if custom calorie/macro adjustments or dietary swaps are needed.',
         highlight: true,
       },
     ],

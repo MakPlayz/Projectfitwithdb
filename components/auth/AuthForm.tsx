@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Mail, Lock, User, Phone, Calendar, Scale, Heart, Ruler } from 'lucide-react';
 import Broccoli from '@/components/ui/Broccoli';
 import { getAccessTokenExpiry, saveSession } from '@/lib/auth-client';
+import { isValidHeightCm, parseHeightToCm, type HeightUnit } from '@/lib/height';
 import { mergeStoredProfile } from '@/lib/profile-storage';
 import styles from './AuthForm.module.css';
 
@@ -28,6 +29,7 @@ export default function AuthForm({
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
   const isLeaf = variant === 'leaf' || variant === 'modal';
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -46,6 +48,13 @@ export default function AuthForm({
     setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    const height = parseHeightToCm(formData.get('height'), heightUnit);
+    if (mode === 'signup' && !isValidHeightCm(height)) {
+      setError('Enter a valid height in centimeters or feet/inches.');
+      setIsSubmitting(false);
+      return;
+    }
+
     const payload = {
       name: String(formData.get('name') ?? ''),
       email: String(formData.get('email') ?? ''),
@@ -54,7 +63,7 @@ export default function AuthForm({
       whatsappOptIn: formData.get('whatsappOptIn') === 'on',
       gender: String(formData.get('gender') ?? ''),
       age: formData.get('age') ? Number(formData.get('age')) : undefined,
-      height: formData.get('height') ? Number(formData.get('height')) : undefined,
+      height: height ?? undefined,
       weight: formData.get('weight') ? Number(formData.get('weight')) : undefined,
       healthNotes: String(formData.get('healthNotes') ?? ''),
     };
@@ -220,16 +229,31 @@ export default function AuthForm({
                   required
                 />
               </label>
-              <label className={styles.field}>
+              <label className={`${styles.field} ${styles.heightField}`}>
                 <Ruler size={16} />
                 <input
-                  type="number"
+                  type="text"
                   name="height"
-                  placeholder="Height (cm)"
-                  min={100}
-                  max={250}
+                  placeholder={heightUnit === 'cm' ? '170 cm' : '5 ft 7 in'}
+                  inputMode={heightUnit === 'cm' ? 'numeric' : 'text'}
                   required
                 />
+                <span className={styles.unitToggle} aria-label="Height unit">
+                  <button
+                    type="button"
+                    className={heightUnit === 'cm' ? styles.unitActive : styles.unit}
+                    onClick={() => setHeightUnit('cm')}
+                  >
+                    cm
+                  </button>
+                  <button
+                    type="button"
+                    className={heightUnit === 'ft-in' ? styles.unitActive : styles.unit}
+                    onClick={() => setHeightUnit('ft-in')}
+                  >
+                    ft/in
+                  </button>
+                </span>
               </label>
             </div>
 

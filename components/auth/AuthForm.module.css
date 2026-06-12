@@ -76,6 +76,18 @@
   font-size: 13px;
 }
 
+.leaf .heightField {
+  gap: 5px;
+  padding-right: 5px;
+}
+
+.leaf .unit,
+.leaf .unitActive {
+  min-height: 20px;
+  padding: 3px 5px;
+  font-size: 9px;
+}
+
 .leaf .submitBtn {
   width: min(52%, 130px);
   align-self: center;
@@ -301,6 +313,44 @@
   color: var(--text-muted);
 }
 
+.heightField {
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.heightField input {
+  min-width: 42px;
+}
+
+.unitToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.unit,
+.unitActive {
+  min-height: 22px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.unitActive {
+  background: var(--green);
+  color: var(--white);
+}
+
 .consent {
   display: flex;
   align-items: flex-start;
@@ -410,6 +460,11 @@
   display: flex;
   gap: 14px;
   width: 100%;
+}
+
+.fieldRow .field {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .leaf .fieldRow {

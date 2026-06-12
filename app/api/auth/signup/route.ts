@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     }
 
     const height = Number(body.height);
-    if (!Number.isFinite(height) || height < 100 || height > 250) {
-      return NextResponse.json({ error: 'Height must be between 100 cm and 250 cm.' }, { status: 400 });
+    if (!Number.isFinite(height) || height <= 0) {
+      return NextResponse.json({ error: 'Enter a valid height.' }, { status: 400 });
     }
 
     const weight = Number(body.weight);

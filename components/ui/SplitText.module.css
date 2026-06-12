@@ -9,28 +9,28 @@
   font-family: var(--font-display);
   font-size: clamp(3.35rem, 10vw, 6.35rem);
   font-weight: 900;
-  letter-spacing: -0.06em;
-  line-height: 0.92;
+  letter-spacing: -0.04em;
+  line-height: 0.95;
 }
 
 .heroTitle :global(.split-word:first-child) {
-  color: var(--white);
-  text-shadow: none;
+  color: #064e3b;
 }
 
 .heroTitle :global(.split-word:first-child .split-char) {
-  color: var(--white);
-  -webkit-text-stroke: 1px rgba(15, 23, 42, 0.88);
-  text-shadow: 0 2px 12px rgba(15, 23, 42, 0.2);
+  color: #064e3b;
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.72),
+    0 14px 34px rgba(6, 78, 59, 0.18);
 }
 
 .heroTitle :global(.split-word:last-child) {
-  color: var(--green);
+  color: #059669;
 }
 
 .heroTitle :global(.split-word:last-child .split-char) {
-  color: var(--green);
+  color: #059669;
   text-shadow:
-    0 0 18px rgba(5, 150, 105, 0.3),
-    0 12px 34px rgba(5, 150, 105, 0.22);
+    0 1px 0 rgba(255, 255, 255, 0.68),
+    0 14px 34px rgba(5, 150, 105, 0.2);
 }

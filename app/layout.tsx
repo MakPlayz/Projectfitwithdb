@@ -10,7 +10,7 @@ import AuthUrlScrubber from '@/components/auth/AuthUrlScrubber';
 export const metadata: Metadata = {
   title: 'Project Fit | Premium Health & Diet Nutrition',
   description:
-    'Personalized diet programs — weight loss, mass gain, pregnancy, PCOS, and diabetes-friendly meals delivered fresh.',
+    'Personalized diet programs for weight loss, mass gain, pregnancy, PCOS, and diabetes-friendly meals delivered fresh.',
 };
 
 export default function RootLayout({
@@ -24,9 +24,7 @@ export default function RootLayout({
         <AuthUrlScrubber />
         <BackgroundDecor />
         <Navbar />
-        <AuthGuard>
-          {children}
-        </AuthGuard>
+        <AuthGuard>{children}</AuthGuard>
         <Footer />
         <Cart />
       </body>

@@ -57,8 +57,8 @@ function validateProfile(body: ProfileRequestBody) {
   if (!Number.isFinite(body.age) || Number(body.age) < 13 || Number(body.age) > 100) {
     return 'Age must be between 13 and 100.';
   }
-  if (!Number.isFinite(body.height_cm) || Number(body.height_cm) < 100 || Number(body.height_cm) > 250) {
-    return 'Height must be between 100 cm and 250 cm.';
+  if (!Number.isFinite(body.height_cm) || Number(body.height_cm) <= 0) {
+    return 'Enter a valid height.';
   }
   if (!Number.isFinite(body.weight_kg) || Number(body.weight_kg) < 25 || Number(body.weight_kg) > 300) {
     return 'Weight must be between 25 kg and 300 kg.';

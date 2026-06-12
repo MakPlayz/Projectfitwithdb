@@ -45,6 +45,21 @@ function decodeJwtPayload(token: string) {
   }
 }
 
+function isUsableAccessToken(token: string) {
+  try {
+    const [header, payload, signature] = token.split('.');
+    if (!header || !payload || !signature) return false;
+    if (!/^[A-Za-z0-9_-]+$/.test(header) || !/^[A-Za-z0-9_-]+$/.test(payload)) return false;
+    if (!/^[A-Za-z0-9_-]+$/.test(signature) || signature.length < 16) return false;
+
+    const normalizedHeader = header.replace(/-/g, '+').replace(/_/g, '/');
+    const parsedHeader = JSON.parse(atob(normalizedHeader)) as { alg?: string };
+    return Boolean(parsedHeader.alg && parsedHeader.alg.toLowerCase() !== 'none');
+  } catch {
+    return false;
+  }
+}
+
 export function getAccessTokenExpiry(accessToken: string) {
   const payload = decodeJwtPayload(accessToken);
   return payload?.exp ? payload.exp * 1000 : null;
@@ -97,6 +112,11 @@ export async function ensureSession() {
   const current = getSession();
 
   if (!current) {
+    return null;
+  }
+
+  if (!isUsableAccessToken(current.accessToken)) {
+    clearSession();
     return null;
   }
 

@@ -8,6 +8,7 @@ import { getAuthHeaders } from '@/lib/auth-client';
 import type { DeliveryAddress } from '@/lib/backend-types';
 import { isServiceablePincode } from '@/lib/serviceable-pincodes';
 import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
+import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
 
@@ -62,10 +63,6 @@ function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
     return 'Enter a valid 6-digit pincode.';
   }
 
-  if (!isServiceablePincode(deliveryAddress.pincode)) {
-    return 'Sorry, we currently deliver only to selected Vizag areas.';
-  }
-
   if (!/^[6-9][0-9]{9}$/.test(deliveryAddress.phone.trim())) {
     return 'Enter a valid 10-digit mobile number.';
   }
@@ -99,6 +96,9 @@ export default function Cart() {
   if (!isOpen) return null;
 
   const total = getTotal();
+  const isOutsideSupportedDelivery =
+    /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim()) &&
+    !isServiceablePincode(deliveryAddress.pincode);
 
   const updateAddressField = (field: keyof DeliveryAddress, value: string) => {
     setDeliveryAddress((current) => {
@@ -160,7 +160,7 @@ export default function Cart() {
     setIsMapOpen(false);
 
     if (address.pincode && !isServiceablePincode(address.pincode)) {
-      setError('Sorry, we currently deliver only to selected Vizag areas.');
+      setError('');
     }
   };
 
@@ -339,13 +339,15 @@ export default function Cart() {
                     <input
                       value={deliveryAddress.pincode}
                       onChange={(event) => updateAddressField('pincode', event.target.value)}
-                      placeholder="400001"
+                      placeholder="530045"
                       inputMode="numeric"
                       maxLength={6}
                       autoComplete="postal-code"
                     />
                   </label>
                 </div>
+
+                {isOutsideSupportedDelivery && <DeliveryAreaNotice compact />}
 
                 <label className={styles.field}>
                   <span>Phone</span>

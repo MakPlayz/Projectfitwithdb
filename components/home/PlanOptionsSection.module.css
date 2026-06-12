@@ -1,6 +1,8 @@
 .section {
   padding: var(--space-section) 0;
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 86% 10%, rgba(234, 88, 12, 0.08), transparent 25%),
+    var(--bg);
   position: relative;
   overflow: hidden;
 }
@@ -11,6 +13,10 @@
   margin: 0 auto 56px;
 }
 
+.header :global(.section-subtitle) {
+  margin-inline: auto;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -19,20 +25,20 @@
 }
 
 .card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 24px;
+  background: linear-gradient(180deg, var(--surface) 0%, rgba(255, 255, 255, 0.78) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 18px;
   padding: 36px 32px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 16px 44px rgba(15, 23, 42, 0.05);
   transition: transform 0.4s var(--transition), box-shadow 0.4s var(--transition), border-color 0.4s ease;
   display: flex;
   flex-direction: column;
 }
 
 .card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-lg);
-  border-color: rgba(5, 150, 105, 0.15);
+  transform: translateY(-4px);
+  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.08);
+  border-color: rgba(5, 150, 105, 0.18);
 }
 
 .cardHeader {
@@ -40,12 +46,13 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 24px;
+  min-height: 56px;
 }
 
 .iconWrap {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -80,6 +87,7 @@
   flex-direction: column;
   gap: 22px;
   flex-grow: 1;
+  justify-content: flex-start;
 }
 
 .item {
@@ -90,7 +98,7 @@
 
 .itemTitleRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
 }
 
@@ -123,12 +131,13 @@
   color: var(--text-secondary);
   line-height: 1.45;
   padding-left: 24px;
+  max-width: 36ch;
 }
 
 .highlightedItem {
-  background: rgba(234, 88, 12, 0.02);
-  border: 1px dashed rgba(234, 88, 12, 0.18);
-  border-radius: 16px;
+  background: rgba(234, 88, 12, 0.04);
+  border: 1px solid rgba(234, 88, 12, 0.14);
+  border-radius: 14px;
   padding: 12px;
   margin: -4px -12px;
 }

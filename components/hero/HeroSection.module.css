@@ -7,7 +7,8 @@
 }
 
 .cardsSection {
-  margin-top: 72px;
+  position: relative;
+  margin-top: 64px;
 }
 
 .cardsHeader {
@@ -19,7 +20,8 @@
   font-family: var(--font-display);
   font-size: clamp(1.5rem, 3vw, 2rem);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 .cardsGrid {
@@ -27,27 +29,6 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   align-items: stretch;
-}
-
-.scrollHint {
-  position: absolute;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 40px;
-  border: 2px solid var(--border);
-  border-radius: 20px;
-  display: flex;
-  justify-content: center;
-  padding-top: 8px;
-}
-
-.scrollHint span {
-  width: 4px;
-  height: 8px;
-  background: var(--green);
-  border-radius: 4px;
 }
 
 @media (max-width: 1200px) {
@@ -81,7 +62,4 @@
     gap: 16px;
   }
 
-  .scrollHint {
-    display: none;
-  }
 }

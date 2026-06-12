@@ -1,19 +1,20 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Brain, Truck, BarChart3, Shield } from 'lucide-react';
+import { Sprout, Truck, BarChart3, Shield } from 'lucide-react';
 import styles from './FeaturesSection.module.css';
 
 const features = [
   {
-    icon: Brain,
-    title: 'AI-Personalized Plans',
-    description: 'Smart recommendations adapt to your goals, preferences, and progress over time.',
+    icon: Sprout,
+    title: 'Fresh Farm Procurement',
+    description:
+      'Fresh farm vegetables, branded oats and quinoa, farm-sourced milk, and house-prepared yogurt always.',
   },
   {
     icon: BarChart3,
     title: 'Transparent Macros',
-    description: 'Every meal labeled with calories, protein, carbs, and fats — no guesswork.',
+    description: 'Every meal labeled with calories, protein, carbs, and fats - no guesswork.',
   },
   {
     icon: Truck,
@@ -35,7 +36,7 @@ export default function FeaturesSection() {
           <p className="section-label">Why ProjectFit</p>
           <h2 className="section-title">Nutrition that feels premium</h2>
           <p className="section-subtitle">
-            A modern health-tech experience — from personalized plans to doorstep delivery.
+            Carefully sourced ingredients, transparent macros, and doorstep delivery for everyday healthy eating.
           </p>
         </div>
 

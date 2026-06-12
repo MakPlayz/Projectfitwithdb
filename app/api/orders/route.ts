@@ -5,7 +5,6 @@ import {
 } from '@/lib/supabase-rest';
 import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
-import { isServiceablePincode } from '@/lib/serviceable-pincodes';
 
 interface CreateOrderBody {
   items?: CartItem[];
@@ -40,13 +39,6 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
     return {
       deliveryAddress: null,
       error: 'Enter a complete delivery address, 6-digit pincode, and 10-digit phone number.',
-    };
-  }
-
-  if (!isServiceablePincode(deliveryAddress.pincode)) {
-    return {
-      deliveryAddress: null,
-      error: 'Sorry, we currently deliver only to selected Vizag areas.',
     };
   }
 

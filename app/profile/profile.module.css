@@ -186,6 +186,12 @@
   font-weight: 700;
 }
 
+.field small {
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .field input,
 .field select,
 .field textarea,
@@ -206,6 +212,46 @@
   border-color: var(--green);
   background: var(--white);
   box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+}
+
+.heightControl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.heightControl input {
+  min-width: 0;
+  flex: 1;
+}
+
+.unitToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-muted);
+}
+
+.unit,
+.unitActive {
+  min-height: 28px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.unitActive {
+  background: var(--green);
+  color: var(--white);
 }
 
 .field textarea {

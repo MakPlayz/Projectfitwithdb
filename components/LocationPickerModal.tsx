@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LocateFixed, MapPin, X } from 'lucide-react';
 import type { DeliveryAddress } from '@/lib/backend-types';
 import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import DeliveryAreaNotice from './DeliveryAreaNotice';
 import styles from './LocationPickerModal.module.css';
 
 type SelectedAddress = Pick<
@@ -219,7 +220,7 @@ export default function LocationPickerModal({
       if (!nextAddress.pincode) {
         setStatus('Location selected. Please enter pincode manually.');
       } else if (!isServiceablePincode(nextAddress.pincode)) {
-        setStatus('Location selected, but this pincode is not serviceable yet.');
+        setStatus('Location selected. Additional delivery charges may apply for this area.');
       } else {
         setStatus('Location selected.');
       }
@@ -366,9 +367,7 @@ export default function LocationPickerModal({
             </span>
           </div>
           {selected?.pincode && !isSelectedServiceable && (
-            <p className={styles.unserviceable}>
-              This pincode is outside the current ProjectFit delivery area.
-            </p>
+            <DeliveryAreaNotice compact />
           )}
           {status && <p className={styles.status}>{status}</p>}
           <div className={styles.actions}>
@@ -383,7 +382,7 @@ export default function LocationPickerModal({
               type="button"
               className="btn-primary"
               onClick={() => selected && onSelect(selected)}
-              disabled={!selected || !isSelectedServiceable}
+              disabled={!selected}
             >
               Use this address
             </button>

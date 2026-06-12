@@ -22,11 +22,11 @@ export default function HeroSection() {
         tagline={
           <>
             <Sparkles size={14} />
-            Weekly and Monthly plans only
+            Fresh daily, weekly, and monthly plans
           </>
         }
         title="Project Fit"
-        description="Personalized diet programs delivered fresh. Choose your path from weight loss to diabetes-friendly nutrition, crafted by experts and powered by data."
+        description="Fresh diet programs for real routines. Choose your path from weight loss to diabetes-friendly nutrition, then let the kitchen handle the daily work."
         ctaText="Explore Programs"
         ctaHref="#programs"
         secondaryCtaText="How It Works"
@@ -54,13 +54,6 @@ export default function HeroSection() {
         </div>
       </div>
 
-      <motion.div
-        className={styles.scrollHint}
-        animate={{ y: [0, 6, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        <span />
-      </motion.div>
     </section>
   );
 }

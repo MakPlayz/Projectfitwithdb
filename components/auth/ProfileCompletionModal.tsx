@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from 'react';
 import { getAuthHeaders, getSession, saveSession } from '@/lib/auth-client';
+import { isValidHeightCm, parseHeightToCm, type HeightUnit } from '@/lib/height';
 import { mergeStoredProfile } from '@/lib/profile-storage';
 import styles from './ProfileCompletionModal.module.css';
 
@@ -18,6 +19,7 @@ export default function ProfileCompletionModal({
 }: ProfileCompletionModalProps) {
   const [error, setError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -28,10 +30,16 @@ export default function ProfileCompletionModal({
     const fullName = String(formData.get('fullName') ?? '').trim();
     const phone = String(formData.get('phone') ?? '').trim();
     const age = Number(formData.get('age'));
-    const height = Number(formData.get('height'));
+    const height = parseHeightToCm(formData.get('height'), heightUnit);
     const weight = Number(formData.get('weight'));
     const gender = String(formData.get('gender') ?? '');
     const healthNotes = String(formData.get('healthNotes') ?? '').trim();
+
+    if (!isValidHeightCm(height)) {
+      setError('Enter a valid height in centimeters or feet/inches.');
+      setIsSaving(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/profile', {
@@ -111,8 +119,33 @@ export default function ProfileCompletionModal({
               <input name="age" type="number" min={13} max={100} required />
             </label>
             <label className={styles.field}>
-              <span>Height (cm)</span>
-              <input name="height" type="number" min={100} max={250} required />
+              <span>Height</span>
+              <div className={styles.heightControl}>
+                <input
+                  name="height"
+                  type="text"
+                  placeholder={heightUnit === 'cm' ? '170 cm' : '5 ft 7 in'}
+                  inputMode={heightUnit === 'cm' ? 'numeric' : 'text'}
+                  required
+                />
+                <div className={styles.unitToggle} aria-label="Height unit">
+                  <button
+                    type="button"
+                    className={heightUnit === 'cm' ? styles.unitActive : styles.unit}
+                    onClick={() => setHeightUnit('cm')}
+                  >
+                    cm
+                  </button>
+                  <button
+                    type="button"
+                    className={heightUnit === 'ft-in' ? styles.unitActive : styles.unit}
+                    onClick={() => setHeightUnit('ft-in')}
+                  >
+                    ft/in
+                  </button>
+                </div>
+              </div>
+              <small>Enter your height in either centimeters or feet/inches.</small>
             </label>
             <label className={styles.field}>
               <span>Weight (kg)</span>

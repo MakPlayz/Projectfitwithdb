@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ensureSession, getAuthHeaders, type ProjectFitSession } from '@/lib/auth-client';
+import { clearSession, ensureSession, getAuthHeaders, type ProjectFitSession } from '@/lib/auth-client';
 import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
 import { hasCompleteStoredProfile, readStoredProfile } from '@/lib/profile-storage';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
@@ -85,6 +85,16 @@ export default function AuthGuard({ children }: AuthGuardProps) {
         const data = response.ok ? await response.json() : null;
 
         if (cancelled) return;
+
+        if (response.status === 401 || response.status === 403) {
+          clearSession();
+          setSession(null);
+          setProfileRequired(false);
+          setAuthorized(false);
+          setLoading(false);
+          router.replace(buildAuthRedirect(pathname, '/signup'));
+          return;
+        }
 
         if (!data?.profile?.is_profile_complete) {
           const syncedStoredProfile = await syncStoredProfileIfComplete();

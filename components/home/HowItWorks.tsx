@@ -4,9 +4,21 @@ import { motion } from 'framer-motion';
 import styles from './HowItWorks.module.css';
 
 const steps = [
-  { step: '01', title: 'Choose your program', text: 'Select from five specialized diet paths tailored to your health goals.' },
-  { step: '02', title: 'Pick your plan', text: 'Flexible weekly or monthly plans tailored to your macros and delivery schedules.' },
-  { step: '03', title: 'Enjoy fresh meals', text: 'Chef-crafted dishes delivered daily — heat, eat, and track your progress.' },
+  {
+    step: '01',
+    title: 'Choose your program',
+    text: 'Pick the diet path that matches your current health goal.',
+  },
+  {
+    step: '02',
+    title: 'Pick your plan',
+    text: 'Choose a day, weekly, or monthly format with the right delivery rhythm.',
+  },
+  {
+    step: '03',
+    title: 'Enjoy fresh meals',
+    text: 'Chef-crafted dishes arrive fresh each day. Heat, eat, and keep moving.',
+  },
 ];
 
 export default function HowItWorks() {
@@ -16,6 +28,9 @@ export default function HowItWorks() {
         <div className={styles.header}>
           <p className="section-label">Process</p>
           <h2 className="section-title">How it works</h2>
+          <p className="section-subtitle">
+            A simple flow from plan choice to daily delivery, with profile details saved for repeat orders.
+          </p>
         </div>
 
         <div className={styles.steps}>
@@ -23,10 +38,10 @@ export default function HowItWorks() {
             <motion.div
               key={s.step}
               className={styles.step}
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.12 }}
+              initial={{ opacity: 0, y: 18 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ duration: 0.45, delay: i * 0.1 }}
             >
               <span className={styles.number}>{s.step}</span>
               <div>

@@ -5,8 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Camera, CheckCircle2, Mail, MapPin, ShieldCheck, UserCircle } from 'lucide-react';
-import { getAuthHeaders, getSession, saveSession, type ProjectFitSession } from '@/lib/auth-client';
+import { ensureSession, getAuthHeaders, getSession, saveSession, type ProjectFitSession } from '@/lib/auth-client';
 import type { DeliveryAddress } from '@/lib/backend-types';
+import {
+  formatHeightForUnit,
+  isValidHeightCm,
+  parseHeightToCm,
+  type HeightUnit,
+} from '@/lib/height';
 import {
   emptyStoredProfile,
   normalizeDeliveryAddress,
@@ -14,6 +20,8 @@ import {
   type StoredProfile,
   writeStoredProfile,
 } from '@/lib/profile-storage';
+import { isServiceablePincode } from '@/lib/serviceable-pincodes';
+import DeliveryAreaNotice from '@/components/DeliveryAreaNotice';
 import LocationPickerModal from '@/components/LocationPickerModal';
 import styles from './profile.module.css';
 
@@ -23,12 +31,14 @@ export default function ProfilePageClient() {
   const [session, setSession] = useState<ProjectFitSession | null>(null);
   const [profile, setProfile] = useState<StoredProfile>(emptyStoredProfile);
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const nextPath = getSafeNextPath(searchParams.get('next'));
 
   useEffect(() => {
-    const current = getSession();
+    async function initializeProfile() {
+      const current = await ensureSession();
     if (!current) {
       router.replace('/login');
       return;
@@ -57,7 +67,6 @@ export default function ProfilePageClient() {
       }
     });
 
-    async function loadRemoteProfile() {
       const headers = await getAuthHeaders();
       const response = await fetch('/api/profile', {
         headers,
@@ -81,7 +90,7 @@ export default function ProfilePageClient() {
         }));
     }
 
-    loadRemoteProfile().catch(() => undefined);
+    initializeProfile().catch(() => undefined);
   }, [router, searchParams]);
 
   const initials = useMemo(() => {
@@ -93,6 +102,9 @@ export default function ProfilePageClient() {
       .map((part) => part[0]?.toUpperCase())
       .join('');
   }, [profile.fullName, session?.user.email]);
+  const isOutsideSupportedDelivery =
+    /^[1-9][0-9]{5}$/.test(profile.deliveryAddress.pincode.trim()) &&
+    !isServiceablePincode(profile.deliveryAddress.pincode);
 
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -111,6 +123,17 @@ export default function ProfilePageClient() {
       },
     }));
     setStatus('');
+  };
+
+  const handleHeightUnitChange = (unit: HeightUnit) => {
+    setProfile((current) => {
+      const heightCm = parseHeightToCm(String(current.height), heightUnit);
+      return {
+        ...current,
+        height: heightCm ? formatHeightForUnit(heightCm, unit) : '',
+      };
+    });
+    setHeightUnit(unit);
   };
 
   const handleMapAddressSelect = (address: Partial<DeliveryAddress>) => {
@@ -143,8 +166,15 @@ export default function ProfilePageClient() {
     setError('');
     setStatus('');
 
+    const height = parseHeightToCm(String(profile.height), heightUnit);
+    if (!isValidHeightCm(height)) {
+      setError('Enter a valid height in centimeters or feet/inches.');
+      return;
+    }
+
     const nextProfile = {
       ...profile,
+      height,
       deliveryAddress: normalizeDeliveryAddress({
         ...profile.deliveryAddress,
         phone: profile.deliveryAddress.phone || profile.phone,
@@ -165,7 +195,7 @@ export default function ProfilePageClient() {
           phone: nextProfile.phone,
           age: Number(nextProfile.age),
           gender: nextProfile.gender || 'prefer-not-to-say',
-          height_cm: Number(nextProfile.height),
+          height_cm: height,
           weight_kg: Number(nextProfile.weight),
           health_notes: nextProfile.healthNotes,
         }),
@@ -281,8 +311,35 @@ export default function ProfilePageClient() {
                 <input name="age" type="number" min={13} max={100} value={profile.age} onChange={handleChange} required />
               </label>
               <label className={styles.field}>
-                <span>Height (cm)</span>
-                <input name="height" type="number" min={100} max={250} value={profile.height} onChange={handleChange} required />
+                <span>Height</span>
+                <div className={styles.heightControl}>
+                  <input
+                    name="height"
+                    type="text"
+                    value={profile.height}
+                    onChange={handleChange}
+                    placeholder={heightUnit === 'cm' ? '170 cm' : '5 ft 7 in'}
+                    inputMode={heightUnit === 'cm' ? 'numeric' : 'text'}
+                    required
+                  />
+                  <div className={styles.unitToggle} aria-label="Height unit">
+                    <button
+                      type="button"
+                      className={heightUnit === 'cm' ? styles.unitActive : styles.unit}
+                      onClick={() => handleHeightUnitChange('cm')}
+                    >
+                      cm
+                    </button>
+                    <button
+                      type="button"
+                      className={heightUnit === 'ft-in' ? styles.unitActive : styles.unit}
+                      onClick={() => handleHeightUnitChange('ft-in')}
+                    >
+                      ft/in
+                    </button>
+                  </div>
+                </div>
+                <small>Enter your height in either centimeters or feet/inches.</small>
               </label>
               <label className={styles.field}>
                 <span>Weight (kg)</span>
@@ -374,6 +431,7 @@ export default function ProfilePageClient() {
                   />
                 </label>
               </div>
+              {isOutsideSupportedDelivery && <DeliveryAreaNotice compact />}
             </div>
 
             <div className={styles.securityNote}>
