@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { categoryImages, type DietCategory, type DietPlan } from '@/data/diets';
+import { categoryImages, type DietCategory, type DietMeal, type DietPlan } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
 import { useCartStore } from '@/store/cartStore';
 import styles from './DietPageTemplate.module.css';
@@ -43,6 +43,20 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
 
   const handleToggleMeals = (planId: string, count: number) => {
     setSelectedMeals((prev) => ({ ...prev, [planId]: count }));
+  };
+
+  const handleAddMealToCart = (meal: DietMeal) => {
+    addItem({
+      id: `${diet.slug}-${meal.id}`,
+      name: `${diet.title} - ${meal.name}`,
+      basePrice: meal.price,
+      quantity: 1,
+      image: meal.image,
+      removedIngredients: [],
+      addOns: [],
+      totalPrice: meal.price,
+    });
+    toggleCart();
   };
 
   const dayPlans = diet.plans.filter((p) => p.duration === '1 day');
@@ -292,7 +306,12 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                       <span>F {meal.fat}g</span>
                     </div>
                     <div className={styles.mealFooter}>
-                      <button type="button" className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                        onClick={() => handleAddMealToCart(meal)}
+                      >
                         Add to cart
                       </button>
                     </div>

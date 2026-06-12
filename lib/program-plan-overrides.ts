@@ -1,4 +1,5 @@
-import { getDietBySlug, type DietCategory, type DietPlan } from '@/data/diets';
+import { getDietBySlug, type DietCategory, type DietMeal, type DietPlan } from '@/data/diets';
+import type { MenuItem } from '@/lib/backend-types';
 import { supabaseRestFetch } from './supabase-rest';
 
 export interface ProgramPlanOverride {
@@ -27,11 +28,53 @@ export async function getProgramPlanOverrides() {
   }
 }
 
+function normalizeMealType(value: string): DietMeal['mealType'] | undefined {
+  const normalized = value.toLowerCase();
+  if (['breakfast', 'lunch', 'dinner', 'snack', 'juice'].includes(normalized)) {
+    return normalized as DietMeal['mealType'];
+  }
+  return undefined;
+}
+
+function mapMenuItemToDietMeal(item: MenuItem, fallbackImage: string): DietMeal {
+  return {
+    id: item.id,
+    name: item.name,
+    description: item.description ?? (item.ingredients.join(', ') || 'Chef prepared meal.'),
+    image: item.photo_url?.startsWith('/') ? item.photo_url : fallbackImage,
+    calories: 0,
+    protein: Math.round(Number(item.protein_grams ?? 0)),
+    carbs: 0,
+    fat: 0,
+    price: item.price,
+    mealType: normalizeMealType(item.category),
+  };
+}
+
+async function getProgramMeals(slug: string, fallbackImage: string) {
+  try {
+    const { data, error } = await supabaseRestFetch<MenuItem[]>(
+      `/menu_items?active=eq.true&program_slug=eq.${encodeURIComponent(slug)}&select=*&order=category.asc,name.asc`
+    );
+
+    if (error) {
+      return [];
+    }
+
+    return (data ?? []).map((item) => mapMenuItemToDietMeal(item, fallbackImage));
+  } catch {
+    return [];
+  }
+}
+
 export async function getDietWithPlanOverrides(slug: string): Promise<DietCategory | undefined> {
   const diet = getDietBySlug(slug);
   if (!diet) return undefined;
 
-  const overrides = await getProgramPlanOverrides();
+  const [overrides, meals] = await Promise.all([
+    getProgramPlanOverrides(),
+    getProgramMeals(slug, diet.image),
+  ]);
   const overridesByPlanId = new Map(overrides.map((override) => [override.plan_id, override]));
   const plans = diet.plans
     .map((plan): DietPlan | null => {
@@ -49,5 +92,5 @@ export async function getDietWithPlanOverrides(slug: string): Promise<DietCatego
     })
     .filter((plan): plan is DietPlan => Boolean(plan));
 
-  return { ...diet, plans };
+  return { ...diet, plans, meals };
 }
