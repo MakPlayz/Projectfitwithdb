@@ -39,11 +39,13 @@ create table if not exists public.orders (
   subtotal integer not null,
   tax integer not null,
   total integer not null,
-  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready')),
+  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled')),
   payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
   razorpay_order_id text,
   razorpay_payment_id text,
+  payment_transaction_id text,
   delivery_address jsonb not null default '{}'::jsonb,
+  requested_start_date date,
   plan_activated_at timestamptz,
   plan_expires_at timestamptz,
   confirmed_at timestamptz,
@@ -109,7 +111,9 @@ alter table public.orders
     check (payment_status in ('pending', 'paid', 'failed')),
   add column if not exists razorpay_order_id text,
   add column if not exists razorpay_payment_id text,
+  add column if not exists payment_transaction_id text,
   add column if not exists delivery_address jsonb not null default '{}'::jsonb,
+  add column if not exists requested_start_date date,
   add column if not exists plan_activated_at timestamptz,
   add column if not exists plan_expires_at timestamptz,
   add column if not exists confirmed_at timestamptz,
@@ -118,7 +122,7 @@ alter table public.orders
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders
   add constraint orders_status_check
-  check (status in ('new', 'confirmed', 'preparing', 'ready'));
+  check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled'));
 
 alter table public.menu_items
   add column if not exists program_slug text not null default 'main',
@@ -131,6 +135,8 @@ create index if not exists orders_created_at_idx on public.orders (created_at de
 create index if not exists orders_status_idx on public.orders (status);
 create index if not exists orders_payment_status_idx on public.orders (payment_status);
 create index if not exists orders_plan_expires_at_idx on public.orders (plan_expires_at);
+create index if not exists orders_requested_start_date_idx on public.orders (requested_start_date);
+create index if not exists orders_payment_transaction_id_idx on public.orders (payment_transaction_id);
 create index if not exists users_whatsapp_opt_in_idx on public.users (whatsapp_opt_in);
 create index if not exists customer_profiles_goal_idx on public.customer_profiles (primary_goal);
 create index if not exists customer_profiles_focus_idx on public.customer_profiles (health_focus);

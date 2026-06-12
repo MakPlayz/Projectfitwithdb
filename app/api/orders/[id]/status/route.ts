@@ -3,13 +3,16 @@ import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { ApiOrder, ApiOrderStatus, PaymentStatus } from '@/lib/backend-types';
 import { requireAdminUser } from '@/lib/admin-auth';
 
-const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready'];
+const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
 
 interface StatusBody {
   status?: ApiOrderStatus;
   payment_status?: PaymentStatus;
-  action?: 'confirm';
+  action?: 'confirm' | 'cancel';
+  confirmation_order_id?: string;
+  confirmation_user_id?: string;
+  payment_transaction_id?: string;
 }
 
 function inferPlanDays(order: ApiOrder | null) {
@@ -32,6 +35,25 @@ export async function PATCH(
   const { id } = await context.params;
   const body = (await request.json()) as StatusBody;
 
+  if (body.action === 'cancel') {
+    const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'cancelled',
+          payment_status: 'failed',
+        }),
+      }
+    );
+
+    if (error) {
+      return NextResponse.json({ error }, { status });
+    }
+
+    return NextResponse.json({ order: data?.[0] ?? null });
+  }
+
   if (body.action === 'confirm') {
     const current = await supabaseRestFetch<ApiOrder[]>(
       `/orders?id=eq.${encodeURIComponent(id)}&select=*`
@@ -46,7 +68,26 @@ export async function PATCH(
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
-    const activatedAt = new Date();
+    const enteredOrderId = String(body.confirmation_order_id ?? '').trim();
+    const enteredUserId = String(body.confirmation_user_id ?? '').trim();
+    const transactionId = String(body.payment_transaction_id ?? '').trim();
+
+    if (enteredOrderId !== order.id) {
+      return NextResponse.json({ error: 'Entered order ID does not match this order.' }, { status: 400 });
+    }
+
+    if (!order.user_id || enteredUserId !== order.user_id) {
+      return NextResponse.json({ error: 'Entered user ID does not match this order.' }, { status: 400 });
+    }
+
+    if (transactionId.length < 4) {
+      return NextResponse.json({ error: 'Enter the payment transaction ID before confirming.' }, { status: 400 });
+    }
+
+    const confirmedAt = new Date();
+    const activatedAt = order.requested_start_date
+      ? new Date(`${order.requested_start_date}T00:00:00`)
+      : confirmedAt;
     const expiresAt = new Date(activatedAt);
     expiresAt.setDate(expiresAt.getDate() + inferPlanDays(order));
 
@@ -55,8 +96,9 @@ export async function PATCH(
       payment_status: 'paid',
       plan_activated_at: activatedAt.toISOString(),
       plan_expires_at: expiresAt.toISOString(),
-      confirmed_at: activatedAt.toISOString(),
+      confirmed_at: confirmedAt.toISOString(),
       confirmed_by: admin.user?.id ?? null,
+      payment_transaction_id: transactionId,
     };
 
     const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(

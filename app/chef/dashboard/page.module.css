@@ -479,6 +479,72 @@
   color: #12200e;
 }
 
+.dangerBtn,
+.deleteBtn {
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  background: rgba(248, 113, 113, 0.13) !important;
+  color: #fecaca !important;
+}
+
+.confirmBox {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(201, 242, 77, 0.18);
+  border-radius: 12px;
+  background: rgba(201, 242, 77, 0.055);
+}
+
+.confirmBox label {
+  display: grid;
+  gap: 6px;
+}
+
+.confirmBox label span {
+  color: #9fac9f;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.confirmBox input {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(205, 221, 210, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #f7fbf7;
+  padding: 0 10px;
+  outline: 0;
+}
+
+.confirmBox input:focus {
+  border-color: rgba(201, 242, 77, 0.72);
+  box-shadow: 0 0 0 3px rgba(201, 242, 77, 0.11);
+}
+
+.confirmBox button,
+.formActions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid rgba(201, 242, 77, 0.58);
+  background: #c9f24d;
+  color: #12200e;
+  font-weight: 850;
+}
+
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .planMeta,
 .detailGrid {
   display: grid;

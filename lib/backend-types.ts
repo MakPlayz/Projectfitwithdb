@@ -1,6 +1,6 @@
 import type { CartItem } from '@/store/cartStore';
 
-export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready';
+export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready' | 'cancelled';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
 export type CustomerGoal =
   | 'weight-loss'
@@ -137,7 +137,9 @@ export interface ApiOrder {
   payment_status: PaymentStatus;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
+  payment_transaction_id: string | null;
   delivery_address: DeliveryAddress;
+  requested_start_date: string | null;
   plan_activated_at: string | null;
   plan_expires_at: string | null;
   confirmed_at: string | null;

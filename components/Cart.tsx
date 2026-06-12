@@ -21,7 +21,12 @@ const initialDeliveryAddress: DeliveryAddress = {
   phone: '',
 };
 
-
+function getTomorrowDateValue() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(0, 0, 0, 0);
+  return date.toISOString().slice(0, 10);
+}
 
 function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
   if (!deliveryAddress.addressLine1.trim() || !deliveryAddress.city.trim()) {
@@ -51,6 +56,7 @@ export default function Cart() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(initialDeliveryAddress);
+  const [requestedStartDate, setRequestedStartDate] = useState(getTomorrowDateValue);
   const router = useRouter();
 
   useEffect(() => {
@@ -138,6 +144,7 @@ export default function Cart() {
           items,
           subtotal: total,
           deliveryAddress,
+          requestedStartDate,
         }),
       });
       const data = await response.json();
@@ -160,6 +167,7 @@ export default function Cart() {
 
       clearCart();
       setDeliveryAddress(initialDeliveryAddress);
+      setRequestedStartDate(getTomorrowDateValue());
       toggleCart();
       if (data.whatsappUrl) {
         window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
@@ -310,6 +318,20 @@ export default function Cart() {
                     autoComplete="tel"
                   />
                 </label>
+
+                <label className={styles.field}>
+                  <span>Meal plan start date</span>
+                  <input
+                    type="date"
+                    value={requestedStartDate}
+                    min={getTomorrowDateValue()}
+                    onChange={(event) => setRequestedStartDate(event.target.value)}
+                  />
+                </label>
+                <p className={styles.helpText}>
+                  After payment, the chef will verify your transaction and activate the plan for this start date.
+                  Choose tomorrow or any later date.
+                </p>
               </div>
 
               {error && <p className={styles.error}>{error}</p>}

@@ -13,6 +13,7 @@ import {
   Search,
   ShieldCheck,
   Soup,
+  Trash2,
   UsersRound,
   WalletCards,
 } from 'lucide-react';
@@ -200,7 +201,14 @@ export default function ChefDashboard() {
 
   async function patchOrder(
     orderId: string,
-    payload: { status?: ApiOrderStatus; payment_status?: PaymentStatus; action?: 'confirm' }
+    payload: {
+      status?: ApiOrderStatus;
+      payment_status?: PaymentStatus;
+      action?: 'confirm' | 'cancel';
+      confirmation_order_id?: string;
+      confirmation_user_id?: string;
+      payment_transaction_id?: string;
+    }
   ) {
     setStatus('');
     setError('');
@@ -247,6 +255,24 @@ export default function ChefDashboard() {
     setStatus('Saved.');
     await loadOverview();
     return true;
+  }
+
+  async function deleteMenuItem(id: string) {
+    setStatus('');
+    setError('');
+    const response = await fetch(`/api/admin/menu-items?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: await getAuthHeaders(),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setError(result.error ?? 'Could not delete menu item.');
+      return;
+    }
+
+    setStatus('Menu item deleted.');
+    await loadOverview();
   }
 
   function handleMenuSubmit(event: FormEvent<HTMLFormElement>, id?: string) {
@@ -487,7 +513,14 @@ export default function ChefDashboard() {
                   <section className={styles.editorGrid}>
                     <MenuEditor title={`Add item to ${menuProgram === 'main' ? 'main menu' : menuProgram}`} programSlug={menuProgram} onSubmit={handleMenuSubmit} />
                     {visibleMenuItems.map((item) => (
-                      <MenuEditor key={item.id} title={item.name} item={item} programSlug={menuProgram} onSubmit={(event) => handleMenuSubmit(event, item.id)} />
+                      <MenuEditor
+                        key={item.id}
+                        title={item.name}
+                        item={item}
+                        programSlug={menuProgram}
+                        onSubmit={(event) => handleMenuSubmit(event, item.id)}
+                        onDelete={() => deleteMenuItem(item.id)}
+                      />
                     ))}
                   </section>
                 </section>
@@ -562,8 +595,29 @@ function OrderCard({
 }: {
   order: ApiOrder;
   profile?: CustomerProfile | null;
-  onPatch: (orderId: string, payload: { status?: ApiOrderStatus; payment_status?: PaymentStatus; action?: 'confirm' }) => void;
+  onPatch: (
+    orderId: string,
+    payload: {
+      status?: ApiOrderStatus;
+      payment_status?: PaymentStatus;
+      action?: 'confirm' | 'cancel';
+      confirmation_order_id?: string;
+      confirmation_user_id?: string;
+      payment_transaction_id?: string;
+    }
+  ) => void;
 }) {
+  function handleConfirm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    onPatch(order.id, {
+      action: 'confirm',
+      confirmation_order_id: String(form.get('confirmation_order_id') ?? ''),
+      confirmation_user_id: String(form.get('confirmation_user_id') ?? ''),
+      payment_transaction_id: String(form.get('payment_transaction_id') ?? ''),
+    });
+  }
+
   return (
     <article className={styles.orderCard}>
       <div className={styles.cardHeader}>
@@ -584,6 +638,7 @@ function OrderCard({
       <div className={styles.detailBlock}>
         <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
         <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
+        <p>Requested start: {formatDate(order.requested_start_date)}</p>
       </div>
       <div className={styles.items}>
         {order.items.map((item) => (
@@ -597,11 +652,23 @@ function OrderCard({
           <span>{profile.diet_preference}</span>
         </div>
       )}
+      {order.status === 'new' && (
+        <form className={styles.confirmBox} onSubmit={handleConfirm}>
+          <Field name="confirmation_order_id" label="Enter order ID" defaultValue="" required />
+          <Field name="confirmation_user_id" label="Enter user ID" defaultValue="" required />
+          <Field name="payment_transaction_id" label="Transaction ID" defaultValue="" required />
+          <button type="submit">
+            <ShieldCheck size={15} />
+            Confirm order
+          </button>
+        </form>
+      )}
       <div className={styles.actions}>
-        <button type="button" onClick={() => onPatch(order.id, { action: 'confirm' })}>
-          <ShieldCheck size={15} />
-          Confirm order
-        </button>
+        {order.status === 'new' && (
+          <button type="button" className={styles.dangerBtn} onClick={() => onPatch(order.id, { action: 'cancel' })}>
+            Cancel order
+          </button>
+        )}
         {order.status === 'confirmed' && (
           <button type="button" onClick={() => onPatch(order.id, { status: 'preparing' })}>
             <ClipboardList size={15} />
@@ -674,11 +741,13 @@ function MenuEditor({
   programSlug,
   item,
   onSubmit,
+  onDelete,
 }: {
   title: string;
   programSlug: string;
   item?: MenuItem;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onDelete?: () => void;
 }) {
   return (
     <form className={styles.editorCard} onSubmit={onSubmit}>
@@ -702,7 +771,15 @@ function MenuEditor({
         <input name="active" type="checkbox" defaultChecked={item?.active !== false} />
         Active
       </label>
-      <button type="submit">Save menu item</button>
+      <div className={styles.formActions}>
+        <button type="submit">Save menu item</button>
+        {onDelete && (
+          <button type="button" className={styles.deleteBtn} onClick={onDelete}>
+            <Trash2 size={15} />
+            Delete
+          </button>
+        )}
+      </div>
     </form>
   );
 }

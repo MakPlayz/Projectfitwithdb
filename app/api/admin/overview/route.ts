@@ -1,8 +1,53 @@
 import { NextResponse } from 'next/server';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { getProgramPlanOverrides } from '@/lib/program-plan-overrides';
-import { supabaseRestFetch } from '@/lib/supabase-rest';
+import { supabaseAuthAdminFetch, supabaseRestFetch } from '@/lib/supabase-rest';
 import type { ApiOrder, CustomerProfile, MealPlan, MenuItem, ProjectFitUser } from '@/lib/backend-types';
+
+type AuthAdminUser = {
+  id: string;
+  email?: string;
+  phone?: string;
+  email_confirmed_at?: string | null;
+  phone_confirmed_at?: string | null;
+  created_at?: string;
+  user_metadata?: {
+    name?: string;
+    full_name?: string;
+    phone?: string;
+  };
+};
+
+type AuthUsersResponse = {
+  users?: AuthAdminUser[];
+};
+
+function mergeUsers(appUsers: ProjectFitUser[], authUsers: AuthAdminUser[]) {
+  const usersById = new Map(appUsers.map((user) => [user.id, user]));
+
+  for (const authUser of authUsers) {
+    if (!authUser.email_confirmed_at && !authUser.phone_confirmed_at) continue;
+    if (usersById.has(authUser.id)) continue;
+
+    usersById.set(authUser.id, {
+      id: authUser.id,
+      name:
+        authUser.user_metadata?.name ||
+        authUser.user_metadata?.full_name ||
+        authUser.email?.split('@')[0] ||
+        'Verified user',
+      email: authUser.email ?? '',
+      phone: authUser.phone || authUser.user_metadata?.phone || '',
+      whatsapp_opt_in: false,
+      whatsapp_opt_in_at: null,
+      created_at: authUser.created_at ?? new Date().toISOString(),
+    });
+  }
+
+  return Array.from(usersById.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  );
+}
 
 export async function GET(request: Request) {
   const admin = await requireAdminUser(request);
@@ -10,9 +55,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
-  const [usersResult, profilesResult, ordersResult, menuResult, mealPlansResult, programOverrides] =
+  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, programOverrides] =
     await Promise.all([
       supabaseRestFetch<ProjectFitUser[]>('/users?select=*&order=created_at.desc'),
+      supabaseAuthAdminFetch<AuthUsersResponse>('/admin/users?per_page=1000'),
       supabaseRestFetch<CustomerProfile[]>('/customer_profiles?select=*&order=updated_at.desc'),
       supabaseRestFetch<ApiOrder[]>('/orders?select=*&order=created_at.desc'),
       supabaseRestFetch<MenuItem[]>('/menu_items?select=*&order=category.asc,name.asc'),
@@ -26,12 +72,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: failed.error }, { status: failed.status });
   }
 
-  const warnings = [menuResult, mealPlansResult]
+  const warnings = [authUsersResult, menuResult, mealPlansResult]
     .filter((result) => result.error)
     .map((result) => result.error as string);
 
   return NextResponse.json({
-    users: usersResult.data ?? [],
+    users: mergeUsers(usersResult.data ?? [], authUsersResult.data?.users ?? []),
     profiles: profilesResult.data ?? [],
     orders: ordersResult.data ?? [],
     menuItems: menuResult.error ? [] : menuResult.data ?? [],

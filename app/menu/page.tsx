@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { Leaf } from 'lucide-react';
 import FoodCard from '@/components/FoodCard';
-import { menuData, categories } from '@/data/menu';
+import type { MenuItem as FoodMenuItem } from '@/data/menu';
 import { getAuthHeaders } from '@/lib/auth-client';
-import type { CustomerProfile } from '@/lib/backend-types';
+import type { CustomerProfile, MenuItem } from '@/lib/backend-types';
 import styles from './page.module.css';
 
 type SortOption = 'popular' | 'price-low' | 'price-high';
@@ -18,7 +18,14 @@ export default function MenuPage() {
   const [highProtein, setHighProtein] = useState(false);
   const [sortBy] = useState<SortOption>('popular');
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const hasMenuItems = menuData.length > 0;
+  const [menuItems, setMenuItems] = useState<FoodMenuItem[]>([]);
+  const [isMenuLoading, setIsMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState('');
+  const categories = useMemo(
+    () => ['All', ...Array.from(new Set(menuItems.map((item) => item.category).filter(Boolean)))],
+    [menuItems]
+  );
+  const hasMenuItems = menuItems.length > 0;
 
   useEffect(() => {
     let isMounted = true;
@@ -47,13 +54,55 @@ export default function MenuPage() {
 
     loadProfile();
 
+    async function loadMenu() {
+      try {
+        const response = await fetch('/api/menu-items', { cache: 'no-store' });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? 'Could not load menu items.');
+        }
+
+        const mappedItems = (data.menuItems ?? []).map((item: MenuItem): FoodMenuItem => ({
+          id: item.id,
+          name: item.name,
+          description: item.description ?? (item.ingredients.join(', ') || 'Chef prepared meal.'),
+          price: item.price,
+          image: item.photo_url?.startsWith('/') ? item.photo_url : '/images/projectfit-logo.png',
+          category: item.category,
+          isVeg: !/chicken|fish|egg|prawn|shrimp|meat/i.test(`${item.name} ${item.description ?? ''} ${item.ingredients.join(' ')}`),
+          isHighProtein: Number(item.protein_grams ?? 0) >= 20,
+          rating: 4.8,
+          calories: 0,
+          protein: Math.round(Number(item.protein_grams ?? 0)),
+          carbs: 0,
+          ingredients: item.ingredients,
+          addOns: [],
+          badge: item.program_slug === 'main' ? undefined : item.program_slug.replace('-', ' '),
+        }));
+
+        if (isMounted) {
+          setMenuItems(mappedItems);
+          setMenuError('');
+        }
+      } catch (err) {
+        if (isMounted) {
+          setMenuError(err instanceof Error ? err.message : 'Could not load menu items.');
+        }
+      } finally {
+        if (isMounted) setIsMenuLoading(false);
+      }
+    }
+
+    loadMenu();
+
     return () => {
       isMounted = false;
     };
   }, []);
 
   const filteredMenu = useMemo(() => {
-    let result = menuData;
+    let result = menuItems;
 
     if (activeCat !== 'All') {
       result = result.filter(item => item.category === activeCat);
@@ -69,7 +118,7 @@ export default function MenuPage() {
     });
 
     return result;
-  }, [activeCat, vegOnly, nonVegOnly, highProtein, sortBy]);
+  }, [activeCat, vegOnly, nonVegOnly, highProtein, sortBy, menuItems]);
 
   return (
     <main className={styles.main}>
@@ -150,7 +199,17 @@ export default function MenuPage() {
       </div>
 
       <div className="container">
-        {filteredMenu.length === 0 ? (
+        {isMenuLoading ? (
+          <div className={styles.empty}>
+            <h3>Loading menu</h3>
+            <p>Fetching the latest chef-approved items.</p>
+          </div>
+        ) : menuError ? (
+          <div className={styles.empty}>
+            <h3>Menu unavailable</h3>
+            <p>{menuError}</p>
+          </div>
+        ) : filteredMenu.length === 0 ? (
           <div className={styles.empty}>
             <h3>{hasMenuItems ? 'No items found' : 'No menu options added yet'}</h3>
             <p>

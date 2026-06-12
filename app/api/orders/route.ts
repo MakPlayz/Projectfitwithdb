@@ -13,6 +13,7 @@ interface CreateOrderBody {
   items?: CartItem[];
   subtotal?: number;
   deliveryAddress?: Partial<DeliveryAddress>;
+  requestedStartDate?: string;
 }
 
 function normalizeText(value: unknown) {
@@ -57,6 +58,7 @@ function buildManualPaymentMessage({
     `Phone: ${deliveryAddress.phone}`,
     `Pincode: ${deliveryAddress.pincode}`,
     `Amount: Rs ${order.total.toLocaleString('en-IN')}`,
+    `Requested start date: ${order.requested_start_date ?? 'Not selected'}`,
     `Delivery: ${deliveryNote}`,
     '',
     'Plan/items:',
@@ -100,6 +102,59 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
   }
 
   return { deliveryAddress, error: null };
+}
+
+function getMinimumStartDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function normalizeStartDate(value: unknown) {
+  const raw = normalizeText(value);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return { date: null, error: 'Select when you want your meal plan to start.' };
+  }
+
+  const selected = new Date(`${raw}T00:00:00`);
+  if (Number.isNaN(selected.getTime()) || selected < getMinimumStartDate()) {
+    return {
+      date: null,
+      error: 'Start date must be at least one full day after today.',
+    };
+  }
+
+  return { date: raw, error: null };
+}
+
+function inferProgramKey(items: CartItem[]) {
+  const text = items.map((item) => `${item.id} ${item.name}`).join(' ').toLowerCase();
+  const prefix = items[0]?.id?.slice(0, 2).toLowerCase();
+  const prefixMap: Record<string, string> = {
+    wl: 'weight-loss',
+    mg: 'mass-gain',
+    pr: 'pregnancy',
+    pc: 'pcos-pcod',
+    db: 'diabetes',
+    kd: 'kids',
+  };
+
+  if (prefix && prefixMap[prefix]) return prefixMap[prefix];
+  if (text.includes('weight')) return 'weight-loss';
+  if (text.includes('mass')) return 'mass-gain';
+  if (text.includes('preg')) return 'pregnancy';
+  if (text.includes('pcos') || text.includes('pcod')) return 'pcos-pcod';
+  if (text.includes('diabetes')) return 'diabetes';
+  if (text.includes('kids')) return 'kids';
+  return items[0]?.id ?? 'meal-plan';
+}
+
+function isBlockingOrder(order: ApiOrder) {
+  if (order.status === 'cancelled' || order.payment_status === 'failed') return false;
+  if (order.status === 'new') return true;
+  if (!order.plan_expires_at) return ['confirmed', 'preparing', 'ready'].includes(order.status);
+  return new Date(order.plan_expires_at) >= new Date();
 }
 
 export async function GET(request: Request) {
@@ -177,6 +232,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const startDate = normalizeStartDate(body.requestedStartDate);
+  if (startDate.error || !startDate.date) {
+    return NextResponse.json({ error: startDate.error }, { status: 400 });
+  }
+
   const addressValidation = validateDeliveryAddress(body.deliveryAddress);
   if (addressValidation.error || !addressValidation.deliveryAddress) {
     return NextResponse.json(
@@ -188,6 +248,34 @@ export async function POST(request: Request) {
   const tax = Math.round(body.subtotal * 0.05);
   const total = body.subtotal + tax;
   const user = userResult.data;
+  const programKey = inferProgramKey(body.items);
+  const existingOrdersResult = await supabaseRestFetch<ApiOrder[]>(
+    `/orders?user_id=eq.${user.id}&select=*`
+  );
+
+  if (existingOrdersResult.error) {
+    return NextResponse.json(
+      { error: existingOrdersResult.error },
+      { status: existingOrdersResult.status || 500 }
+    );
+  }
+
+  const duplicateOrder = (existingOrdersResult.data ?? []).find(
+    (order) => isBlockingOrder(order) && inferProgramKey(order.items) === programKey
+  );
+
+  if (duplicateOrder) {
+    return NextResponse.json(
+      {
+        error:
+          duplicateOrder.status === 'new'
+            ? 'You already have a pending order for this program. Complete payment or wait for the chef to cancel it before ordering again.'
+            : 'You already have an active order for this program. You can order this program again after the current plan expires.',
+      },
+      { status: 409 }
+    );
+  }
+
   const profileResult = await supabaseRestFetch<CustomerProfile[]>(
     `/customer_profiles?user_id=eq.${user.id}&select=*`
   );
@@ -242,6 +330,7 @@ export async function POST(request: Request) {
       status: 'new',
       payment_status: 'pending',
       delivery_address: addressValidation.deliveryAddress,
+      requested_start_date: startDate.date,
     }),
   });
 

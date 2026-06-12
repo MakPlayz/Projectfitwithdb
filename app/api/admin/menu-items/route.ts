@@ -106,3 +106,19 @@ export async function PATCH(request: Request) {
   if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
   return NextResponse.json({ menuItem: result.data?.[0] ?? null });
 }
+
+export async function DELETE(request: Request) {
+  const admin = await requireAdminUser(request);
+  if (admin.error) return NextResponse.json({ error: admin.error }, { status: admin.status });
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id')?.trim();
+  if (!id) return NextResponse.json({ error: 'Menu item id is required.' }, { status: 400 });
+
+  const result = await supabaseRestFetch<MenuItem[]>(`/menu_items?id=eq.${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+
+  if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
+  return NextResponse.json({ deleted: true });
+}

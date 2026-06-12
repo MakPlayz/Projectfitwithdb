@@ -1,0 +1,151 @@
+'use client';
+
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
+import { CalendarClock, CreditCard, Sparkles } from 'lucide-react';
+import { getAuthHeaders } from '@/lib/auth-client';
+import type { ApiOrder } from '@/lib/backend-types';
+import styles from './page.module.css';
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(value));
+}
+
+function getPlanName(order: ApiOrder) {
+  return order.items[0]?.name ?? 'Meal plan';
+}
+
+export default function MyPlanClient() {
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPlans() {
+      try {
+        const response = await fetch('/api/my-plan', {
+          cache: 'no-store',
+          headers: await getAuthHeaders(),
+        });
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error ?? 'Could not load your plans.');
+        }
+
+        if (!cancelled) {
+          setOrders(data.orders ?? []);
+          setError('');
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Could not load your plans.');
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    loadPlans();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const pendingOrders = useMemo(
+    () => orders.filter((order) => order.status === 'new' && order.payment_status === 'pending'),
+    [orders]
+  );
+  const activeOrders = useMemo(
+    () => orders.filter((order) => ['confirmed', 'preparing', 'ready'].includes(order.status) && order.payment_status === 'paid'),
+    [orders]
+  );
+
+  if (isLoading) {
+    return <div className={styles.emptyCard}>Loading your plan details...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className={styles.emptyCard}>
+        <span className={styles.badge}>Sign in required</span>
+        <h2>We could not load your plan</h2>
+        <p>{error}</p>
+        <div className={styles.actions}>
+          <Link href="/login" className="btn-primary">Sign in</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (pendingOrders.length === 0 && activeOrders.length === 0) {
+    return (
+      <div className={styles.emptyCard}>
+        <div className={styles.iconWrap}>
+          <Sparkles size={34} />
+        </div>
+        <span className={styles.badge}>No active plan</span>
+        <h2>You do not have a plan yet</h2>
+        <p>Pending and active plans will appear here after you place an order.</p>
+        <div className={styles.actions}>
+          <Link href="/" className="btn-primary">Browse programs</Link>
+          <Link href="/profile" className="btn-secondary">Update profile</Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.planStack}>
+      {pendingOrders.length > 0 && (
+        <section className={styles.planPanel}>
+          <span className={styles.badge}>Pending chef confirmation</span>
+          <h2>Payment shared, plan waiting for activation</h2>
+          <p>
+            After you pay and send the screenshot on WhatsApp, the chef verifies your order ID,
+            user ID, and transaction ID. Your meals start on the date you selected after activation.
+          </p>
+          <div className={styles.planGrid}>
+            {pendingOrders.map((order) => (
+              <article key={order.id} className={styles.planCard}>
+                <CreditCard size={20} />
+                <strong>{getPlanName(order)}</strong>
+                <span>Order ID: {order.id}</span>
+                <span>Ordered on: {formatDate(order.created_at)}</span>
+                <span>Requested start: {formatDate(order.requested_start_date)}</span>
+                <span>Amount: Rs {order.total.toLocaleString('en-IN')}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {activeOrders.length > 0 && (
+        <section className={styles.planPanel}>
+          <span className={styles.badgeActive}>Active plan</span>
+          <h2>Your active meal plan</h2>
+          <div className={styles.planGrid}>
+            {activeOrders.map((order) => (
+              <article key={order.id} className={styles.planCard}>
+                <CalendarClock size={20} />
+                <strong>{getPlanName(order)}</strong>
+                <span>Status: {order.status}</span>
+                <span>Start: {formatDate(order.plan_activated_at)}</span>
+                <span>Expiry: {formatDate(order.plan_expires_at)}</span>
+                <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}

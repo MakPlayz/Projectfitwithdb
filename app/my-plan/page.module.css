@@ -124,6 +124,75 @@
   gap: 12px;
 }
 
+.planStack {
+  display: grid;
+  gap: 20px;
+}
+
+.planPanel {
+  padding: clamp(22px, 4vw, 36px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--white);
+  box-shadow: var(--shadow);
+}
+
+.planPanel h2 {
+  margin: 12px 0 8px;
+  font-family: var(--font-display);
+  font-size: clamp(1.45rem, 3vw, 2rem);
+}
+
+.planPanel > p {
+  max-width: 760px;
+  color: var(--text-dim);
+  line-height: 1.65;
+}
+
+.badgeActive {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: var(--green-light);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.planCard {
+  display: grid;
+  gap: 7px;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+  text-align: left;
+}
+
+.planCard svg {
+  color: var(--green);
+}
+
+.planCard strong {
+  font-family: var(--font-display);
+  color: var(--text);
+}
+
+.planCard span {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
 @media (max-width: 640px) {
   .featureGrid {
     grid-template-columns: 1fr;
