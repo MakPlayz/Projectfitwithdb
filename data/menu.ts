@@ -12,7 +12,6 @@ export interface MenuItem {
   category: string;
   isVeg: boolean;
   isHighProtein: boolean;
-  rating: number;
   calories: number;
   protein: number;
   carbs: number;

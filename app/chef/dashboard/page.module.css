@@ -369,7 +369,8 @@
 }
 
 .orderGrid,
-.planGrid {
+.planGrid,
+.feedbackGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 1fr));
   gap: 14px;
@@ -377,10 +378,39 @@
 
 .orderCard,
 .planCard,
+.feedbackCard,
 .editorCard,
 .programCard,
 .legacyPlans {
   padding: 16px;
+}
+
+.feedbackCard {
+  display: grid;
+  gap: 12px;
+  border: 1px solid rgba(205, 221, 210, 0.13);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(201, 242, 77, 0.08), rgba(255, 255, 255, 0.035)),
+    rgba(18, 25, 22, 0.82);
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.22);
+}
+
+.feedbackCard strong,
+.feedbackCard span,
+.feedbackCard small {
+  display: block;
+}
+
+.feedbackCard span,
+.feedbackCard small {
+  color: #a8b5aa;
+  font-size: 12px;
+}
+
+.feedbackCard p {
+  color: #edf7ee;
+  line-height: 1.6;
 }
 
 .cardHeader {

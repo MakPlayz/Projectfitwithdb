@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ClipboardList,
   LogOut,
+  MessageSquareText,
   Pencil,
   RefreshCw,
   Search,
@@ -18,7 +19,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { dietCategories } from '@/data/diets';
-import type { ApiOrder, ApiOrderStatus, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
+import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearSession, getAuthHeaders, getSession } from '@/lib/auth-client';
 import styles from './page.module.css';
@@ -27,18 +28,20 @@ type AdminOverview = {
   users: ProjectFitUser[];
   profiles: CustomerProfile[];
   orders: ApiOrder[];
+  feedback: CustomerFeedback[];
   menuItems: MenuItem[];
   mealPlans: MealPlan[];
   programOverrides: ProgramPlanOverride[];
   warnings?: string[];
 };
 
-type Tab = 'pending' | 'active' | 'users' | 'menu' | 'pricing';
+type Tab = 'pending' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
   profiles: [],
   orders: [],
+  feedback: [],
   menuItems: [],
   mealPlans: [],
   programOverrides: [],
@@ -49,6 +52,7 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'pending', label: 'Pending orders', icon: ClipboardList },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
   { id: 'users', label: 'Users', icon: UsersRound },
+  { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
   { id: 'menu', label: 'Menus', icon: Soup },
   { id: 'pricing', label: 'Pricing', icon: WalletCards },
 ];
@@ -183,6 +187,7 @@ export default function ChefDashboard() {
   const selectedUser = data.users.find((user) => user.id === selectedUserId) ?? data.users[0] ?? null;
   const selectedProfile = selectedUser ? profilesByUserId.get(selectedUser.id) ?? null : null;
   const selectedUserOrders = selectedUser ? data.orders.filter((order) => order.user_id === selectedUser.id) : [];
+  const selectedUserFeedback = selectedUser ? data.feedback.filter((item) => item.user_id === selectedUser.id) : [];
 
   const filteredUsers = data.users.filter((user) => {
     if (!normalizedQuery) return true;
@@ -501,7 +506,36 @@ export default function ChefDashboard() {
                       </button>
                     ))}
                   </div>
-                  <UserDetail user={selectedUser} profile={selectedProfile} orders={selectedUserOrders} />
+                  <UserDetail user={selectedUser} profile={selectedProfile} orders={selectedUserOrders} feedback={selectedUserFeedback} />
+                </section>
+              )}
+
+              {activeTab === 'feedback' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Customer feedback</h2>
+                      <p>All feedback submitted from customer profiles, newest first.</p>
+                    </div>
+                    <span>{data.feedback.length} total</span>
+                  </div>
+
+                  {data.feedback.length === 0 ? (
+                    <EmptyState title="No feedback yet" text="Customer feedback submitted from profile pages will appear here." />
+                  ) : (
+                    <div className={styles.feedbackGrid}>
+                      {data.feedback.map((item) => (
+                        <article key={item.id} className={styles.feedbackCard}>
+                          <div>
+                            <strong>{item.customer_name ?? 'Project Fit customer'}</strong>
+                            <span>{item.customer_email ?? item.user_id}</span>
+                          </div>
+                          <p>{item.message}</p>
+                          <small>{formatDateTime(item.created_at)}</small>
+                        </article>
+                      ))}
+                    </div>
+                  )}
                 </section>
               )}
 
@@ -722,7 +756,17 @@ function OrderCard({
   );
 }
 
-function UserDetail({ user, profile, orders }: { user: ProjectFitUser | null; profile: CustomerProfile | null; orders: ApiOrder[] }) {
+function UserDetail({
+  user,
+  profile,
+  orders,
+  feedback,
+}: {
+  user: ProjectFitUser | null;
+  profile: CustomerProfile | null;
+  orders: ApiOrder[];
+  feedback: CustomerFeedback[];
+}) {
   if (!user) {
     return <EmptyState title="No user selected" text="Registered users will appear here." />;
   }
@@ -764,6 +808,19 @@ function UserDetail({ user, profile, orders }: { user: ProjectFitUser | null; pr
             <div key={order.id}>
               <span className={styles.mono}>{order.id}</span>
               <small>{getPrimaryPlan(order)} | {order.status} | Rs {order.total.toLocaleString('en-IN')}</small>
+            </div>
+          ))
+        )}
+      </div>
+      <div className={styles.orderHistory}>
+        <strong>Feedback</strong>
+        {feedback.length === 0 ? (
+          <p>No feedback yet.</p>
+        ) : (
+          feedback.map((item) => (
+            <div key={item.id}>
+              <span>{item.message}</span>
+              <small>{formatDateTime(item.created_at)}</small>
             </div>
           ))
         )}

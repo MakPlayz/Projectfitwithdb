@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { getProgramPlanOverrides } from '@/lib/program-plan-overrides';
 import { supabaseAuthAdminFetch, supabaseRestFetch } from '@/lib/supabase-rest';
-import type { ApiOrder, CustomerProfile, MealPlan, MenuItem, ProjectFitUser } from '@/lib/backend-types';
+import type { ApiOrder, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, ProjectFitUser } from '@/lib/backend-types';
 
 type AuthAdminUser = {
   id: string;
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
-  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, programOverrides] =
+  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, feedbackResult, programOverrides] =
     await Promise.all([
       supabaseRestFetch<ProjectFitUser[]>('/users?select=*&order=created_at.desc'),
       supabaseAuthAdminFetch<AuthUsersResponse>('/admin/users?per_page=1000'),
@@ -63,6 +63,7 @@ export async function GET(request: Request) {
       supabaseRestFetch<ApiOrder[]>('/orders?select=*&order=created_at.desc'),
       supabaseRestFetch<MenuItem[]>('/menu_items?select=*&order=category.asc,name.asc'),
       supabaseRestFetch<MealPlan[]>('/meal_plans?select=*&order=name.asc'),
+      supabaseRestFetch<CustomerFeedback[]>('/customer_feedback?select=*&order=created_at.desc'),
       getProgramPlanOverrides(),
     ]);
 
@@ -72,16 +73,27 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: failed.error }, { status: failed.status });
   }
 
-  const warnings = [authUsersResult, menuResult, mealPlansResult]
+  const warnings = [authUsersResult, menuResult, mealPlansResult, feedbackResult]
     .filter((result) => result.error)
     .map((result) => result.error as string);
+  const users = mergeUsers(usersResult.data ?? [], authUsersResult.data?.users ?? []);
+  const usersById = new Map(users.map((user) => [user.id, user]));
+  const feedback = (feedbackResult.error ? [] : feedbackResult.data ?? []).map((item) => {
+    const user = usersById.get(item.user_id);
+    return {
+      ...item,
+      customer_name: user?.name ?? null,
+      customer_email: user?.email ?? null,
+    };
+  });
 
   return NextResponse.json({
-    users: mergeUsers(usersResult.data ?? [], authUsersResult.data?.users ?? []),
+    users,
     profiles: profilesResult.data ?? [],
     orders: ordersResult.data ?? [],
     menuItems: menuResult.error ? [] : menuResult.data ?? [],
     mealPlans: mealPlansResult.error ? [] : mealPlansResult.data ?? [],
+    feedback,
     programOverrides,
     warnings,
   });

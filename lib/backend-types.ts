@@ -70,6 +70,17 @@ export interface ProjectFitUser {
   created_at: string;
 }
 
+export interface CustomerFeedback {
+  id: string;
+  user_id: string;
+  message: string;
+  status: 'new' | 'reviewed' | 'archived';
+  created_at: string;
+  updated_at: string;
+  customer_name?: string | null;
+  customer_email?: string | null;
+}
+
 export interface MenuItem {
   id: string;
   name: string;

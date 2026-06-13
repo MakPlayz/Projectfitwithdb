@@ -308,9 +308,6 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                       <span>C {meal.carbs}g</span>
                       <span>F {meal.fat}g</span>
                     </div>
-                    <div className={styles.mealFooter}>
-                      <span className={styles.includedMeal}>Included in selected plans</span>
-                    </div>
                   </div>
                 </motion.article>
               ))}

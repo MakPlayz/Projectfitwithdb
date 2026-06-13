@@ -98,6 +98,15 @@ create table if not exists public.whatsapp_message_logs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.customer_feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  message text not null check (char_length(trim(message)) between 5 and 1200),
+  status text not null default 'new' check (status in ('new', 'reviewed', 'archived')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.program_plan_overrides (
   plan_id text primary key,
   name text,
@@ -157,6 +166,9 @@ create index if not exists meal_plans_active_idx on public.meal_plans (active);
 create index if not exists whatsapp_message_logs_created_at_idx on public.whatsapp_message_logs (created_at desc);
 create index if not exists whatsapp_message_logs_status_idx on public.whatsapp_message_logs (status);
 create index if not exists whatsapp_message_logs_phone_idx on public.whatsapp_message_logs (phone);
+create index if not exists customer_feedback_user_id_idx on public.customer_feedback (user_id);
+create index if not exists customer_feedback_created_at_idx on public.customer_feedback (created_at desc);
+create index if not exists customer_feedback_status_idx on public.customer_feedback (status);
 create index if not exists program_plan_overrides_active_idx on public.program_plan_overrides (active);
 
 create or replace function public.set_updated_at()
@@ -172,6 +184,7 @@ drop trigger if exists customer_profiles_set_updated_at on public.customer_profi
 drop trigger if exists menu_items_set_updated_at on public.menu_items;
 drop trigger if exists meal_plans_set_updated_at on public.meal_plans;
 drop trigger if exists program_plan_overrides_set_updated_at on public.program_plan_overrides;
+drop trigger if exists customer_feedback_set_updated_at on public.customer_feedback;
 
 create trigger orders_set_updated_at
 before update on public.orders
@@ -198,6 +211,11 @@ before update on public.program_plan_overrides
 for each row
 execute function public.set_updated_at();
 
+create trigger customer_feedback_set_updated_at
+before update on public.customer_feedback
+for each row
+execute function public.set_updated_at();
+
 alter table public.users enable row level security;
 alter table public.orders enable row level security;
 alter table public.customer_profiles enable row level security;
@@ -205,6 +223,7 @@ alter table public.menu_items enable row level security;
 alter table public.meal_plans enable row level security;
 alter table public.whatsapp_message_logs enable row level security;
 alter table public.program_plan_overrides enable row level security;
+alter table public.customer_feedback enable row level security;
 
 drop policy if exists "Users can read their own app user row" on public.users;
 create policy "Users can read their own app user row"

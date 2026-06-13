@@ -9,7 +9,7 @@ import { getAuthHeaders } from '@/lib/auth-client';
 import type { CustomerProfile, MenuItem } from '@/lib/backend-types';
 import styles from './page.module.css';
 
-type SortOption = 'popular' | 'price-low' | 'price-high';
+type SortOption = 'category' | 'price-low' | 'price-high';
 
 function resolveMenuImage(value: string | null | undefined) {
   if (value?.startsWith('/') || value?.startsWith('data:image/')) {
@@ -24,7 +24,7 @@ export default function MenuPage() {
   const [vegOnly, setVegOnly] = useState(false);
   const [nonVegOnly, setNonVegOnly] = useState(false);
   const [highProtein, setHighProtein] = useState(false);
-  const [sortBy] = useState<SortOption>('popular');
+  const [sortBy] = useState<SortOption>('category');
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [menuItems, setMenuItems] = useState<FoodMenuItem[]>([]);
   const [isMenuLoading, setIsMenuLoading] = useState(true);
@@ -80,7 +80,6 @@ export default function MenuPage() {
           category: item.category,
           isVeg: !/chicken|fish|egg|prawn|shrimp|meat/i.test(`${item.name} ${item.description ?? ''} ${item.ingredients.join(' ')}`),
           isHighProtein: Number(item.protein_grams ?? 0) >= 20,
-          rating: 4.8,
           calories: 0,
           protein: Math.round(Number(item.protein_grams ?? 0)),
           carbs: 0,
@@ -122,7 +121,7 @@ export default function MenuPage() {
     result = [...result].sort((a, b) => {
       if (sortBy === 'price-low') return a.price - b.price;
       if (sortBy === 'price-high') return b.price - a.price;
-      return b.rating - a.rating; // default popular
+      return a.category.localeCompare(b.category) || a.name.localeCompare(b.name);
     });
 
     return result;

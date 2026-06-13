@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { MenuItem } from '@/data/menu';
 import styles from './FoodCard.module.css';
@@ -37,10 +36,6 @@ export default function FoodCard({ item }: { item: MenuItem }) {
       <div className={styles.content}>
         <div className={styles.header}>
           <h3 className={styles.title}>{item.name}</h3>
-          <div className={styles.rating}>
-            <Star size={14} fill="currentColor" />
-            <span>{item.rating}</span>
-          </div>
         </div>
 
         <p className={styles.desc}>{item.description}</p>
@@ -51,9 +46,11 @@ export default function FoodCard({ item }: { item: MenuItem }) {
           <span className={styles.macro}>{item.protein}g protein</span>
         </div>
 
-        <div className={styles.footer}>
-          <span className={styles.included}>Included in meal plans</span>
-        </div>
+        {item.ingredients.length > 0 && (
+          <div className={styles.footer}>
+            <span className={styles.ingredients}>{item.ingredients.slice(0, 3).join(', ')}</span>
+          </div>
+        )}
       </div>
     </motion.article>
   );

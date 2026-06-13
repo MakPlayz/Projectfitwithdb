@@ -4,9 +4,9 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Camera, CheckCircle2, Mail, MapPin, ShieldCheck, UserCircle } from 'lucide-react';
+import { Camera, CheckCircle2, Mail, MapPin, MessageSquareText, ShieldCheck, UserCircle } from 'lucide-react';
 import { ensureSession, getAuthHeaders, getSession, saveSession, type ProjectFitSession } from '@/lib/auth-client';
-import type { DeliveryAddress } from '@/lib/backend-types';
+import type { CustomerFeedback, DeliveryAddress } from '@/lib/backend-types';
 import {
   formatHeightForUnit,
   isValidHeightCm,
@@ -35,6 +35,11 @@ export default function ProfilePageClient() {
   const [profile, setProfile] = useState<StoredProfile>(emptyStoredProfile);
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [heightUnit, setHeightUnit] = useState<HeightUnit>('cm');
+  const [feedback, setFeedback] = useState<CustomerFeedback[]>([]);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackStatus, setFeedbackStatus] = useState('');
+  const [feedbackError, setFeedbackError] = useState('');
+  const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const nextPath = getSafeNextPath(searchParams.get('next'));
@@ -77,6 +82,12 @@ export default function ProfilePageClient() {
       });
       const data = response.ok ? await response.json() : null;
 
+      const feedbackResponse = await fetch('/api/feedback', {
+        headers,
+        cache: 'no-store',
+      });
+      const feedbackData = feedbackResponse.ok ? await feedbackResponse.json() : null;
+
         const remote = data?.profile;
         const appUser = data?.user;
         if (!remote && !appUser) return;
@@ -91,6 +102,7 @@ export default function ProfilePageClient() {
           weight: remote?.weight_kg ?? currentProfile.weight,
           healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
         }));
+        setFeedback(feedbackData?.feedback ?? []);
     }
 
     initializeProfile().catch(() => undefined);
@@ -231,6 +243,43 @@ export default function ProfilePageClient() {
     setStatus('Profile updated');
     if (searchParams.get('completeProfile') === '1') {
       router.replace(nextPath);
+    }
+  };
+
+  const handleFeedbackSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFeedbackError('');
+    setFeedbackStatus('');
+
+    const message = feedbackMessage.trim();
+    if (message.length < 5) {
+      setFeedbackError('Write at least a few words before sending feedback.');
+      return;
+    }
+
+    setIsFeedbackSubmitting(true);
+    try {
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders()),
+        },
+        body: JSON.stringify({ message }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Could not send feedback.');
+      }
+
+      setFeedback((current) => [data.feedback, ...current].filter(Boolean));
+      setFeedbackMessage('');
+      setFeedbackStatus('Feedback sent to the kitchen team.');
+    } catch (err) {
+      setFeedbackError(err instanceof Error ? err.message : 'Could not send feedback.');
+    } finally {
+      setIsFeedbackSubmitting(false);
     }
   };
 
@@ -460,6 +509,54 @@ export default function ProfilePageClient() {
               </Link>
             </div>
           </form>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className="container">
+          <div className={styles.feedbackCard}>
+            <div className={styles.formHeader}>
+              <div>
+                <h2>Feedback</h2>
+                <p>Share meal quality, delivery, taste, or service feedback directly with the chef team.</p>
+              </div>
+              <MessageSquareText size={24} />
+            </div>
+
+            <form className={styles.feedbackForm} onSubmit={handleFeedbackSubmit}>
+              <label className={styles.field}>
+                <span>Your feedback</span>
+                <textarea
+                  value={feedbackMessage}
+                  onChange={(event) => setFeedbackMessage(event.target.value)}
+                  placeholder="Tell us what worked well or what should be improved"
+                  rows={4}
+                  maxLength={1200}
+                />
+              </label>
+              {feedbackStatus && <span className={styles.status}>{feedbackStatus}</span>}
+              {feedbackError && <span className={styles.status}>{feedbackError}</span>}
+              <button type="submit" className="btn-primary" disabled={isFeedbackSubmitting}>
+                {isFeedbackSubmitting ? 'Sending...' : 'Send feedback'}
+              </button>
+            </form>
+
+            {feedback.length > 0 && (
+              <div className={styles.feedbackList}>
+                <h3>Your previous feedback</h3>
+                {feedback.map((item) => (
+                  <article key={item.id} className={styles.feedbackItem}>
+                    <p>{item.message}</p>
+                    <span>{new Date(item.created_at).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}</span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

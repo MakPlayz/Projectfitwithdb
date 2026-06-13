@@ -196,7 +196,7 @@ export const dietCategories: DietCategory[] = [
     shortTitle: 'Mass Gain',
     tagline: '6-day mass gain · 2,500–2,800 kcal/day',
     description:
-      'A 6-day mass gain meal plan targeting 2,500–2,800 kcal per day for gradual, sustainable weight gain. Six meals daily with protein at every meal, healthy fats (nuts, dairy, peanut butter, ghee), and complex carbs in rice/quinoa bowls.',
+      'A 6-day mass gain meal plan targeting 2,500-2,800 kcal per day for gradual, sustainable weight gain. Balanced meals with protein at every meal, healthy fats, and complex carbs in rice or quinoa bowls.',
     calorieTarget: '2,500–2,800 kcal/day',
     pdfUrl: '/pdfs/mass-gain.pdf',
     image: massGainImages.chocOats,
@@ -210,7 +210,7 @@ export const dietCategories: DietCategory[] = [
         name: 'Day Regular Plan',
         duration: '1 day',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'High calorie day test',
       },
       {
@@ -218,7 +218,7 @@ export const dietCategories: DietCategory[] = [
         name: 'Day Premium Plan',
         duration: '1 day',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'Whey & premium proteins',
       },
       {
@@ -226,7 +226,7 @@ export const dietCategories: DietCategory[] = [
         name: '6-Day Regular Plan',
         duration: '6 days',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'Standard High Calorie',
       },
       {
@@ -234,7 +234,7 @@ export const dietCategories: DietCategory[] = [
         name: '6-Day Premium Plan',
         duration: '6 days',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'Superfoods & Shakes',
       },
       {
@@ -242,7 +242,7 @@ export const dietCategories: DietCategory[] = [
         name: 'Monthly Regular Plan',
         duration: '26/27 days',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'Massive bulking savings',
       },
       {
@@ -250,7 +250,7 @@ export const dietCategories: DietCategory[] = [
         name: 'Monthly Premium Plan',
         duration: '26/27 days',
         price: 0,
-        mealsPerDay: 6,
+        mealsPerDay: 3,
         highlight: 'Elite premium mass block',
       },
       {
@@ -285,7 +285,7 @@ export const dietCategories: DietCategory[] = [
       { label: 'Carbs', value: 'High', note: 'Rice & quinoa bowls' },
     ],
     nutritionHighlights: [
-      '6 meals per day',
+      '3 meals per day',
       'Protein with every meal',
       'Healthy fats — nuts, ghee, whole milk',
       'Do not skip rice/quinoa at dinner',
