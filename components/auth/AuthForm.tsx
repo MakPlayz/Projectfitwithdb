@@ -134,10 +134,10 @@ export default function AuthForm({
       <div className={styles.brandMark}>
         {variant === 'page' ? (
           <Image
-            src="/images/auth/broccoli-mini.png"
-            alt=""
-            width={48}
-            height={48}
+            src="/images/projectfit-auth/broccoli-icon-badge.png"
+            alt="Broccoli icon"
+            width={85}
+            height={85}
             className={styles.brandImage}
             priority
           />
@@ -147,12 +147,12 @@ export default function AuthForm({
       </div>
 
       <h1 className={styles.title}>
-        {mode === 'login' ? 'Welcome back' : 'Join ProjectFit'}
+        {mode === 'login' ? 'Welcome back' : 'Create account'}
       </h1>
       <p className={styles.subtitle}>
         {mode === 'login'
           ? 'Sign in to track meals & plans'
-          : 'Start your nutrition journey'}
+          : 'Start tracking meals & plans'}
       </p>
 
       <div className={styles.tabs}>
@@ -172,31 +172,35 @@ export default function AuthForm({
         </button>
       </div>
 
-      <button type="button" className={styles.googleBtn} onClick={handleGoogleSignIn}>
-        <svg className={styles.googleMark} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            fill="#4285F4"
-            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-          />
-          <path
-            fill="#34A853"
-            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
-          />
-          <path
-            fill="#EA4335"
-            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"
-          />
-        </svg>
-        Continue with Google
-      </button>
+      {variant !== 'page' && (
+        <>
+          <button type="button" className={styles.googleBtn} onClick={handleGoogleSignIn}>
+            <svg className={styles.googleMark} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"
+              />
+            </svg>
+            Continue with Google
+          </button>
 
-      <div className={styles.divider}>
-        <span>or</span>
-      </div>
+          <div className={styles.divider}>
+            <span>or</span>
+          </div>
+        </>
+      )}
 
       <form className={styles.form} onSubmit={handleSubmit}>
         {mode === 'signup' && (
@@ -347,6 +351,12 @@ export default function AuthForm({
         </button>
       </form>
 
+      {variant === 'page' && (
+        <div className={styles.divider}>
+          <span>or</span>
+        </div>
+      )}
+
       <p className={styles.footerNote}>
         {mode === 'login' ? (
           <>
@@ -371,49 +381,29 @@ export default function AuthForm({
     return (
       <div className={styles.splitCard}>
         <div className={styles.collageSide}>
-          <div className={styles.collageGrid}>
-            <div className={styles.collageColumn}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&auto=format&fit=crop&q=80"
-                alt="Healthy Fresh Salad"
-                className={`${styles.collageImg} ${styles.img1}`}
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?w=600&auto=format&fit=crop&q=80"
-                alt="Yoga & Mindful Fitness"
-                className={`${styles.collageImg} ${styles.img2}`}
-              />
-            </div>
-            <div className={styles.collageColumn}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=600&auto=format&fit=crop&q=80"
-                alt="Healthy Meal Prep"
-                className={`${styles.collageImg} ${styles.img3}`}
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80"
-                alt="Active Lifestyle Running"
-                className={`${styles.collageImg} ${styles.img4}`}
-              />
-            </div>
-          </div>
-          <div className={styles.collageOverlay}>
-            <div className={styles.overlayContent}>
-              <span className={styles.overlayTag}>Premium Nutrition</span>
-              <h2 className={styles.overlayTitle}>ProjectFit</h2>
-              <p className={styles.overlayText}>
-                Achieve your nutrition goals with custom diets, calorie tracking, and expert lifestyle coaching.
-              </p>
-            </div>
-          </div>
+          <Image
+            src="/images/projectfit-auth/projectfit-promo-panel.png"
+            alt="ProjectFit nutrition and fitness collage"
+            fill
+            sizes="(min-width: 980px) 624px, 100vw"
+            className={styles.promoImage}
+            priority
+          />
         </div>
         <div className={styles.formSide}>
+          <div className={styles.broccoliFrame} aria-hidden>
+            <Image
+              src="/images/projectfit-auth/broccoli-frame.png"
+              alt=""
+              fill
+              sizes="739px"
+              className={styles.frameImage}
+              priority
+            />
+          </div>
+          <div className={styles.authSurface} />
           <div className={`${styles.formSideInner} ${styles.page}`}>
-            {formContent}
+            <div className={styles.formScroll}>{formContent}</div>
           </div>
         </div>
       </div>
