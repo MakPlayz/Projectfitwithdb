@@ -144,6 +144,7 @@ export default function MyPlanClient() {
                 <strong>{getPlanName(order)}</strong>
                 <span>Type: {getOrderLabel(order)}</span>
                 <span>Status: {order.status}</span>
+                <span>Requested start: {formatDate(order.requested_start_date)}</span>
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>
                 <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>

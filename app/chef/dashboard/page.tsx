@@ -467,6 +467,7 @@ export default function ChefDashboard() {
                           <div><dt>Order</dt><dd>{order.id}</dd></div>
                           <div><dt>User ID</dt><dd>{order.user_id ?? 'Guest'}</dd></div>
                           <div><dt>Phone</dt><dd>{order.delivery_address.phone}</dd></div>
+                          <div><dt>Requested start</dt><dd>{formatDate(order.requested_start_date)}</dd></div>
                           <div><dt>Activated</dt><dd>{formatDate(order.plan_activated_at)}</dd></div>
                           <div><dt>Expiry</dt><dd>{formatDate(order.plan_expires_at)}</dd></div>
                           <div><dt>Days left</dt><dd>{daysLeft(order.plan_expires_at) ?? 'Not set'}</dd></div>

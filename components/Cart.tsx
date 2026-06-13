@@ -21,11 +21,18 @@ const initialDeliveryAddress: DeliveryAddress = {
   phone: '',
 };
 
+function formatDateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getTomorrowDateValue() {
   const date = new Date();
   date.setDate(date.getDate() + 1);
   date.setHours(0, 0, 0, 0);
-  return date.toISOString().slice(0, 10);
+  return formatDateInputValue(date);
 }
 
 function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
@@ -324,17 +331,19 @@ export default function Cart() {
                 </label>
 
                 <label className={styles.field}>
-                  <span>Meal plan start date</span>
+                  <span>Plan start date</span>
                   <input
                     type="date"
                     value={requestedStartDate}
                     min={getTomorrowDateValue()}
+                    required
+                    onFocus={(event) => event.currentTarget.showPicker?.()}
+                    onClick={(event) => event.currentTarget.showPicker?.()}
                     onChange={(event) => setRequestedStartDate(event.target.value)}
                   />
                 </label>
                 <p className={styles.helpText}>
-                  After payment, the chef will verify your transaction and activate the plan for this start date.
-                  Choose tomorrow or any later date.
+                  Choose tomorrow or any future date. We cannot start the plan on the same day as the order because meals start fresh from the next day.
                 </p>
               </div>
 

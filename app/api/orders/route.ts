@@ -104,11 +104,33 @@ function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
   return { deliveryAddress, error: null };
 }
 
-function getMinimumStartDate() {
-  const date = new Date();
-  date.setDate(date.getDate() + 1);
-  date.setHours(0, 0, 0, 0);
-  return date;
+function formatDateInputValue(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDateValueInTimeZone(date: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-IN', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  const values = new Map(parts.map((part) => [part.type, part.value]));
+  return `${values.get('year')}-${values.get('month')}-${values.get('day')}`;
+}
+
+function addDaysToDateValue(value: string, days: number) {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return formatDateInputValue(date);
+}
+
+function getMinimumStartDateValue() {
+  return addDaysToDateValue(getDateValueInTimeZone(new Date(), 'Asia/Kolkata'), 1);
 }
 
 function normalizeStartDate(value: unknown) {
@@ -117,11 +139,17 @@ function normalizeStartDate(value: unknown) {
     return { date: null, error: 'Select when you want your meal plan to start.' };
   }
 
-  const selected = new Date(`${raw}T00:00:00`);
-  if (Number.isNaN(selected.getTime()) || selected < getMinimumStartDate()) {
+  const [year, month, day] = raw.split('-').map(Number);
+  const selected = new Date(Date.UTC(year, month - 1, day));
+  const minStartDate = getMinimumStartDateValue();
+  if (
+    Number.isNaN(selected.getTime()) ||
+    formatDateInputValue(selected) !== raw ||
+    raw < minStartDate
+  ) {
     return {
       date: null,
-      error: 'Start date must be at least one full day after today.',
+      error: `Select a start date from ${minStartDate} or any future date.`,
     };
   }
 
