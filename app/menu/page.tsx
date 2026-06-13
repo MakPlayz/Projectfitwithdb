@@ -75,7 +75,7 @@ export default function MenuPage() {
           id: item.id,
           name: item.name,
           description: item.description ?? (item.ingredients.join(', ') || 'Chef prepared meal.'),
-          price: item.price,
+          price: 0,
           image: resolveMenuImage(item.photo_url),
           category: item.category,
           isVeg: !/chicken|fish|egg|prawn|shrimp|meat/i.test(`${item.name} ${item.description ?? ''} ${item.ingredients.join(' ')}`),

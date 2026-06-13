@@ -282,7 +282,7 @@ export default function ChefDashboard() {
       id,
       name: form.get('name'),
       description: form.get('description'),
-      price: Number(form.get('price') ?? 0),
+      price: 0,
       category: form.get('category'),
       program_slug: form.get('program_slug') || menuProgram,
       photo_url: form.get('photo_url'),
@@ -808,7 +808,6 @@ function MenuEditor({
         <span>Description</span>
         <textarea name="description" defaultValue={item?.description ?? ''} rows={3} />
       </label>
-      <Field name="price" label="Price" type="number" defaultValue={item?.price ?? 0} required />
       <label className={styles.checkRow}>
         <input name="active" type="checkbox" defaultChecked={item?.active !== false} />
         Active

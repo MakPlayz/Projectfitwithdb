@@ -334,6 +334,19 @@
   justify-content: space-between;
 }
 
+.includedMeal {
+  width: 100%;
+  display: inline-flex;
+  justify-content: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--diet-accent-light);
+  border: 1px solid color-mix(in srgb, var(--diet-accent) 26%, var(--border));
+  color: var(--diet-accent);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .mealPrice {
   font-family: var(--font-display);
   font-size: 1.25rem;

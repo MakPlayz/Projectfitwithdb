@@ -50,7 +50,7 @@ function mapMenuItemToDietMeal(item: MenuItem, fallbackImage: string): DietMeal 
     protein: Math.round(Number(item.protein_grams ?? 0)),
     carbs: 0,
     fat: 0,
-    price: item.price,
+    price: 0,
     mealType: normalizeMealType(item.category),
   };
 }

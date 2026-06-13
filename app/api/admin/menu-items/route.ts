@@ -37,7 +37,7 @@ function normalizeMenuItem(body: MenuItemBody) {
   return {
     name: String(body.name ?? '').trim(),
     description: String(body.description ?? '').trim() || null,
-    price: Number(body.price ?? 0),
+    price: 0,
     category: String(body.category ?? '').trim(),
     program_slug: String(body.program_slug ?? 'main').trim() || 'main',
     photo_url: String(body.photo_url ?? '').trim() || null,
@@ -60,13 +60,11 @@ export async function POST(request: Request) {
   if (
     !payload.name ||
     !payload.category ||
-    !Number.isFinite(payload.price) ||
-    payload.price < 0 ||
     !Number.isFinite(payload.servings) ||
     payload.servings < 1 ||
     (payload.protein_grams !== null && !Number.isFinite(payload.protein_grams))
   ) {
-    return NextResponse.json({ error: 'Menu item name, category, servings, and valid price are required.' }, { status: 400 });
+    return NextResponse.json({ error: 'Menu item name, category, and servings are required.' }, { status: 400 });
   }
 
   const result = await supabaseRestFetch<MenuItem[]>('/menu_items', {
@@ -89,13 +87,11 @@ export async function PATCH(request: Request) {
   if (
     !payload.name ||
     !payload.category ||
-    !Number.isFinite(payload.price) ||
-    payload.price < 0 ||
     !Number.isFinite(payload.servings) ||
     payload.servings < 1 ||
     (payload.protein_grams !== null && !Number.isFinite(payload.protein_grams))
   ) {
-    return NextResponse.json({ error: 'Menu item name, category, servings, and valid price are required.' }, { status: 400 });
+    return NextResponse.json({ error: 'Menu item name, category, and servings are required.' }, { status: 400 });
   }
 
   const result = await supabaseRestFetch<MenuItem[]>(`/menu_items?id=eq.${encodeURIComponent(body.id)}`, {
