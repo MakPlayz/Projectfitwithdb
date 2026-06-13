@@ -16,6 +16,7 @@ type MenuItemBody = Partial<
     | 'servings'
     | 'protein_grams'
     | 'ingredients'
+    | 'is_free_sample'
     | 'active'
   >
 >;
@@ -47,6 +48,7 @@ function normalizeMenuItem(body: MenuItemBody) {
         ? null
         : Number(proteinValue),
     ingredients: normalizeIngredients(body.ingredients),
+    is_free_sample: Boolean(body.is_free_sample),
     active: Boolean(body.active),
   };
 }

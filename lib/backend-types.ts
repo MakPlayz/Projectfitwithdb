@@ -81,6 +81,7 @@ export interface MenuItem {
   servings: number;
   protein_grams: number | null;
   ingredients: string[];
+  is_free_sample: boolean;
   active: boolean;
   created_at: string;
   updated_at: string;
@@ -133,6 +134,7 @@ export interface ApiOrder {
   subtotal: number;
   tax: number;
   total: number;
+  order_type: 'paid_plan' | 'free_sample';
   status: ApiOrderStatus;
   payment_status: PaymentStatus;
   razorpay_order_id: string | null;

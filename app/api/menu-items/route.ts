@@ -4,7 +4,7 @@ import type { MenuItem } from '@/lib/backend-types';
 
 export async function GET() {
   const result = await supabaseRestFetch<MenuItem[]>(
-    '/menu_items?active=eq.true&select=*&order=program_slug.asc,category.asc,name.asc'
+    '/menu_items?active=eq.true&is_free_sample=eq.false&select=*&order=program_slug.asc,category.asc,name.asc'
   );
 
   if (result.error) {

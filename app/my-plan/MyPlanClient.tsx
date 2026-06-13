@@ -20,6 +20,10 @@ function getPlanName(order: ApiOrder) {
   return order.items[0]?.name ?? 'Meal plan';
 }
 
+function getOrderLabel(order: ApiOrder) {
+  return order.order_type === 'free_sample' ? 'Free sample' : 'Meal plan';
+}
+
 export default function MyPlanClient() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +65,7 @@ export default function MyPlanClient() {
   }, []);
 
   const pendingOrders = useMemo(
-    () => orders.filter((order) => order.status === 'new' && order.payment_status === 'pending'),
+    () => orders.filter((order) => order.status === 'new'),
     [orders]
   );
   const activeOrders = useMemo(
@@ -108,7 +112,7 @@ export default function MyPlanClient() {
       {pendingOrders.length > 0 && (
         <section className={styles.planPanel}>
           <span className={styles.badge}>Pending chef confirmation</span>
-          <h2>Payment shared, plan waiting for activation</h2>
+          <h2>Order waiting for chef confirmation</h2>
           <p>
             After you pay and send the screenshot on WhatsApp, the chef verifies your order ID,
             user ID, and transaction ID. Your meals start on the date you selected after activation.
@@ -118,6 +122,7 @@ export default function MyPlanClient() {
               <article key={order.id} className={styles.planCard}>
                 <CreditCard size={20} />
                 <strong>{getPlanName(order)}</strong>
+                <span>Type: {getOrderLabel(order)}</span>
                 <span>Order ID: {order.id}</span>
                 <span>Ordered on: {formatDate(order.created_at)}</span>
                 <span>Requested start: {formatDate(order.requested_start_date)}</span>
@@ -131,12 +136,13 @@ export default function MyPlanClient() {
       {activeOrders.length > 0 && (
         <section className={styles.planPanel}>
           <span className={styles.badgeActive}>Active plan</span>
-          <h2>Your active meal plan</h2>
+          <h2>Your active orders</h2>
           <div className={styles.planGrid}>
             {activeOrders.map((order) => (
               <article key={order.id} className={styles.planCard}>
                 <CalendarClock size={20} />
                 <strong>{getPlanName(order)}</strong>
+                <span>Type: {getOrderLabel(order)}</span>
                 <span>Status: {order.status}</span>
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>

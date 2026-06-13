@@ -175,7 +175,7 @@ export default function Cart() {
         return;
       }
 
-      router.push(`/order-confirmed?id=${data.order.id}`);
+      router.push(`/order-confirmed?id=${data.order.id}${data.order.order_type === 'free_sample' ? '&type=sample' : ''}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not place your order.');
       setIsSubmitting(false);
@@ -240,11 +240,15 @@ export default function Cart() {
                     </div>
                   )}
 
-                  <div className={styles.qtyCtrl}>
-                    <button aria-label={`Decrease ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus size={14} /></button>
-                    <span>{item.quantity}</span>
-                    <button aria-label={`Increase ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
-                  </div>
+                  {item.itemType === 'free_sample' ? (
+                    <span className={styles.sampleTag}>One-time free sample</span>
+                  ) : (
+                    <div className={styles.qtyCtrl}>
+                      <button aria-label={`Decrease ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus size={14} /></button>
+                      <span>{item.quantity}</span>
+                      <button aria-label={`Increase ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

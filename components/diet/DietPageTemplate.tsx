@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowLeft, ArrowRight, Check } from 'lucide-react';
-import { categoryImages, type DietCategory, type DietPlan } from '@/data/diets';
+import { categoryImages, type DietCategory, type DietMeal, type DietPlan } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
 import { useCartStore } from '@/store/cartStore';
 import styles from './DietPageTemplate.module.css';
@@ -15,7 +15,7 @@ interface DietPageTemplateProps {
 
 export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const categoryImage = categoryImages[diet.slug];
-  const { addItem, toggleCart } = useCartStore();
+  const { addItem, clearCart, toggleCart } = useCartStore();
   const [selectedMeals, setSelectedMeals] = useState<Record<string, number>>({});
 
   const handleAddPlanToCart = (plan: DietPlan) => {
@@ -43,6 +43,23 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
 
   const handleToggleMeals = (planId: string, count: number) => {
     setSelectedMeals((prev) => ({ ...prev, [planId]: count }));
+  };
+
+  const handleAddFreeSampleToCart = (sample: DietMeal) => {
+    clearCart();
+    addItem({
+      id: `sample-${diet.slug}-${sample.id}`,
+      name: `${diet.title} - Free Sample: ${sample.name}`,
+      basePrice: 0,
+      quantity: 1,
+      image: sample.image,
+      itemType: 'free_sample',
+      programSlug: diet.slug,
+      removedIngredients: [],
+      addOns: [],
+      totalPrice: 0,
+    });
+    toggleCart();
   };
 
   const dayPlans = diet.plans.filter((p) => p.duration === '1 day');
@@ -156,7 +173,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                   Explore Plan
                   <ArrowRight size={18} />
                 </a>
-                <a href="#meals" className="btn-secondary">
+                <a href="#free-samples" className="btn-secondary">
                   Free Sample
                 </a>
               </div>
@@ -293,6 +310,60 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
                     </div>
                     <div className={styles.mealFooter}>
                       <span className={styles.includedMeal}>Included in selected plans</span>
+                    </div>
+                  </div>
+                </motion.article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section id="free-samples" className={styles.section}>
+        <div className="container">
+          <p className="section-label">Free Sample</p>
+          <h2 className="section-title">Try one sample meal</h2>
+          <p className="section-subtitle">
+            One free sample order is available per account. Choose any one sample from any program.
+          </p>
+          {!diet.freeSamples?.length ? (
+            <div className={styles.mealsEmpty}>
+              <h3>No free samples added yet</h3>
+              <p>Free samples for this program will appear here once the chef adds them.</p>
+            </div>
+          ) : (
+            <div className={styles.mealsGrid}>
+              {diet.freeSamples.map((sample, i) => (
+                <motion.article
+                  key={sample.id}
+                  className={styles.mealCard}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.08 }}
+                >
+                  <div className={styles.mealImage}>
+                    <DietImage src={sample.image} alt={sample.name} sizes="(max-width: 768px) 100vw, 400px" />
+                  </div>
+                  <div className={styles.mealBody}>
+                    {sample.mealType && <span className={styles.mealType}>{sample.mealType}</span>}
+                    <h3>{sample.name}</h3>
+                    <p>{sample.description}</p>
+                    <div className={styles.mealMacros}>
+                      <span>{sample.calories} kcal</span>
+                      <span>P {sample.protein}g</span>
+                      <span>C {sample.carbs}g</span>
+                      <span>F {sample.fat}g</span>
+                    </div>
+                    <div className={styles.mealFooter}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                        onClick={() => handleAddFreeSampleToCart(sample)}
+                      >
+                        Add free sample
+                      </button>
                     </div>
                   </div>
                 </motion.article>

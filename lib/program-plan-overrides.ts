@@ -55,10 +55,10 @@ function mapMenuItemToDietMeal(item: MenuItem, fallbackImage: string): DietMeal 
   };
 }
 
-async function getProgramMeals(slug: string, fallbackImage: string) {
+async function getProgramMeals(slug: string, fallbackImage: string, isFreeSample = false) {
   try {
     const { data, error } = await supabaseRestFetch<MenuItem[]>(
-      `/menu_items?active=eq.true&program_slug=eq.${encodeURIComponent(slug)}&select=*&order=category.asc,name.asc`
+      `/menu_items?active=eq.true&program_slug=eq.${encodeURIComponent(slug)}&is_free_sample=eq.${isFreeSample}&select=*&order=category.asc,name.asc`
     );
 
     if (error) {
@@ -75,9 +75,10 @@ export async function getDietWithPlanOverrides(slug: string): Promise<DietCatego
   const diet = getDietBySlug(slug);
   if (!diet) return undefined;
 
-  const [overrides, meals] = await Promise.all([
+  const [overrides, meals, freeSamples] = await Promise.all([
     getProgramPlanOverrides(),
-    getProgramMeals(slug, diet.image),
+    getProgramMeals(slug, diet.image, false),
+    getProgramMeals(slug, diet.image, true),
   ]);
   const overridesByPlanId = new Map(overrides.map((override) => [override.plan_id, override]));
   const plans = diet.plans
@@ -96,5 +97,5 @@ export async function getDietWithPlanOverrides(slug: string): Promise<DietCatego
     })
     .filter((plan): plan is DietPlan => Boolean(plan));
 
-  return { ...diet, plans, meals };
+  return { ...diet, plans, meals, freeSamples };
 }

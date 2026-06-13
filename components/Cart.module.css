@@ -233,6 +233,18 @@
   text-align: center;
 }
 
+.sampleTag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--green-light);
+  border: 1px solid var(--border-accent);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .footer {
   padding: 24px;
   border-top: 1px solid var(--border);

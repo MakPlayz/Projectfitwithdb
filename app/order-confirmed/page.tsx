@@ -10,6 +10,7 @@ function OrderConfirmedContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const isManualPayment = searchParams.get('payment') === 'manual';
+  const isFreeSample = searchParams.get('type') === 'sample';
   
   return (
     <div className={styles.container}>
@@ -23,11 +24,13 @@ function OrderConfirmedContent() {
         </div>
         
         <h1 className={styles.title}>
-          {isManualPayment ? 'Order Request Created' : 'Order Confirmed!'}
+          {isManualPayment ? 'Order Request Created' : isFreeSample ? 'Free Sample Requested' : 'Order Confirmed!'}
         </h1>
         <p className={styles.desc}>
           {isManualPayment
             ? 'WhatsApp has opened in a separate tab. Send the pre-filled message, complete payment after receiving the QR, and share the payment screenshot there.'
+            : isFreeSample
+              ? 'Your free sample request is waiting for chef approval. You can track it from My Plan.'
             : 'Your healthy meal is being prepared by our chefs.'}
         </p>
         

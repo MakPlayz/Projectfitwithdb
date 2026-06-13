@@ -6,6 +6,8 @@ export interface CartItem {
   basePrice: number;
   quantity: number;
   image: string;
+  itemType?: 'plan' | 'free_sample';
+  programSlug?: string;
   removedIngredients: string[];
   addOns: { name: string; price: number }[];
   totalPrice: number;

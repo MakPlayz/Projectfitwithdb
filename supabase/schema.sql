@@ -39,6 +39,7 @@ create table if not exists public.orders (
   subtotal integer not null,
   tax integer not null,
   total integer not null,
+  order_type text not null default 'paid_plan' check (order_type in ('paid_plan', 'free_sample')),
   status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled')),
   payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
   razorpay_order_id text,
@@ -65,6 +66,7 @@ create table if not exists public.menu_items (
   servings integer not null default 1 check (servings > 0),
   protein_grams numeric(6, 2),
   ingredients text[] not null default '{}',
+  is_free_sample boolean not null default false,
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -107,6 +109,7 @@ create table if not exists public.program_plan_overrides (
 );
 
 alter table public.orders
+  add column if not exists order_type text not null default 'paid_plan',
   add column if not exists payment_status text not null default 'pending'
     check (payment_status in ('pending', 'paid', 'failed')),
   add column if not exists razorpay_order_id text,
@@ -124,12 +127,18 @@ alter table public.orders
   add constraint orders_status_check
   check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled'));
 
+alter table public.orders drop constraint if exists orders_order_type_check;
+alter table public.orders
+  add constraint orders_order_type_check
+  check (order_type in ('paid_plan', 'free_sample'));
+
 alter table public.menu_items
   add column if not exists program_slug text not null default 'main',
   add column if not exists photo_url text,
   add column if not exists servings integer not null default 1,
   add column if not exists protein_grams numeric(6, 2),
-  add column if not exists ingredients text[] not null default '{}';
+  add column if not exists ingredients text[] not null default '{}',
+  add column if not exists is_free_sample boolean not null default false;
 
 create index if not exists orders_created_at_idx on public.orders (created_at desc);
 create index if not exists orders_status_idx on public.orders (status);
@@ -137,11 +146,13 @@ create index if not exists orders_payment_status_idx on public.orders (payment_s
 create index if not exists orders_plan_expires_at_idx on public.orders (plan_expires_at);
 create index if not exists orders_requested_start_date_idx on public.orders (requested_start_date);
 create index if not exists orders_payment_transaction_id_idx on public.orders (payment_transaction_id);
+create index if not exists orders_order_type_idx on public.orders (order_type);
 create index if not exists users_whatsapp_opt_in_idx on public.users (whatsapp_opt_in);
 create index if not exists customer_profiles_goal_idx on public.customer_profiles (primary_goal);
 create index if not exists customer_profiles_focus_idx on public.customer_profiles (health_focus);
 create index if not exists menu_items_active_idx on public.menu_items (active);
 create index if not exists menu_items_program_slug_idx on public.menu_items (program_slug);
+create index if not exists menu_items_free_sample_idx on public.menu_items (is_free_sample);
 create index if not exists meal_plans_active_idx on public.meal_plans (active);
 create index if not exists whatsapp_message_logs_created_at_idx on public.whatsapp_message_logs (created_at desc);
 create index if not exists whatsapp_message_logs_status_idx on public.whatsapp_message_logs (status);

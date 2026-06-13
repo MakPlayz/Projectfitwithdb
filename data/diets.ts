@@ -45,6 +45,7 @@ export interface DietCategory {
   icon: string;
   plans: DietPlan[];
   meals: DietMeal[];
+  freeSamples?: DietMeal[];
   macros: { label: string; value: string; note: string }[];
   nutritionHighlights: string[];
 }

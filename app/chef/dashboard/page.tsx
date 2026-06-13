@@ -93,6 +93,7 @@ export default function ChefDashboard() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [menuProgram, setMenuProgram] = useState('main');
+  const [menuMode, setMenuMode] = useState<'menu' | 'free_sample'>('menu');
 
   useEffect(() => {
     let cancelled = false;
@@ -161,6 +162,12 @@ export default function ChefDashboard() {
     loadOverview();
   }, [isAuthorized, loadOverview]);
 
+  useEffect(() => {
+    if (menuMode === 'free_sample' && menuProgram === 'main') {
+      setMenuProgram(dietCategories[0]?.slug ?? 'weight-loss');
+    }
+  }, [menuMode, menuProgram]);
+
   const profilesByUserId = useMemo(
     () => new Map(data.profiles.map((profile) => [profile.user_id, profile])),
     [data.profiles]
@@ -197,7 +204,11 @@ export default function ChefDashboard() {
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
 
-  const visibleMenuItems = data.menuItems.filter((item) => (item.program_slug || 'main') === menuProgram);
+  const visibleMenuItems = data.menuItems.filter(
+    (item) =>
+      (item.program_slug || 'main') === menuProgram &&
+      Boolean(item.is_free_sample) === (menuMode === 'free_sample')
+  );
 
   async function patchOrder(
     orderId: string,
@@ -289,6 +300,7 @@ export default function ChefDashboard() {
       servings: Number(form.get('servings') ?? 1),
       protein_grams: form.get('protein_grams') ? Number(form.get('protein_grams')) : null,
       ingredients: String(form.get('ingredients') ?? ''),
+      is_free_sample: form.get('is_free_sample') === 'on',
       active: form.get('active') === 'on',
     });
   }
@@ -501,23 +513,39 @@ export default function ChefDashboard() {
                     </div>
                   </div>
                   <div className={styles.programSwitch}>
-                    <button type="button" className={menuProgram === 'main' ? styles.switchActive : styles.switchButton} onClick={() => setMenuProgram('main')}>
-                      Main menu
-                    </button>
+                    {menuMode === 'menu' && (
+                      <button type="button" className={menuProgram === 'main' ? styles.switchActive : styles.switchButton} onClick={() => setMenuProgram('main')}>
+                        Main menu
+                      </button>
+                    )}
                     {dietCategories.map((diet) => (
                       <button key={diet.slug} type="button" className={menuProgram === diet.slug ? styles.switchActive : styles.switchButton} onClick={() => setMenuProgram(diet.slug)}>
                         {diet.shortTitle}
                       </button>
                     ))}
                   </div>
+                  <div className={styles.programSwitch}>
+                    <button type="button" className={menuMode === 'menu' ? styles.switchActive : styles.switchButton} onClick={() => setMenuMode('menu')}>
+                      Plan menu
+                    </button>
+                    <button type="button" className={menuMode === 'free_sample' ? styles.switchActive : styles.switchButton} onClick={() => setMenuMode('free_sample')}>
+                      Free samples
+                    </button>
+                  </div>
                   <section className={styles.editorGrid}>
-                    <MenuEditor title={`Add item to ${menuProgram === 'main' ? 'main menu' : menuProgram}`} programSlug={menuProgram} onSubmit={handleMenuSubmit} />
+                    <MenuEditor
+                      title={`Add ${menuMode === 'free_sample' ? 'free sample' : 'item'} to ${menuProgram === 'main' ? 'main menu' : menuProgram}`}
+                      programSlug={menuProgram}
+                      isFreeSample={menuMode === 'free_sample'}
+                      onSubmit={handleMenuSubmit}
+                    />
                     {visibleMenuItems.map((item) => (
                       <MenuEditor
                         key={item.id}
                         title={item.name}
                         item={item}
                         programSlug={menuProgram}
+                        isFreeSample={menuMode === 'free_sample'}
                         onSubmit={(event) => handleMenuSubmit(event, item.id)}
                         onDelete={() => deleteMenuItem(item.id)}
                       />
@@ -627,6 +655,7 @@ function OrderCard({
           <p>{formatDateTime(order.created_at)}</p>
         </div>
         <div className={styles.badges}>
+          <span>{order.order_type === 'free_sample' ? 'free sample' : 'paid plan'}</span>
           <span>{order.status}</span>
           <span className={order.payment_status === 'paid' ? styles.paid : styles.pending}>{order.payment_status}</span>
         </div>
@@ -652,7 +681,7 @@ function OrderCard({
           <span>{profile.diet_preference}</span>
         </div>
       )}
-      {order.status === 'new' && (
+      {order.status === 'new' && order.order_type !== 'free_sample' && (
         <form className={styles.confirmBox} onSubmit={handleConfirm}>
           <Field name="confirmation_order_id" label="Enter order ID" defaultValue="" required />
           <Field name="confirmation_user_id" label="Enter user ID" defaultValue="" required />
@@ -664,6 +693,12 @@ function OrderCard({
         </form>
       )}
       <div className={styles.actions}>
+        {order.status === 'new' && order.order_type === 'free_sample' && (
+          <button type="button" onClick={() => onPatch(order.id, { action: 'confirm' })}>
+            <ShieldCheck size={15} />
+            Accept free sample
+          </button>
+        )}
         {order.status === 'new' && (
           <button type="button" className={styles.dangerBtn} onClick={() => onPatch(order.id, { action: 'cancel' })}>
             Cancel order
@@ -739,12 +774,14 @@ function UserDetail({ user, profile, orders }: { user: ProjectFitUser | null; pr
 function MenuEditor({
   title,
   programSlug,
+  isFreeSample,
   item,
   onSubmit,
   onDelete,
 }: {
   title: string;
   programSlug: string;
+  isFreeSample: boolean;
   item?: MenuItem;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDelete?: () => void;
@@ -785,6 +822,7 @@ function MenuEditor({
       </div>
       <input type="hidden" name="program_slug" value={item?.program_slug ?? programSlug} />
       <input type="hidden" name="photo_url" value={photoValue} />
+      <input type="hidden" name="is_free_sample" value={isFreeSample ? 'on' : ''} />
       <Field name="name" label="Item name" defaultValue={item?.name} required />
       <label>
         <span>Item photo</span>

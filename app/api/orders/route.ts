@@ -129,6 +129,8 @@ function normalizeStartDate(value: unknown) {
 }
 
 function inferProgramKey(items: CartItem[]) {
+  if (items[0]?.programSlug) return items[0].programSlug;
+
   const text = items.map((item) => `${item.id} ${item.name}`).join(' ').toLowerCase();
   const prefix = items[0]?.id?.slice(0, 2).toLowerCase();
   const prefixMap: Record<string, string> = {
@@ -148,6 +150,10 @@ function inferProgramKey(items: CartItem[]) {
   if (text.includes('diabetes')) return 'diabetes';
   if (text.includes('kids')) return 'kids';
   return items[0]?.id ?? 'meal-plan';
+}
+
+function isFreeSampleCart(items: CartItem[]) {
+  return items.length === 1 && items[0].itemType === 'free_sample' && items[0].quantity === 1;
 }
 
 function isBlockingOrder(order: ApiOrder) {
@@ -232,6 +238,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const isFreeSampleOrder = isFreeSampleCart(body.items);
+  const hasMixedFreeSample = body.items.some((item) => item.itemType === 'free_sample') && !isFreeSampleOrder;
+  if (hasMixedFreeSample) {
+    return NextResponse.json(
+      { error: 'Free samples must be ordered separately and only one sample can be requested.' },
+      { status: 400 }
+    );
+  }
+
   const startDate = normalizeStartDate(body.requestedStartDate);
   if (startDate.error || !startDate.date) {
     return NextResponse.json({ error: startDate.error }, { status: 400 });
@@ -245,8 +260,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const tax = Math.round(body.subtotal * 0.05);
-  const total = body.subtotal + tax;
+  const subtotal = isFreeSampleOrder ? 0 : body.subtotal;
+  const tax = isFreeSampleOrder ? 0 : Math.round(subtotal * 0.05);
+  const total = subtotal + tax;
   const user = userResult.data;
   const programKey = inferProgramKey(body.items);
   const existingOrdersResult = await supabaseRestFetch<ApiOrder[]>(
@@ -260,9 +276,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const duplicateOrder = (existingOrdersResult.data ?? []).find(
-    (order) => isBlockingOrder(order) && inferProgramKey(order.items) === programKey
-  );
+  const existingOrders = existingOrdersResult.data ?? [];
+  const duplicateFreeSample = existingOrders.find((order) => order.order_type === 'free_sample');
+
+  if (isFreeSampleOrder && duplicateFreeSample) {
+    return NextResponse.json(
+      { error: 'Only one free sample can be ordered per account.' },
+      { status: 409 }
+    );
+  }
+
+  const duplicateOrder = !isFreeSampleOrder
+    ? existingOrders.find((order) => isBlockingOrder(order) && inferProgramKey(order.items) === programKey)
+    : null;
 
   if (duplicateOrder) {
     return NextResponse.json(
@@ -303,7 +329,7 @@ export async function POST(request: Request) {
     null;
   const whatsappNumber = getManualPaymentWhatsAppNumber();
 
-  if (!whatsappNumber) {
+  if (!isFreeSampleOrder && !whatsappNumber) {
     return NextResponse.json(
       { error: 'Manual payment WhatsApp number is not configured.' },
       { status: 500 }
@@ -324,11 +350,12 @@ export async function POST(request: Request) {
       user_id: user.id,
       customer_name: customerName,
       items: body.items,
-      subtotal: body.subtotal,
+      subtotal,
       tax,
       total,
+      order_type: isFreeSampleOrder ? 'free_sample' : 'paid_plan',
       status: 'new',
-      payment_status: 'pending',
+      payment_status: isFreeSampleOrder ? 'paid' : 'pending',
       delivery_address: addressValidation.deliveryAddress,
       requested_start_date: startDate.date,
     }),
@@ -342,6 +369,10 @@ export async function POST(request: Request) {
 
   if (!order) {
     return NextResponse.json({ error: 'Could not create local order.' }, { status: 500 });
+  }
+
+  if (isFreeSampleOrder) {
+    return NextResponse.json({ order }, { status: 201 });
   }
 
   const message = buildManualPaymentMessage({

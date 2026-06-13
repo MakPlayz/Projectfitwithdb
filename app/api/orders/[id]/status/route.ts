@@ -68,20 +68,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
     }
 
+    const isFreeSampleOrder = order.order_type === 'free_sample';
     const enteredOrderId = String(body.confirmation_order_id ?? '').trim();
     const enteredUserId = String(body.confirmation_user_id ?? '').trim();
     const transactionId = String(body.payment_transaction_id ?? '').trim();
 
-    if (enteredOrderId !== order.id) {
-      return NextResponse.json({ error: 'Entered order ID does not match this order.' }, { status: 400 });
-    }
+    if (!isFreeSampleOrder) {
+      if (enteredOrderId !== order.id) {
+        return NextResponse.json({ error: 'Entered order ID does not match this order.' }, { status: 400 });
+      }
 
-    if (!order.user_id || enteredUserId !== order.user_id) {
-      return NextResponse.json({ error: 'Entered user ID does not match this order.' }, { status: 400 });
-    }
+      if (!order.user_id || enteredUserId !== order.user_id) {
+        return NextResponse.json({ error: 'Entered user ID does not match this order.' }, { status: 400 });
+      }
 
-    if (transactionId.length < 4) {
-      return NextResponse.json({ error: 'Enter the payment transaction ID before confirming.' }, { status: 400 });
+      if (transactionId.length < 4) {
+        return NextResponse.json({ error: 'Enter the payment transaction ID before confirming.' }, { status: 400 });
+      }
     }
 
     const confirmedAt = new Date();
@@ -98,7 +101,7 @@ export async function PATCH(
       plan_expires_at: expiresAt.toISOString(),
       confirmed_at: confirmedAt.toISOString(),
       confirmed_by: admin.user?.id ?? null,
-      payment_transaction_id: transactionId,
+      payment_transaction_id: isFreeSampleOrder ? null : transactionId,
     };
 
     const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
