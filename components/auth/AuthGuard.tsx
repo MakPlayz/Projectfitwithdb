@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { clearSession, ensureSession, getAuthHeaders, type ProjectFitSession } from '@/lib/auth-client';
+import {
+  authEvent,
+  chefAuthEvent,
+  clearSession,
+  ensureChefSession,
+  ensureSession,
+  getAuthHeaders,
+  type ProjectFitSession,
+} from '@/lib/auth-client';
 import { buildAuthRedirect, isProtectedPath } from '@/lib/protected-routes';
 import { hasCompleteStoredProfile, readStoredProfile } from '@/lib/profile-storage';
 import ProfileCompletionModal from '@/components/auth/ProfileCompletionModal';
@@ -54,6 +62,26 @@ export default function AuthGuard({ children }: AuthGuardProps) {
       const isProfilePage = pathname === '/profile';
       const isChefPage = Boolean(pathname?.startsWith('/chef'));
       const isProtectedPage = isProtectedPath(pathname);
+
+      if (isChefPage) {
+        const chefSession = await ensureChefSession();
+        if (cancelled) return;
+
+        setSession(null);
+        setProfileRequired(false);
+
+        if (!chefSession && pathname !== '/chef' && pathname !== '/chef/signup') {
+          setAuthorized(false);
+          setLoading(false);
+          router.replace('/chef');
+          return;
+        }
+
+        setAuthorized(true);
+        setLoading(false);
+        return;
+      }
+
       const currentSession = await ensureSession();
 
       if (cancelled) return;
@@ -122,10 +150,12 @@ export default function AuthGuard({ children }: AuthGuardProps) {
     checkAuth();
     
     // Listen for custom auth change events
-    window.addEventListener('projectfit-auth-changed', checkAuth);
+    window.addEventListener(authEvent, checkAuth);
+    window.addEventListener(chefAuthEvent, checkAuth);
     return () => {
       cancelled = true;
-      window.removeEventListener('projectfit-auth-changed', checkAuth);
+      window.removeEventListener(authEvent, checkAuth);
+      window.removeEventListener(chefAuthEvent, checkAuth);
     };
   }, [pathname, router]);
 

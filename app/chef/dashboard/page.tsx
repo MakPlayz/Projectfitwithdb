@@ -21,7 +21,7 @@ import {
 import { dietCategories } from '@/data/diets';
 import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
-import { clearSession, getAuthHeaders, getSession } from '@/lib/auth-client';
+import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
 type AdminOverview = {
@@ -103,7 +103,7 @@ export default function ChefDashboard() {
     let cancelled = false;
 
     async function verifyAdmin() {
-      const session = getSession();
+      const session = getChefSession();
 
       if (!session) {
         router.replace('/chef');
@@ -112,7 +112,7 @@ export default function ChefDashboard() {
 
       const response = await fetch('/api/admin/me', {
         cache: 'no-store',
-        headers: await getAuthHeaders(),
+        headers: await getChefAuthHeaders(),
       });
 
       if (cancelled) return;
@@ -144,7 +144,7 @@ export default function ChefDashboard() {
     try {
       const response = await fetch('/api/admin/overview', {
         cache: 'no-store',
-        headers: await getAuthHeaders(),
+        headers: await getChefAuthHeaders(),
       });
       const nextData = (await response.json()) as AdminOverview & { error?: string };
 
@@ -232,7 +232,7 @@ export default function ChefDashboard() {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        ...(await getAuthHeaders()),
+        ...(await getChefAuthHeaders()),
       },
       body: JSON.stringify(payload),
     });
@@ -257,7 +257,7 @@ export default function ChefDashboard() {
       method,
       headers: {
         'Content-Type': 'application/json',
-        ...(await getAuthHeaders()),
+        ...(await getChefAuthHeaders()),
       },
       body: JSON.stringify(payload),
     });
@@ -278,7 +278,7 @@ export default function ChefDashboard() {
     setError('');
     const response = await fetch(`/api/admin/menu-items?id=${encodeURIComponent(id)}`, {
       method: 'DELETE',
-      headers: await getAuthHeaders(),
+      headers: await getChefAuthHeaders(),
     });
     const result = await response.json();
 
@@ -337,7 +337,7 @@ export default function ChefDashboard() {
   }
 
   function handleLogout() {
-    clearSession();
+    clearChefSession();
     router.push('/chef');
   }
 

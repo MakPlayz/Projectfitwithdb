@@ -8,28 +8,54 @@ export interface ProjectFitSession {
 }
 
 const sessionKey = 'projectfit.session';
+const chefSessionKey = 'projectfit.chef.session';
 const authEvent = 'projectfit-auth-changed';
+const chefAuthEvent = 'projectfit-chef-auth-changed';
 
-export function saveSession(session: ProjectFitSession) {
-  localStorage.setItem(sessionKey, JSON.stringify(session));
-  window.dispatchEvent(new Event(authEvent));
+function saveSessionForKey(session: ProjectFitSession, key: string, eventName: string) {
+  localStorage.setItem(key, JSON.stringify(session));
+  window.dispatchEvent(new Event(eventName));
 }
 
-export function getSession(): ProjectFitSession | null {
-  const raw = localStorage.getItem(sessionKey);
+function getSessionForKey(key: string): ProjectFitSession | null {
+  const raw = localStorage.getItem(key);
   if (!raw) return null;
 
   try {
     return JSON.parse(raw) as ProjectFitSession;
   } catch {
-    localStorage.removeItem(sessionKey);
+    localStorage.removeItem(key);
     return null;
   }
 }
 
+function clearSessionForKey(key: string, eventName: string) {
+  localStorage.removeItem(key);
+  window.dispatchEvent(new Event(eventName));
+}
+
+export function saveSession(session: ProjectFitSession) {
+  saveSessionForKey(session, sessionKey, authEvent);
+}
+
+export function getSession(): ProjectFitSession | null {
+  return getSessionForKey(sessionKey);
+}
+
 export function clearSession() {
-  localStorage.removeItem(sessionKey);
-  window.dispatchEvent(new Event(authEvent));
+  clearSessionForKey(sessionKey, authEvent);
+}
+
+export function saveChefSession(session: ProjectFitSession) {
+  saveSessionForKey(session, chefSessionKey, chefAuthEvent);
+}
+
+export function getChefSession(): ProjectFitSession | null {
+  return getSessionForKey(chefSessionKey);
+}
+
+export function clearChefSession() {
+  clearSessionForKey(chefSessionKey, chefAuthEvent);
 }
 
 function decodeJwtPayload(token: string) {
@@ -73,11 +99,15 @@ function isExpiringSoon(session: ProjectFitSession) {
   return session.expiresAt <= Date.now() + 60_000;
 }
 
-export async function refreshSession() {
-  const current = getSession();
+async function refreshSessionForScope(options: {
+  getCurrentSession: () => ProjectFitSession | null;
+  saveCurrentSession: (session: ProjectFitSession) => void;
+  clearCurrentSession: () => void;
+}) {
+  const current = options.getCurrentSession();
 
   if (!current?.refreshToken) {
-    clearSession();
+    options.clearCurrentSession();
     return null;
   }
 
@@ -93,7 +123,7 @@ export async function refreshSession() {
   const data = await response.json();
 
   if (!response.ok || !data.access_token) {
-    clearSession();
+    options.clearCurrentSession();
     return null;
   }
 
@@ -104,19 +134,39 @@ export async function refreshSession() {
     user: data.user ?? current.user,
   };
 
-  saveSession(nextSession);
+  options.saveCurrentSession(nextSession);
   return nextSession;
 }
 
-export async function ensureSession() {
-  const current = getSession();
+export async function refreshSession() {
+  return refreshSessionForScope({
+    getCurrentSession: getSession,
+    saveCurrentSession: saveSession,
+    clearCurrentSession: clearSession,
+  });
+}
+
+export async function refreshChefSession() {
+  return refreshSessionForScope({
+    getCurrentSession: getChefSession,
+    saveCurrentSession: saveChefSession,
+    clearCurrentSession: clearChefSession,
+  });
+}
+
+async function ensureSessionForScope(options: {
+  getCurrentSession: () => ProjectFitSession | null;
+  clearCurrentSession: () => void;
+  refreshCurrentSession: () => Promise<ProjectFitSession | null>;
+}) {
+  const current = options.getCurrentSession();
 
   if (!current) {
     return null;
   }
 
   if (!isUsableAccessToken(current.accessToken)) {
-    clearSession();
+    options.clearCurrentSession();
     return null;
   }
 
@@ -124,7 +174,23 @@ export async function ensureSession() {
     return current;
   }
 
-  return refreshSession();
+  return options.refreshCurrentSession();
+}
+
+export async function ensureSession() {
+  return ensureSessionForScope({
+    getCurrentSession: getSession,
+    clearCurrentSession: clearSession,
+    refreshCurrentSession: refreshSession,
+  });
+}
+
+export async function ensureChefSession() {
+  return ensureSessionForScope({
+    getCurrentSession: getChefSession,
+    clearCurrentSession: clearChefSession,
+    refreshCurrentSession: refreshChefSession,
+  });
 }
 
 export async function getAuthHeaders(): Promise<Record<string, string>> {
@@ -136,3 +202,15 @@ export async function getAuthHeaders(): Promise<Record<string, string>> {
       }
     : {};
 }
+
+export async function getChefAuthHeaders(): Promise<Record<string, string>> {
+  const session = await ensureChefSession();
+
+  return session
+    ? {
+        Authorization: `Bearer ${session.accessToken}`,
+      }
+    : {};
+}
+
+export { authEvent, chefAuthEvent };

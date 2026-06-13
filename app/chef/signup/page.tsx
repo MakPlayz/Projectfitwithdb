@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
-import { clearSession, getAccessTokenExpiry, getAuthHeaders, saveSession } from '@/lib/auth-client';
+import { clearChefSession, getAccessTokenExpiry, getChefAuthHeaders, saveChefSession } from '@/lib/auth-client';
 import styles from '../page.module.css';
 
 export default function ChefSignup() {
@@ -36,7 +36,7 @@ export default function ChefSignup() {
       }
 
       if (data.access_token && data.user) {
-        saveSession({
+        saveChefSession({
           accessToken: data.access_token,
           refreshToken: data.refresh_token ?? null,
           expiresAt: getAccessTokenExpiry(data.access_token),
@@ -45,11 +45,11 @@ export default function ChefSignup() {
 
         const adminCheck = await fetch('/api/admin/me', {
           cache: 'no-store',
-          headers: await getAuthHeaders(),
+          headers: await getChefAuthHeaders(),
         });
 
         if (!adminCheck.ok) {
-          clearSession();
+          clearChefSession();
           throw new Error('Chef account was created, but admin access is not enabled for this email.');
         }
 

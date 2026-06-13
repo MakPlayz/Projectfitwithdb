@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react';
-import { clearSession, getAccessTokenExpiry, getAuthHeaders, getSession, saveSession } from '@/lib/auth-client';
+import { clearChefSession, getAccessTokenExpiry, getChefAuthHeaders, getChefSession, saveChefSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
 function ChefLoginContent() {
@@ -19,11 +19,11 @@ function ChefLoginContent() {
     let cancelled = false;
 
     async function redirectIfChef() {
-      if (!getSession()) return;
+      if (!getChefSession()) return;
 
       const response = await fetch('/api/admin/me', {
         cache: 'no-store',
-        headers: await getAuthHeaders(),
+        headers: await getChefAuthHeaders(),
       });
 
       if (cancelled) return;
@@ -61,7 +61,7 @@ function ChefLoginContent() {
         throw new Error('Invalid authentication response.');
       }
 
-      saveSession({
+      saveChefSession({
         accessToken: data.access_token,
         refreshToken: data.refresh_token ?? null,
         expiresAt: getAccessTokenExpiry(data.access_token),
@@ -70,11 +70,11 @@ function ChefLoginContent() {
 
       const adminCheck = await fetch('/api/admin/me', {
         cache: 'no-store',
-        headers: await getAuthHeaders(),
+        headers: await getChefAuthHeaders(),
       });
 
       if (!adminCheck.ok) {
-        clearSession();
+        clearChefSession();
         const adminData = await adminCheck.json().catch(() => ({}));
         throw new Error(adminData.error ?? 'This account is not allowed to access the chef portal.');
       }
