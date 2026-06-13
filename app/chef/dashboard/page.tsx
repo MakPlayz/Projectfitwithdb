@@ -35,7 +35,7 @@ type AdminOverview = {
   warnings?: string[];
 };
 
-type Tab = 'pending' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
+type Tab = 'pending' | 'samples' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
@@ -50,6 +50,7 @@ const emptyOverview: AdminOverview = {
 
 const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'pending', label: 'Pending orders', icon: ClipboardList },
+  { id: 'samples', label: 'Free samples', icon: Soup },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
@@ -182,8 +183,17 @@ export default function ChefDashboard() {
   );
   const normalizedQuery = query.trim().toLowerCase();
 
-  const pendingOrders = data.orders.filter((order) => order.status === 'new' || order.payment_status === 'pending');
-  const activePlans = data.orders.filter((order) => order.status === 'confirmed' && order.plan_expires_at && new Date(order.plan_expires_at) >= new Date());
+  const pendingOrders = data.orders.filter(
+    (order) => order.order_type !== 'free_sample' && (order.status === 'new' || order.payment_status === 'pending')
+  );
+  const sampleOrders = data.orders.filter((order) => order.order_type === 'free_sample');
+  const activePlans = data.orders.filter(
+    (order) =>
+      order.order_type !== 'free_sample' &&
+      order.status === 'confirmed' &&
+      order.plan_expires_at &&
+      new Date(order.plan_expires_at) >= new Date()
+  );
   const selectedUser = data.users.find((user) => user.id === selectedUserId) ?? data.users[0] ?? null;
   const selectedProfile = selectedUser ? profilesByUserId.get(selectedUser.id) ?? null : null;
   const selectedUserOrders = selectedUser ? data.orders.filter((order) => order.user_id === selectedUser.id) : [];
@@ -198,6 +208,17 @@ export default function ChefDashboard() {
   });
 
   const filteredOrders = pendingOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.delivery_address?.pincode,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredSampleOrders = sampleOrders.filter((order) => {
     if (!normalizedQuery) return true;
     return [
       order.id,
@@ -224,6 +245,7 @@ export default function ChefDashboard() {
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
+      cancellation_reason?: string;
     }
   ) {
     setStatus('');
@@ -248,6 +270,32 @@ export default function ChefDashboard() {
       orders: current.orders.map((order) => (order.id === orderId ? result.order : order)),
     }));
     setStatus(payload.action === 'confirm' ? 'Order confirmed and plan dates were set.' : 'Order updated.');
+  }
+
+  async function resetFreeSampleLimit(userId: string | null | undefined) {
+    if (!userId) {
+      setError('This order does not have a user ID to reset.');
+      return;
+    }
+
+    setStatus('');
+    setError('');
+    const response = await fetch('/api/admin/free-sample-reset', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await getChefAuthHeaders()),
+      },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setError(result.error ?? 'Could not reset free sample limit.');
+      return;
+    }
+
+    setStatus(`Free sample limit reset for user. ${result.resetCount ?? 0} active claim(s) cleared.`);
   }
 
   async function submitJson(path: string, method: 'POST' | 'PATCH', payload: Record<string, unknown>) {
@@ -449,7 +497,41 @@ export default function ChefDashboard() {
                   ) : (
                     <div className={styles.orderGrid}>
                       {filteredOrders.map((order) => (
-                        <OrderCard key={order.id} order={order} profile={order.user_id ? profilesByUserId.get(order.user_id) : null} onPatch={patchOrder} />
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === 'samples' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Free sample orders</h2>
+                      <p>Accept or cancel one-time sample delivery requests. Cancelled samples remain locked until you reset the user limit.</p>
+                    </div>
+                    <span>{filteredSampleOrders.length} samples</span>
+                  </div>
+
+                  {filteredSampleOrders.length === 0 ? (
+                    <EmptyState title="No free sample orders" text="Free sample requests will appear here after checkout." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredSampleOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
                       ))}
                     </div>
                   )}
@@ -655,6 +737,7 @@ function OrderCard({
   order,
   profile,
   onPatch,
+  onResetFreeSampleLimit,
 }: {
   order: ApiOrder;
   profile?: CustomerProfile | null;
@@ -667,9 +750,13 @@ function OrderCard({
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
+      cancellation_reason?: string;
     }
   ) => void;
+  onResetFreeSampleLimit: (userId: string | null | undefined) => void;
 }) {
+  const [sampleCancelReason, setSampleCancelReason] = useState('');
+
   function handleConfirm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -679,6 +766,14 @@ function OrderCard({
       confirmation_user_id: String(form.get('confirmation_user_id') ?? ''),
       payment_transaction_id: String(form.get('payment_transaction_id') ?? ''),
     });
+  }
+
+  function handleCancelSample() {
+    onPatch(order.id, {
+      action: 'cancel',
+      cancellation_reason: sampleCancelReason.trim(),
+    });
+    setSampleCancelReason('');
   }
 
   return (
@@ -734,9 +829,14 @@ function OrderCard({
             Accept free sample
           </button>
         )}
-        {order.status === 'new' && (
+        {order.status === 'new' && order.order_type !== 'free_sample' && (
           <button type="button" className={styles.dangerBtn} onClick={() => onPatch(order.id, { action: 'cancel' })}>
             Cancel order
+          </button>
+        )}
+        {order.order_type === 'free_sample' && (
+          <button type="button" className={styles.secondaryBtn} onClick={() => onResetFreeSampleLimit(order.user_id)}>
+            Reset sample limit
           </button>
         )}
         {order.status === 'confirmed' && (
@@ -752,6 +852,26 @@ function OrderCard({
           </button>
         )}
       </div>
+      {order.status === 'new' && order.order_type === 'free_sample' && (
+        <div className={styles.confirmBox}>
+          <label>
+            <span>Cancel reason</span>
+            <input
+              value={sampleCancelReason}
+              onChange={(event) => setSampleCancelReason(event.target.value)}
+              placeholder="Optional reason shown to user"
+            />
+          </label>
+          <button type="button" className={styles.dangerBtn} onClick={handleCancelSample}>
+            Cancel free sample
+          </button>
+        </div>
+      )}
+      {order.status === 'cancelled' && order.cancellation_reason && (
+        <div className={styles.detailBlock}>
+          <p>Cancel reason: {order.cancellation_reason}</p>
+        </div>
+      )}
     </article>
   );
 }

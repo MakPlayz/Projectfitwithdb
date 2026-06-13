@@ -3,7 +3,7 @@ import {
   getUserFromAccessToken,
   supabaseRestFetch,
 } from '@/lib/supabase-rest';
-import type { ApiOrder, CustomerProfile, DeliveryAddress } from '@/lib/backend-types';
+import type { ApiOrder, CustomerProfile, DeliveryAddress, FreeSampleDeviceClaim } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
 import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { requireAdminUser } from '@/lib/admin-auth';
@@ -14,6 +14,7 @@ interface CreateOrderBody {
   subtotal?: number;
   deliveryAddress?: Partial<DeliveryAddress>;
   requestedStartDate?: string;
+  freeSampleDeviceId?: string;
 }
 
 function normalizeText(value: unknown) {
@@ -184,6 +185,11 @@ function isFreeSampleCart(items: CartItem[]) {
   return items.length === 1 && items[0].itemType === 'free_sample' && items[0].quantity === 1;
 }
 
+function normalizeDeviceId(value: unknown) {
+  const deviceId = normalizeText(value);
+  return /^[A-Za-z0-9_-]{12,120}$/.test(deviceId) ? deviceId : null;
+}
+
 function isBlockingOrder(order: ApiOrder) {
   if (order.status === 'cancelled' || order.payment_status === 'failed') return false;
   if (order.status === 'new') return true;
@@ -266,6 +272,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (body.items.length !== 1 || body.items.some((item) => item.quantity !== 1)) {
+    return NextResponse.json(
+      { error: 'Please order one item at a time. Free samples and meal plans must be ordered separately.' },
+      { status: 400 }
+    );
+  }
+
   const isFreeSampleOrder = isFreeSampleCart(body.items);
   const hasMixedFreeSample = body.items.some((item) => item.itemType === 'free_sample') && !isFreeSampleOrder;
   if (hasMixedFreeSample) {
@@ -275,9 +288,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const startDate = normalizeStartDate(body.requestedStartDate);
-  if (startDate.error || !startDate.date) {
+  const startDate = isFreeSampleOrder
+    ? { date: null, error: null }
+    : normalizeStartDate(body.requestedStartDate);
+  if (startDate.error || (!isFreeSampleOrder && !startDate.date)) {
     return NextResponse.json({ error: startDate.error }, { status: 400 });
+  }
+
+  const freeSampleDeviceId = isFreeSampleOrder ? normalizeDeviceId(body.freeSampleDeviceId) : null;
+  if (isFreeSampleOrder && !freeSampleDeviceId) {
+    return NextResponse.json(
+      { error: 'Could not verify this device for the one-time free sample limit. Refresh and try again.' },
+      { status: 400 }
+    );
   }
 
   const addressValidation = validateDeliveryAddress(body.deliveryAddress);
@@ -305,13 +328,40 @@ export async function POST(request: Request) {
   }
 
   const existingOrders = existingOrdersResult.data ?? [];
-  const duplicateFreeSample = existingOrders.find((order) => order.order_type === 'free_sample');
+  if (isFreeSampleOrder && freeSampleDeviceId) {
+    const [deviceClaimResult, userClaimResult] = await Promise.all([
+      supabaseRestFetch<FreeSampleDeviceClaim[]>(
+        `/free_sample_device_claims?active=eq.true&device_id=eq.${encodeURIComponent(freeSampleDeviceId)}&select=*&limit=1`
+      ),
+      supabaseRestFetch<FreeSampleDeviceClaim[]>(
+        `/free_sample_device_claims?active=eq.true&user_id=eq.${user.id}&select=*&limit=1`
+      ),
+    ]);
 
-  if (isFreeSampleOrder && duplicateFreeSample) {
-    return NextResponse.json(
-      { error: 'Only one free sample can be ordered per account.' },
-      { status: 409 }
+    if (deviceClaimResult.error || userClaimResult.error) {
+      return NextResponse.json(
+        { error: deviceClaimResult.error ?? userClaimResult.error },
+        { status: deviceClaimResult.status || userClaimResult.status || 500 }
+      );
+    }
+
+    const duplicateLegacyFreeSample = existingOrders.find(
+      (order) => order.order_type === 'free_sample' && order.status !== 'cancelled'
     );
+
+    if (deviceClaimResult.data?.[0]) {
+      return NextResponse.json(
+        { error: 'You already ordered a free sample from this device. Ask the chef to reset the device limit if needed.' },
+        { status: 409 }
+      );
+    }
+
+    if (userClaimResult.data?.[0] || duplicateLegacyFreeSample) {
+      return NextResponse.json(
+        { error: 'Only one free sample can be ordered per account. Ask the chef to reset your free sample limit if needed.' },
+        { status: 409 }
+      );
+    }
   }
 
   const duplicateOrder = !isFreeSampleOrder
@@ -386,6 +436,7 @@ export async function POST(request: Request) {
       payment_status: isFreeSampleOrder ? 'paid' : 'pending',
       delivery_address: addressValidation.deliveryAddress,
       requested_start_date: startDate.date,
+      cancellation_reason: null,
     }),
   });
 
@@ -400,6 +451,29 @@ export async function POST(request: Request) {
   }
 
   if (isFreeSampleOrder) {
+    const claimResult = await supabaseRestFetch<FreeSampleDeviceClaim[]>('/free_sample_device_claims', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: user.id,
+        device_id: freeSampleDeviceId,
+        order_id: order.id,
+        active: true,
+      }),
+    });
+
+    if (claimResult.error) {
+      await supabaseRestFetch<ApiOrder[]>(`/orders?id=eq.${encodeURIComponent(order.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'cancelled',
+          payment_status: 'failed',
+          cancellation_reason: 'Free sample device claim could not be created.',
+        }),
+      });
+
+      return NextResponse.json({ error: claimResult.error }, { status: claimResult.status || 500 });
+    }
+
     return NextResponse.json({ order }, { status: 201 });
   }
 

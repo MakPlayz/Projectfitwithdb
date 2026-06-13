@@ -1,7 +1,7 @@
 'use client';
 
 import { useCartStore } from '@/store/cartStore';
-import { X, Plus, Minus, ShoppingBag, Trash2, MapPin } from 'lucide-react';
+import { X, ShoppingBag, Trash2, MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { getAuthHeaders } from '@/lib/auth-client';
@@ -9,6 +9,7 @@ import type { DeliveryAddress } from '@/lib/backend-types';
 import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { usePublicConfig } from '@/lib/use-public-config';
 import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
+import { getFreeSampleDeviceId } from '@/lib/free-sample-device';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
@@ -58,7 +59,7 @@ function validateDeliveryAddress(deliveryAddress: DeliveryAddress) {
 export default function Cart() {
   usePublicConfig();
 
-  const { items, isOpen, toggleCart, updateQuantity, removeItem, getTotal, clearCart } = useCartStore();
+  const { items, isOpen, toggleCart, removeItem, getTotal, clearCart } = useCartStore();
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMapOpen, setIsMapOpen] = useState(false);
@@ -83,6 +84,7 @@ export default function Cart() {
   if (!isOpen) return null;
 
   const total = getTotal();
+  const isFreeSampleCheckout = items.length === 1 && items[0]?.itemType === 'free_sample';
   const hasValidPincode = /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim());
   const isOutsideDeliverableArea =
     hasValidPincode && !isDeliverablePincode(deliveryAddress.pincode);
@@ -135,6 +137,10 @@ export default function Cart() {
     setIsSubmitting(true);
 
     try {
+      if (items.length !== 1 || items.some((item) => item.quantity !== 1)) {
+        throw new Error('Please order one item at a time. Free samples and meal plans must be ordered separately.');
+      }
+
       const addressError = validateDeliveryAddress(deliveryAddress);
 
       if (addressError) {
@@ -151,7 +157,8 @@ export default function Cart() {
           items,
           subtotal: total,
           deliveryAddress,
-          requestedStartDate,
+          requestedStartDate: isFreeSampleCheckout ? null : requestedStartDate,
+          freeSampleDeviceId: isFreeSampleCheckout ? getFreeSampleDeviceId() : undefined,
         }),
       });
       const data = await response.json();
@@ -220,7 +227,7 @@ export default function Cart() {
                       )}
                     </div>
                     <div className={styles.itemTitle}>
-                      <span className={styles.itemEyebrow}>Selected plan</span>
+                      <span className={styles.itemEyebrow}>{item.itemType === 'free_sample' ? 'Free sample' : 'Selected plan'}</span>
                       <h4>{item.name}</h4>
                       <p>₹{item.totalPrice.toLocaleString('en-IN')}</p>
                     </div>
@@ -247,15 +254,9 @@ export default function Cart() {
                     </div>
                   )}
 
-                  {item.itemType === 'free_sample' ? (
-                    <span className={styles.sampleTag}>One-time free sample</span>
-                  ) : (
-                    <div className={styles.qtyCtrl}>
-                      <button aria-label={`Decrease ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity - 1)}><Minus size={14} /></button>
-                      <span>{item.quantity}</span>
-                      <button aria-label={`Increase ${item.name}`} onClick={() => updateQuantity(item.id, item.quantity + 1)}><Plus size={14} /></button>
-                    </div>
-                  )}
+                  <span className={styles.sampleTag}>
+                    {item.itemType === 'free_sample' ? 'One-time free sample' : 'Single plan checkout'}
+                  </span>
                 </div>
               ))}
             </div>
@@ -330,21 +331,25 @@ export default function Cart() {
                   />
                 </label>
 
-                <label className={styles.field}>
-                  <span>Plan start date</span>
-                  <input
-                    type="date"
-                    value={requestedStartDate}
-                    min={getTomorrowDateValue()}
-                    required
-                    onFocus={(event) => event.currentTarget.showPicker?.()}
-                    onClick={(event) => event.currentTarget.showPicker?.()}
-                    onChange={(event) => setRequestedStartDate(event.target.value)}
-                  />
-                </label>
-                <p className={styles.helpText}>
-                  Choose tomorrow or any future date. We cannot start the plan on the same day as the order because meals start fresh from the next day.
-                </p>
+                {!isFreeSampleCheckout && (
+                  <>
+                    <label className={styles.field}>
+                      <span>Plan start date</span>
+                      <input
+                        type="date"
+                        value={requestedStartDate}
+                        min={getTomorrowDateValue()}
+                        required
+                        onFocus={(event) => event.currentTarget.showPicker?.()}
+                        onClick={(event) => event.currentTarget.showPicker?.()}
+                        onChange={(event) => setRequestedStartDate(event.target.value)}
+                      />
+                    </label>
+                    <p className={styles.helpText}>
+                      Choose tomorrow or any future date. We cannot start the plan on the same day as the order because meals start fresh from the next day.
+                    </p>
+                  </>
+                )}
               </div>
 
               {error && <p className={styles.error}>{error}</p>}

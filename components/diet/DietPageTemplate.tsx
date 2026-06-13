@@ -15,10 +15,17 @@ interface DietPageTemplateProps {
 
 export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const categoryImage = categoryImages[diet.slug];
-  const { addItem, clearCart, toggleCart } = useCartStore();
+  const { items, addItem, toggleCart } = useCartStore();
   const [selectedMeals, setSelectedMeals] = useState<Record<string, number>>({});
+  const [cartNotice, setCartNotice] = useState('');
 
   const handleAddPlanToCart = (plan: DietPlan) => {
+    if (items.length > 0) {
+      setCartNotice('Please complete or remove the current cart item first. Free samples and meal plans must be ordered one after another.');
+      toggleCart();
+      return;
+    }
+
     let price = plan.price;
     let name = plan.name;
 
@@ -38,6 +45,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
       addOns: [],
       totalPrice: price,
     });
+    setCartNotice('');
     toggleCart();
   };
 
@@ -46,7 +54,12 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   };
 
   const handleAddFreeSampleToCart = (sample: DietMeal) => {
-    clearCart();
+    if (items.length > 0) {
+      setCartNotice('Please complete or remove the current cart item first. Free samples and meal plans must be ordered one after another.');
+      toggleCart();
+      return;
+    }
+
     addItem({
       id: `sample-${diet.slug}-${sample.id}`,
       name: `${diet.title} - Free Sample: ${sample.name}`,
@@ -59,6 +72,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
       addOns: [],
       totalPrice: 0,
     });
+    setCartNotice('');
     toggleCart();
   };
 
@@ -232,6 +246,8 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
             {diet.calorieTarget} — structured nutrition options tailored to your schedule.
           </p>
 
+          {cartNotice && <p className={styles.cartNotice}>{cartNotice}</p>}
+
           {dayPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
@@ -323,6 +339,8 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           <p className="section-subtitle">
             One free sample order is available per account. Choose any one sample from any program.
           </p>
+          {cartNotice && <p className={styles.cartNotice}>{cartNotice}</p>}
+
           {!diet.freeSamples?.length ? (
             <div className={styles.mealsEmpty}>
               <h3>No free samples added yet</h3>

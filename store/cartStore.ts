@@ -33,13 +33,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     set((state) => {
       const existing = state.items.find((i) => i.id === item.id);
       if (existing) {
-        return {
-          items: state.items.map((i) =>
-            i.id === item.id
-              ? { ...i, quantity: i.quantity + item.quantity, totalPrice: (i.quantity + item.quantity) * (item.totalPrice / item.quantity) }
-              : i
-          ),
-        };
+        return { items: state.items };
       }
       return { items: [...state.items, item] };
     }),

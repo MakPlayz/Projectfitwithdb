@@ -81,6 +81,18 @@ export interface CustomerFeedback {
   customer_email?: string | null;
 }
 
+export interface FreeSampleDeviceClaim {
+  id: string;
+  user_id: string;
+  device_id: string;
+  order_id: string | null;
+  active: boolean;
+  reset_by: string | null;
+  reset_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -157,6 +169,7 @@ export interface ApiOrder {
   plan_expires_at: string | null;
   confirmed_at: string | null;
   confirmed_by: string | null;
+  cancellation_reason: string | null;
   created_at: string;
   updated_at?: string;
   customer_profile?: CustomerProfile | null;

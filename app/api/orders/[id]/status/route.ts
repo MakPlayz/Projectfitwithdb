@@ -13,6 +13,7 @@ interface StatusBody {
   confirmation_order_id?: string;
   confirmation_user_id?: string;
   payment_transaction_id?: string;
+  cancellation_reason?: string;
 }
 
 function inferPlanDays(order: ApiOrder | null) {
@@ -36,6 +37,7 @@ export async function PATCH(
   const body = (await request.json()) as StatusBody;
 
   if (body.action === 'cancel') {
+    const cancellationReason = String(body.cancellation_reason ?? '').trim();
     const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
       `/orders?id=eq.${encodeURIComponent(id)}`,
       {
@@ -43,6 +45,7 @@ export async function PATCH(
         body: JSON.stringify({
           status: 'cancelled',
           payment_status: 'failed',
+          cancellation_reason: cancellationReason || null,
         }),
       }
     );
@@ -102,6 +105,7 @@ export async function PATCH(
       confirmed_at: confirmedAt.toISOString(),
       confirmed_by: admin.user?.id ?? null,
       payment_transaction_id: isFreeSampleOrder ? null : transactionId,
+      cancellation_reason: null,
     };
 
     const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(

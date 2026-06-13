@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarClock, CreditCard, Sparkles } from 'lucide-react';
+import { CalendarClock, CreditCard, Sparkles, Soup } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth-client';
 import type { ApiOrder } from '@/lib/backend-types';
 import styles from './page.module.css';
@@ -64,12 +64,16 @@ export default function MyPlanClient() {
     };
   }, []);
 
+  const sampleOrders = useMemo(
+    () => orders.filter((order) => order.order_type === 'free_sample'),
+    [orders]
+  );
   const pendingOrders = useMemo(
-    () => orders.filter((order) => order.status === 'new'),
+    () => orders.filter((order) => order.order_type !== 'free_sample' && order.status === 'new'),
     [orders]
   );
   const activeOrders = useMemo(
-    () => orders.filter((order) => ['confirmed', 'preparing', 'ready'].includes(order.status) && order.payment_status === 'paid'),
+    () => orders.filter((order) => order.order_type !== 'free_sample' && ['confirmed', 'preparing', 'ready'].includes(order.status) && order.payment_status === 'paid'),
     [orders]
   );
 
@@ -90,7 +94,7 @@ export default function MyPlanClient() {
     );
   }
 
-  if (pendingOrders.length === 0 && activeOrders.length === 0) {
+  if (pendingOrders.length === 0 && activeOrders.length === 0 && sampleOrders.length === 0) {
     return (
       <div className={styles.emptyCard}>
         <div className={styles.iconWrap}>
@@ -127,6 +131,38 @@ export default function MyPlanClient() {
                 <span>Ordered on: {formatDate(order.created_at)}</span>
                 <span>Requested start: {formatDate(order.requested_start_date)}</span>
                 <span>Amount: Rs {order.total.toLocaleString('en-IN')}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {sampleOrders.length > 0 && (
+        <section className={styles.planPanel}>
+          <span className={styles.badgeSample}>One-time free sample order</span>
+          <h2>Free sample delivery</h2>
+          <p>
+            Your sample request is reviewed by the chef team. Accepted samples will be prepared for delivery.
+          </p>
+          <div className={styles.planGrid}>
+            {sampleOrders.map((order) => (
+              <article key={order.id} className={styles.planCard}>
+                <Soup size={20} />
+                <strong>{getPlanName(order)}</strong>
+                <span>Order ID: {order.id}</span>
+                <span>Ordered on: {formatDate(order.created_at)}</span>
+                {order.status === 'new' && (
+                  <span>Status: Your free sample order is pending chef approval.</span>
+                )}
+                {['confirmed', 'preparing', 'ready'].includes(order.status) && (
+                  <span>Status: Your delivery for free sample has been accepted and delivery is on the way.</span>
+                )}
+                {order.status === 'cancelled' && (
+                  <span>
+                    Status: Your delivery for free sample has been cancelled by chef.
+                    {order.cancellation_reason ? ` Reason: ${order.cancellation_reason}` : ''}
+                  </span>
+                )}
               </article>
             ))}
           </div>

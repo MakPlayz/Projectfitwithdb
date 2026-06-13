@@ -162,6 +162,19 @@
   letter-spacing: 0.06em;
 }
 
+.badgeSample {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .planGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
