@@ -129,11 +129,16 @@
 }
 
 .page .brandMark {
-  width: 70px;
-  height: 70px;
-  margin-bottom: 18px;
+  width: 78px;
+  height: 78px;
+  margin-inline: auto;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid rgba(226, 232, 240, 0.9);
+  border-radius: 50%;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.14);
   overflow: hidden;
 }
@@ -142,6 +147,16 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
+}
+
+.page .brandImage {
+  width: 100%;
+  height: 100%;
+  background-image: url('/images/projectfit-auth/broccoli-photo.png');
+  background-size: 65%;
+  background-position: center center;
+  background-repeat: no-repeat;
 }
 
 .title {
@@ -158,6 +173,8 @@
   font-size: 1.95rem;
   font-weight: 800;
   color: #0f172a;
+  text-align: center;
+  width: 100%;
 }
 
 .subtitle {
@@ -174,6 +191,8 @@
   margin-bottom: 24px;
   max-width: 320px;
   color: #56627a;
+  text-align: center;
+  margin-inline: auto;
 }
 
 .tabs {
@@ -193,6 +212,7 @@
   height: 52px;
   margin-bottom: 24px;
   max-width: 368px;
+  margin-inline: auto;
   background: #ffffff;
   border-color: #d9dee8;
   box-shadow: inset 0 1px 3px rgba(15, 23, 42, 0.06);
@@ -274,7 +294,7 @@
 
 .page .divider {
   max-width: 100%;
-  margin: 18px 0 0;
+  margin: 16px 0 0;
   gap: 18px;
   color: #56627a;
   font-size: 15px;
@@ -298,6 +318,7 @@
 }
 
 .page .form {
+  margin-top: 12px;
   gap: 12px;
 }
 
@@ -590,7 +611,7 @@
   z-index: 2;
   width: min(69%, 510px);
   height: min(79.5%, 704px);
-  transform: translate(-50%, -48%);
+  transform: translate(calc(-50% - 6px), calc(-48% - 7px));
   border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 48px;
   background: rgba(255, 255, 255, 0.97);
@@ -604,7 +625,7 @@
   z-index: 3;
   width: min(56%, 420px);
   max-height: min(74%, 650px);
-  transform: translate(-50%, -48%);
+  transform: translate(calc(-50% - 6px), calc(-48% - 7px));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -613,20 +634,18 @@
 .formScroll {
   width: 100%;
   max-height: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px 4px 8px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(5, 150, 105, 0.38) transparent;
+  scrollbar-width: none;
 }
 
 .formScroll::-webkit-scrollbar {
-  width: 4px;
-}
-
-.formScroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: rgba(5, 150, 105, 0.35);
+  display: none;
 }
 
 /* Checkbox group at the bottom */
@@ -712,8 +731,8 @@
   }
 
   .page .brandMark {
-    width: 58px;
-    height: 58px;
+    width: 68px;
+    height: 68px;
     margin-bottom: 12px;
   }
 
