@@ -15,12 +15,14 @@ interface DietPageTemplateProps {
 
 export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const categoryImage = categoryImages[diet.slug];
-  const { items, addItem, toggleCart } = useCartStore();
+  const { items, addItem, clearCart, toggleCart } = useCartStore();
   const [selectedMeals, setSelectedMeals] = useState<Record<string, number>>({});
   const [cartNotice, setCartNotice] = useState('');
 
   const handleAddPlanToCart = (plan: DietPlan) => {
-    if (items.length > 0) {
+    const hasFreeSampleInCart = items.some((item) => item.itemType === 'free_sample');
+
+    if (hasFreeSampleInCart) {
       setCartNotice('Please complete or remove the current cart item first. Free samples and meal plans must be ordered one after another.');
       toggleCart();
       return;
@@ -35,9 +37,12 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
       name = `${plan.name} (${customMeals} Meal${customMeals > 1 ? 's' : ''}/Day)`;
     }
 
+    clearCart();
     addItem({
       id: `${plan.id}-${name}`,
       name: `${diet.title} - ${name}`,
+      itemType: 'plan',
+      programSlug: diet.slug,
       basePrice: price,
       quantity: 1,
       image: categoryImage,
