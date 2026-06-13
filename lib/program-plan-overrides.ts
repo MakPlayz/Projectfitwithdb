@@ -37,11 +37,15 @@ function normalizeMealType(value: string): DietMeal['mealType'] | undefined {
 }
 
 function mapMenuItemToDietMeal(item: MenuItem, fallbackImage: string): DietMeal {
+  const image = item.photo_url?.startsWith('/') || item.photo_url?.startsWith('data:image/')
+    ? item.photo_url
+    : fallbackImage;
+
   return {
     id: item.id,
     name: item.name,
     description: item.description ?? (item.ingredients.join(', ') || 'Chef prepared meal.'),
-    image: item.photo_url?.startsWith('/') ? item.photo_url : fallbackImage,
+    image,
     calories: 0,
     protein: Math.round(Number(item.protein_grams ?? 0)),
     carbs: 0,

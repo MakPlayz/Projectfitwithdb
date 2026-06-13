@@ -33,6 +33,18 @@ export default function DietImage({
 }: DietImageProps) {
   const [imgSrc, setImgSrc] = useState(src);
 
+  if (imgSrc.startsWith('data:image/')) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imgSrc}
+        alt={alt}
+        className={`${styles.image} ${className}`}
+        onError={() => setImgSrc(FALLBACK)}
+      />
+    );
+  }
+
   if (fill) {
     return (
       <Image

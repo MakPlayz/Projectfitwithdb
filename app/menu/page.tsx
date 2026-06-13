@@ -11,6 +11,14 @@ import styles from './page.module.css';
 
 type SortOption = 'popular' | 'price-low' | 'price-high';
 
+function resolveMenuImage(value: string | null | undefined) {
+  if (value?.startsWith('/') || value?.startsWith('data:image/')) {
+    return value;
+  }
+
+  return '/images/projectfit-logo.png';
+}
+
 export default function MenuPage() {
   const [activeCat, setActiveCat] = useState('All');
   const [vegOnly, setVegOnly] = useState(false);
@@ -68,7 +76,7 @@ export default function MenuPage() {
           name: item.name,
           description: item.description ?? (item.ingredients.join(', ') || 'Chef prepared meal.'),
           price: item.price,
-          image: item.photo_url?.startsWith('/') ? item.photo_url : '/images/projectfit-logo.png',
+          image: resolveMenuImage(item.photo_url),
           category: item.category,
           isVeg: !/chicken|fish|egg|prawn|shrimp|meat/i.test(`${item.name} ${item.description ?? ''} ${item.ingredients.join(' ')}`),
           isHighProtein: Number(item.protein_grams ?? 0) >= 20,

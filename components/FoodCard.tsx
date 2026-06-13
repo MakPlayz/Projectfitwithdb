@@ -22,12 +22,17 @@ export default function FoodCard({ item }: { item: MenuItem }) {
         transition={{ duration: 0.5 }}
       >
         <div className={styles.imageWrap}>
-          <Image 
-            src={item.image} 
-            alt={item.name} 
-            fill 
-            className={styles.image} 
-          />
+          {item.image.startsWith('data:image/') ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={item.image} alt={item.name} className={styles.image} />
+          ) : (
+            <Image
+              src={item.image}
+              alt={item.name}
+              fill
+              className={styles.image}
+            />
+          )}
           {item.badge && <span className={styles.badge}>{item.badge}</span>}
           <div className={styles.typeTag}>
             <div className={item.isVeg ? 'veg-dot' : 'nonveg-dot'} />
@@ -52,8 +57,12 @@ export default function FoodCard({ item }: { item: MenuItem }) {
           </div>
 
           <div className={styles.footer}>
+            <span className={styles.price}>
+              {item.price > 0 ? `Rs ${item.price.toLocaleString('en-IN')}` : 'Price updating'}
+            </span>
             <button 
               className={styles.addBtn}
+              disabled={item.price <= 0}
               onClick={() => setShowModal(true)}
             >
               Add <Plus size={16} />

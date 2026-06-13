@@ -63,16 +63,20 @@ export default function CustomizeModal({ item, onClose }: Props) {
             <h3>Remove Ingredients</h3>
             <p className={styles.hint}>Deselect any ingredients you don&apos;t want</p>
             <div className={styles.list}>
-              {item.ingredients.map(ing => (
-                <label key={ing} className={`${styles.item} ${removed.includes(ing) ? styles.removed : ''}`}>
-                  <input 
-                    type="checkbox" 
-                    checked={!removed.includes(ing)}
-                    onChange={() => toggleRemove(ing)}
-                  />
-                  <span>{ing}</span>
-                </label>
-              ))}
+              {item.ingredients.length === 0 ? (
+                <p className={styles.emptyText}>No removable ingredients listed.</p>
+              ) : (
+                item.ingredients.map(ing => (
+                  <label key={ing} className={`${styles.item} ${removed.includes(ing) ? styles.removed : ''}`}>
+                    <input
+                      type="checkbox"
+                      checked={!removed.includes(ing)}
+                      onChange={() => toggleRemove(ing)}
+                    />
+                    <span>{ing}</span>
+                  </label>
+                ))
+              )}
             </div>
           </div>
 
@@ -80,21 +84,26 @@ export default function CustomizeModal({ item, onClose }: Props) {
             <h3>Add-ons</h3>
             <p className={styles.hint}>Boost your meal</p>
             <div className={styles.list}>
-              {item.addOns.map(addon => {
-                const isSelected = addons.some(a => a.name === addon.name);
-                return (
-                  <label key={addon.name} className={`${styles.item} ${isSelected ? styles.selected : ''}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={isSelected}
-                      onChange={() => toggleAddon(addon)}
-                    />
-                    <div className={styles.addonInfo}>
-                      <span>{addon.name}</span>
-                    </div>
-                  </label>
-                );
-              })}
+              {item.addOns.length === 0 ? (
+                <p className={styles.emptyText}>No add-ons available for this item.</p>
+              ) : (
+                item.addOns.map(addon => {
+                  const isSelected = addons.some(a => a.name === addon.name);
+                  return (
+                    <label key={addon.name} className={`${styles.item} ${isSelected ? styles.selected : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleAddon(addon)}
+                      />
+                      <div className={styles.addonInfo}>
+                        <span>{addon.name}</span>
+                        <span className={styles.addonPrice}>Rs {addon.price.toLocaleString('en-IN')}</span>
+                      </div>
+                    </label>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -106,8 +115,8 @@ export default function CustomizeModal({ item, onClose }: Props) {
             <button onClick={() => setQty(qty + 1)}><Plus size={18} /></button>
           </div>
           
-          <button className="btn-primary" onClick={handleAdd} style={{ flex: 1, justifyContent: 'center' }}>
-            Add Item
+          <button className="btn-primary" onClick={handleAdd} disabled={item.price <= 0} style={{ flex: 1, justifyContent: 'center' }}>
+            Add Item - Rs {totalPrice.toLocaleString('en-IN')}
           </button>
         </div>
       </div>

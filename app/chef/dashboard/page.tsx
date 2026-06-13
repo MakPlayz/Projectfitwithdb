@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarCheck,
@@ -749,6 +749,34 @@ function MenuEditor({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onDelete?: () => void;
 }) {
+  const [photoValue, setPhotoValue] = useState(item?.photo_url ?? '');
+  const [photoError, setPhotoError] = useState('');
+
+  function handlePhotoUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setPhotoError('Upload an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 1_500_000) {
+      setPhotoError('Photo must be below 1.5 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoValue(String(reader.result ?? ''));
+      setPhotoError('');
+    };
+    reader.onerror = () => setPhotoError('Could not read this photo.');
+    reader.readAsDataURL(file);
+  }
+
   return (
     <form className={styles.editorCard} onSubmit={onSubmit}>
       <div className={styles.editorTitle}>
@@ -756,8 +784,22 @@ function MenuEditor({
         <h3>{title}</h3>
       </div>
       <input type="hidden" name="program_slug" value={item?.program_slug ?? programSlug} />
+      <input type="hidden" name="photo_url" value={photoValue} />
       <Field name="name" label="Item name" defaultValue={item?.name} required />
-      <Field name="photo_url" label="Item photo URL" defaultValue={item?.photo_url ?? ''} />
+      <label>
+        <span>Item photo</span>
+        <input name="photo_file" type="file" accept="image/*" onChange={handlePhotoUpload} />
+      </label>
+      {photoValue && (
+        <div className={styles.photoPreview}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={photoValue} alt={`${title} preview`} />
+          <button type="button" className={styles.deleteBtn} onClick={() => setPhotoValue('')}>
+            Remove photo
+          </button>
+        </div>
+      )}
+      {photoError && <p className={styles.formError}>{photoError}</p>}
       <Field name="category" label="Category" defaultValue={item?.category} required />
       <Field name="servings" label="Servings or portions" type="number" defaultValue={item?.servings ?? 1} required />
       <Field name="protein_grams" label="Protein grams" type="number" defaultValue={item?.protein_grams ?? ''} />
