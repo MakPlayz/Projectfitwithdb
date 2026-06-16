@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, ArrowRight, MessageCircle } from 'lucide-react';
+import { CheckCircle2, ArrowRight, MessageCircle, ShoppingBag } from 'lucide-react';
 import styles from './page.module.css';
 
 function OrderConfirmedContent() {
@@ -16,12 +16,18 @@ function OrderConfirmedContent() {
   
   return (
     <div className={styles.container}>
+      <div className={styles.ambient} aria-hidden />
       <div className={styles.card}>
+        <span className={styles.kicker}>
+          {isWhatsAppCheckout ? 'WhatsApp checkout' : isFreeSample ? 'Free sample' : 'Project Fit order'}
+        </span>
         <div className={styles.iconWrap}>
           {isManualPayment ? (
             <MessageCircle size={64} className={styles.icon} />
           ) : isWhatsAppCheckout ? (
             <MessageCircle size={64} className={styles.icon} />
+          ) : isFreeSample ? (
+            <ShoppingBag size={64} className={styles.icon} />
           ) : (
             <CheckCircle2 size={64} className={styles.icon} />
           )}
