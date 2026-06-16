@@ -33,7 +33,7 @@ const sections = [
       },
       {
         name: 'Monthly Plan',
-        desc: '30-Day Meal Plan with 26 service days because Sundays are off. Required if custom calorie/macro adjustments or dietary swaps are needed.',
+        desc: '30-Day Meal Plan with 26 service days. Sundays are off.',
         highlight: true,
       },
     ],

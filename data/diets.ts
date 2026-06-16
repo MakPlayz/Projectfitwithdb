@@ -136,7 +136,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'wl-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: '10% Deficit savings',
@@ -144,7 +144,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'wl-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Superfood monthly block',
@@ -152,7 +152,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'wl-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -164,7 +164,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'wl-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
@@ -240,7 +240,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'mg-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Massive bulking savings',
@@ -248,7 +248,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'mg-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Elite premium mass block',
@@ -256,7 +256,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'mg-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -268,7 +268,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'mg-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
@@ -344,7 +344,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pr-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Care & comfort savings',
@@ -352,7 +352,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pr-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Full premium care block',
@@ -360,7 +360,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pr-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -372,7 +372,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pr-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
@@ -448,7 +448,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pc-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Stable hormones block',
@@ -456,7 +456,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pc-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Elite hormone support block',
@@ -464,7 +464,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pc-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -476,7 +476,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'pc-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
@@ -552,7 +552,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'db-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Glucose stability block',
@@ -560,7 +560,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'db-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Premium diabetic block',
@@ -568,7 +568,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'db-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -580,7 +580,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'db-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
@@ -656,7 +656,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'kd-month-reg',
         name: 'Monthly Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Healthy growth savings',
@@ -664,7 +664,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'kd-month-prem',
         name: 'Monthly Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 3,
         highlight: 'Vivid kids premium block',
@@ -672,7 +672,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'kd-custom-reg',
         name: 'Customized Regular Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Month plan required',
@@ -684,7 +684,7 @@ export const dietCategories: DietCategory[] = [
       {
         id: 'kd-custom-prem',
         name: 'Customized Premium Plan',
-        duration: '30 days',
+        duration: '26 days',
         price: 0,
         mealsPerDay: 1,
         highlight: 'Premium custom meals',
