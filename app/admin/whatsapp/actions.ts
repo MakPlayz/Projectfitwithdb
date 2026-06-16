@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
-import type { MealPlan, MenuItem } from '@/lib/backend-types';
+import type { MealPlan, MenuItem, ProjectFitUser } from '@/lib/backend-types';
+import { sendAdminWhatsAppText, sendWelcomeTemplate } from '@/lib/whatsapp';
 
 function requireAdmin(formData: FormData) {
   const token = String(formData.get('adminToken') ?? '');
@@ -81,4 +82,48 @@ export async function saveMealPlan(formData: FormData) {
   }
 
   revalidatePath('/admin/whatsapp');
+}
+
+export async function sendWhatsAppAdminMessage(formData: FormData) {
+  requireAdmin(formData);
+
+  const mode = getText(formData, 'mode');
+  const userId = getText(formData, 'userId');
+  const phone = getText(formData, 'phone');
+  const message = getText(formData, 'message');
+
+  if (mode === 'welcome-template') {
+    if (!userId) {
+      throw new Error('Select a user before sending the welcome template.');
+    }
+
+    const result = await supabaseRestFetch<ProjectFitUser[]>(
+      `/users?id=eq.${encodeURIComponent(userId)}&select=*&limit=1`
+    );
+    const user = result.data?.[0] ?? null;
+
+    if (result.error) {
+      throw new Error(result.error);
+    }
+
+    if (!user) {
+      throw new Error('User not found.');
+    }
+
+    await sendWelcomeTemplate(user);
+    revalidatePath('/admin/whatsapp');
+    return;
+  }
+
+  if (mode === 'custom-text') {
+    if (!phone || !message) {
+      throw new Error('Phone and message are required for a custom text.');
+    }
+
+    await sendAdminWhatsAppText(phone, message);
+    revalidatePath('/admin/whatsapp');
+    return;
+  }
+
+  throw new Error('Choose a valid WhatsApp send mode.');
 }

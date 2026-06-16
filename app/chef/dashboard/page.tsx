@@ -35,7 +35,7 @@ type AdminOverview = {
   warnings?: string[];
 };
 
-type Tab = 'pending' | 'samples' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
+type Tab = 'pending' | 'samples' | 'approved-samples' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
@@ -50,7 +50,8 @@ const emptyOverview: AdminOverview = {
 
 const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'pending', label: 'Pending orders', icon: ClipboardList },
-  { id: 'samples', label: 'Free samples', icon: Soup },
+  { id: 'samples', label: 'Sample requests', icon: Soup },
+  { id: 'approved-samples', label: 'Approved samples', icon: CheckCircle2 },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
@@ -187,6 +188,8 @@ export default function ChefDashboard() {
     (order) => order.order_type !== 'free_sample' && (order.status === 'new' || order.payment_status === 'pending')
   );
   const sampleOrders = data.orders.filter((order) => order.order_type === 'free_sample');
+  const sampleRequests = sampleOrders.filter((order) => order.status === 'new');
+  const approvedSampleOrders = sampleOrders.filter((order) => ['confirmed', 'preparing', 'ready'].includes(order.status));
   const activePlans = data.orders.filter(
     (order) =>
       order.order_type !== 'free_sample' &&
@@ -218,7 +221,7 @@ export default function ChefDashboard() {
       ...order.items.map((item) => item.name),
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
-  const filteredSampleOrders = sampleOrders.filter((order) => {
+  const filteredSampleOrders = sampleRequests.filter((order) => {
     if (!normalizedQuery) return true;
     return [
       order.id,
@@ -226,6 +229,19 @@ export default function ChefDashboard() {
       order.customer_name,
       order.delivery_address?.phone,
       order.delivery_address?.pincode,
+      order.customer_delivery_status,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredApprovedSampleOrders = approvedSampleOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.delivery_address?.pincode,
+      order.customer_delivery_status,
       ...order.items.map((item) => item.name),
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
@@ -422,8 +438,8 @@ export default function ChefDashboard() {
 
           <div className={styles.railCard}>
             <span>Today</span>
-            <strong>{pendingOrders.length}</strong>
-            <small>orders need confirmation</small>
+            <strong>{pendingOrders.length + sampleRequests.length}</strong>
+            <small>orders and samples need action</small>
           </div>
         </aside>
 
@@ -450,7 +466,7 @@ export default function ChefDashboard() {
             <Metric label="Registered users" value={data.users.length} />
             <Metric label="Active plans" value={activePlans.length} />
             <Metric label="Pending confirmation" value={pendingOrders.length} />
-            <Metric label="Paid orders" value={data.orders.filter((order) => order.payment_status === 'paid').length} />
+            <Metric label="Sample requests" value={sampleRequests.length} />
           </section>
 
           <section className={styles.toolbar}>
@@ -514,17 +530,45 @@ export default function ChefDashboard() {
                 <section className={styles.orderBoard}>
                   <div className={styles.sectionHead}>
                     <div>
-                      <h2>Free sample orders</h2>
-                      <p>Accept or cancel one-time sample delivery requests. Cancelled samples remain locked until you reset the user limit.</p>
+                      <h2>Free sample requests</h2>
+                      <p>These requests were created only after the customer sent the WhatsApp checkout message.</p>
                     </div>
-                    <span>{filteredSampleOrders.length} samples</span>
+                    <span>{filteredSampleOrders.length} pending</span>
                   </div>
 
                   {filteredSampleOrders.length === 0 ? (
-                    <EmptyState title="No free sample orders" text="Free sample requests will appear here after checkout." />
+                    <EmptyState title="No pending free sample requests" text="Requests appear here after the customer sends the WhatsApp checkout message." />
                   ) : (
                     <div className={styles.orderGrid}>
                       {filteredSampleOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === 'approved-samples' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Approved free samples</h2>
+                      <p>Track samples after chef approval and customer delivery confirmation.</p>
+                    </div>
+                    <span>{filteredApprovedSampleOrders.length} approved</span>
+                  </div>
+
+                  {filteredApprovedSampleOrders.length === 0 ? (
+                    <EmptyState title="No approved free samples" text="Accepted free sample requests will move here." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredApprovedSampleOrders.map((order) => (
                         <OrderCard
                           key={order.id}
                           order={order}
@@ -784,11 +828,20 @@ function OrderCard({
           <h3>{order.customer_name ?? 'Project Fit customer'}</h3>
           <p>{formatDateTime(order.created_at)}</p>
         </div>
-        <div className={styles.badges}>
-          <span>{order.order_type === 'free_sample' ? 'free sample' : 'paid plan'}</span>
-          <span>{order.status}</span>
-          <span className={order.payment_status === 'paid' ? styles.paid : styles.pending}>{order.payment_status}</span>
-        </div>
+      <div className={styles.badges}>
+        <span>{order.order_type === 'free_sample' ? 'free sample' : 'paid plan'}</span>
+        <span>{order.status}</span>
+        <span className={order.payment_status === 'paid' ? styles.paid : styles.pending}>{order.payment_status}</span>
+        {order.order_type === 'free_sample' && (
+          <span className={order.customer_delivery_status === 'not_received' ? styles.pending : order.customer_delivery_status === 'received' ? styles.paid : ''}>
+            {order.customer_delivery_status === 'pending'
+              ? order.status === 'new'
+                ? 'approval pending'
+                : 'delivery pending'
+              : order.customer_delivery_status.replace('_', ' ')}
+          </span>
+        )}
+      </div>
       </div>
       <div className={styles.orderPlan}>
         <strong>{getPrimaryPlan(order)}</strong>
@@ -798,6 +851,20 @@ function OrderCard({
         <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
         <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
         <p>Requested start: {formatDate(order.requested_start_date)}</p>
+        {order.order_type === 'free_sample' && (
+          <>
+            <p>Created after WhatsApp: {order.whatsapp_checkout_intent_id ? 'Yes' : 'Legacy/direct order'}</p>
+            <p>
+              Delivery confirmation:{' '}
+              {order.customer_delivery_status === 'pending'
+                ? 'Pending from customer'
+                : order.customer_delivery_status === 'received'
+                  ? 'Customer marked received'
+                  : 'Customer marked not received'}
+            </p>
+            <p>Customer response time: {formatDateTime(order.customer_delivery_confirmed_at)}</p>
+          </>
+        )}
       </div>
       <div className={styles.items}>
         {order.items.map((item) => (
@@ -826,7 +893,7 @@ function OrderCard({
         {order.status === 'new' && order.order_type === 'free_sample' && (
           <button type="button" onClick={() => onPatch(order.id, { action: 'confirm' })}>
             <ShieldCheck size={15} />
-            Accept free sample
+            Approve and send buttons
           </button>
         )}
         {order.status === 'new' && order.order_type !== 'free_sample' && (

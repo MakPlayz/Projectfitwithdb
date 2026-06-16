@@ -120,6 +120,29 @@ create table if not exists public.free_sample_device_claims (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.checkout_intents (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  phone text not null,
+  customer_name text,
+  items jsonb not null,
+  subtotal integer not null,
+  tax integer not null,
+  total integer not null,
+  order_type text not null check (order_type in ('paid_plan', 'free_sample')),
+  delivery_address jsonb not null default '{}'::jsonb,
+  requested_start_date date,
+  free_sample_device_id text,
+  status text not null default 'pending' check (status in ('pending', 'converted', 'expired', 'cancelled')),
+  order_id text references public.orders(id) on delete set null,
+  whatsapp_from text,
+  whatsapp_message_id text,
+  expires_at timestamptz not null default (now() + interval '30 minutes'),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.program_plan_overrides (
   plan_id text primary key,
   name text,
@@ -143,7 +166,11 @@ alter table public.orders
   add column if not exists plan_expires_at timestamptz,
   add column if not exists confirmed_at timestamptz,
   add column if not exists confirmed_by uuid references auth.users(id) on delete set null,
-  add column if not exists cancellation_reason text;
+  add column if not exists cancellation_reason text,
+  add column if not exists whatsapp_checkout_intent_id uuid references public.checkout_intents(id) on delete set null,
+  add column if not exists customer_delivery_status text not null default 'pending',
+  add column if not exists customer_delivery_confirmed_at timestamptz,
+  add column if not exists customer_delivery_response_payload jsonb not null default '{}'::jsonb;
 
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders
@@ -154,6 +181,11 @@ alter table public.orders drop constraint if exists orders_order_type_check;
 alter table public.orders
   add constraint orders_order_type_check
   check (order_type in ('paid_plan', 'free_sample'));
+
+alter table public.orders drop constraint if exists orders_customer_delivery_status_check;
+alter table public.orders
+  add constraint orders_customer_delivery_status_check
+  check (customer_delivery_status in ('pending', 'received', 'not_received'));
 
 alter table public.menu_items
   add column if not exists program_slug text not null default 'main',
@@ -187,6 +219,12 @@ create index if not exists program_plan_overrides_active_idx on public.program_p
 create index if not exists free_sample_device_claims_device_active_idx on public.free_sample_device_claims (device_id, active);
 create index if not exists free_sample_device_claims_user_active_idx on public.free_sample_device_claims (user_id, active);
 create index if not exists free_sample_device_claims_order_idx on public.free_sample_device_claims (order_id);
+create index if not exists checkout_intents_code_idx on public.checkout_intents (code);
+create index if not exists checkout_intents_user_status_idx on public.checkout_intents (user_id, status);
+create index if not exists checkout_intents_expires_at_idx on public.checkout_intents (expires_at);
+create index if not exists checkout_intents_order_id_idx on public.checkout_intents (order_id);
+create index if not exists orders_whatsapp_checkout_intent_idx on public.orders (whatsapp_checkout_intent_id);
+create index if not exists orders_customer_delivery_status_idx on public.orders (customer_delivery_status);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -203,6 +241,7 @@ drop trigger if exists meal_plans_set_updated_at on public.meal_plans;
 drop trigger if exists program_plan_overrides_set_updated_at on public.program_plan_overrides;
 drop trigger if exists customer_feedback_set_updated_at on public.customer_feedback;
 drop trigger if exists free_sample_device_claims_set_updated_at on public.free_sample_device_claims;
+drop trigger if exists checkout_intents_set_updated_at on public.checkout_intents;
 
 create trigger orders_set_updated_at
 before update on public.orders
@@ -239,6 +278,11 @@ before update on public.free_sample_device_claims
 for each row
 execute function public.set_updated_at();
 
+create trigger checkout_intents_set_updated_at
+before update on public.checkout_intents
+for each row
+execute function public.set_updated_at();
+
 alter table public.users enable row level security;
 alter table public.orders enable row level security;
 alter table public.customer_profiles enable row level security;
@@ -248,6 +292,7 @@ alter table public.whatsapp_message_logs enable row level security;
 alter table public.program_plan_overrides enable row level security;
 alter table public.customer_feedback enable row level security;
 alter table public.free_sample_device_claims enable row level security;
+alter table public.checkout_intents enable row level security;
 
 drop policy if exists "Users can read their own app user row" on public.users;
 create policy "Users can read their own app user row"

@@ -147,7 +147,7 @@ export default function Cart() {
         throw new Error(addressError);
       }
 
-      const response = await fetch('/api/orders', {
+      const response = await fetch('/api/checkout-intents', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -185,11 +185,15 @@ export default function Cart() {
       toggleCart();
       if (data.whatsappUrl) {
         window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
-        router.push(`/order-confirmed?id=${data.order.id}&payment=manual`);
+        router.push(
+          `/order-confirmed?intent=${data.checkoutIntent.code}&whatsapp=1${
+            data.checkoutIntent.order_type === 'free_sample' ? '&type=sample' : ''
+          }`
+        );
         return;
       }
 
-      router.push(`/order-confirmed?id=${data.order.id}${data.order.order_type === 'free_sample' ? '&type=sample' : ''}`);
+      router.push('/my-plan');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not place your order.');
       setIsSubmitting(false);

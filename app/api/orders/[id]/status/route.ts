@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { ApiOrder, ApiOrderStatus, PaymentStatus } from '@/lib/backend-types';
 import { requireAdminUser } from '@/lib/admin-auth';
+import { sendFreeSampleApprovalButtons } from '@/lib/whatsapp';
 
 const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
@@ -120,7 +121,17 @@ export async function PATCH(
       return NextResponse.json({ error }, { status });
     }
 
-    return NextResponse.json({ order: data?.[0] ?? null });
+    const updatedOrder = data?.[0] ?? null;
+
+    if (isFreeSampleOrder && updatedOrder) {
+      await sendFreeSampleApprovalButtons(
+        updatedOrder.delivery_address.phone,
+        updatedOrder.id,
+        updatedOrder.user_id
+      ).catch(() => undefined);
+    }
+
+    return NextResponse.json({ order: updatedOrder });
   }
 
   if (body.status && !statuses.includes(body.status)) {

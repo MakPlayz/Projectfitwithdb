@@ -2,6 +2,8 @@ import type { CartItem } from '@/store/cartStore';
 
 export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready' | 'cancelled';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
+export type CheckoutIntentStatus = 'pending' | 'converted' | 'expired' | 'cancelled';
+export type CustomerDeliveryStatus = 'pending' | 'received' | 'not_received';
 export type CustomerGoal =
   | 'weight-loss'
   | 'maintenance'
@@ -93,6 +95,29 @@ export interface FreeSampleDeviceClaim {
   updated_at: string;
 }
 
+export interface CheckoutIntent {
+  id: string;
+  code: string;
+  user_id: string;
+  phone: string;
+  customer_name: string | null;
+  items: CartItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  order_type: 'paid_plan' | 'free_sample';
+  delivery_address: DeliveryAddress;
+  requested_start_date: string | null;
+  free_sample_device_id: string | null;
+  status: CheckoutIntentStatus;
+  order_id: string | null;
+  whatsapp_from: string | null;
+  whatsapp_message_id: string | null;
+  expires_at: string;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface MenuItem {
   id: string;
   name: string;
@@ -170,6 +195,10 @@ export interface ApiOrder {
   confirmed_at: string | null;
   confirmed_by: string | null;
   cancellation_reason: string | null;
+  whatsapp_checkout_intent_id: string | null;
+  customer_delivery_status: CustomerDeliveryStatus;
+  customer_delivery_confirmed_at: string | null;
+  customer_delivery_response_payload: unknown;
   created_at: string;
   updated_at?: string;
   customer_profile?: CustomerProfile | null;

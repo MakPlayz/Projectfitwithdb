@@ -1,6 +1,6 @@
 import type { MealPlan, MenuItem, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
-import { saveMealPlan, saveMenuItem } from './actions';
+import { saveMealPlan, saveMenuItem, sendWhatsAppAdminMessage } from './actions';
 import styles from './page.module.css';
 
 type SearchParams = Promise<{ token?: string }>;
@@ -65,6 +65,45 @@ export default async function WhatsAppAdminPage({
             </section>
 
             <section className={styles.sections}>
+              <div className={`${styles.panel} ${styles.panelWide}`}>
+                <h2>Send WhatsApp Test</h2>
+                <form action={sendWhatsAppAdminMessage} className={styles.sendGrid}>
+                  <input type="hidden" name="adminToken" value={adminToken} />
+                  <label>
+                    <span>Mode</span>
+                    <select name="mode" defaultValue="welcome-template">
+                      <option value="welcome-template">Approved welcome template</option>
+                      <option value="custom-text">Custom text message</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>User for welcome template</span>
+                    <select name="userId" defaultValue="">
+                      <option value="">Select opted-in user</option>
+                      {data.users
+                        .filter((user) => user.whatsapp_opt_in)
+                        .map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.name} - {user.phone}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Phone for custom text</span>
+                    <input name="phone" placeholder="919999999999" />
+                  </label>
+                  <label className={styles.messageField}>
+                    <span>Custom text</span>
+                    <textarea
+                      name="message"
+                      placeholder="Only works inside Meta's customer-service window unless you use an approved template."
+                    />
+                  </label>
+                  <button className="btn-primary" type="submit">Send WhatsApp</button>
+                </form>
+              </div>
+
               <div className={`${styles.panel} ${styles.panelWide}`}>
                 <h2>Users</h2>
                 <div className={styles.tableWrap}>

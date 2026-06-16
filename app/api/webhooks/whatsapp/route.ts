@@ -9,6 +9,11 @@ import {
   sendWhatsAppText,
   verifyMetaSignature,
 } from '@/lib/whatsapp';
+import {
+  convertCheckoutIntentFromWhatsApp,
+  findCheckoutCode,
+  markFreeSampleDeliveryStatus,
+} from '@/lib/checkout-intents';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { WhatsAppMessageLog } from '@/lib/backend-types';
 
@@ -23,6 +28,13 @@ type WhatsAppWebhookPayload = {
           type: string;
           text?: {
             body?: string;
+          };
+          interactive?: {
+            type?: string;
+            button_reply?: {
+              id?: string;
+              title?: string;
+            };
           };
         }>;
         statuses?: Array<{
@@ -59,8 +71,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 401 });
   }
 
-  const payload = JSON.parse(rawBody) as WhatsAppWebhookPayload;
+  let payload: WhatsAppWebhookPayload;
+  try {
+    payload = JSON.parse(rawBody) as WhatsAppWebhookPayload;
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON payload.' }, { status: 400 });
+  }
+
   const changes = payload.entry?.flatMap((entry) => entry.changes ?? []) ?? [];
+  const errors: string[] = [];
 
   for (const change of changes) {
     const messages = change.value?.messages ?? [];
@@ -72,7 +91,7 @@ export async function POST(request: Request) {
         .filter(Boolean)
         .join('; ');
 
-      await supabaseRestFetch<WhatsAppMessageLog[]>(
+      const result = await supabaseRestFetch<WhatsAppMessageLog[]>(
         `/whatsapp_message_logs?provider_message_id=eq.${encodeURIComponent(statusUpdate.id)}`,
         {
           method: 'PATCH',
@@ -82,32 +101,76 @@ export async function POST(request: Request) {
           }),
         }
       );
+
+      if (result.error) {
+        errors.push(`Could not update status ${statusUpdate.id}: ${result.error}`);
+      }
     }
 
     for (const message of messages) {
-      const body = message.text?.body?.trim() ?? '';
-      const user = await findUserByPhone(message.from);
+      try {
+        const buttonId = message.interactive?.button_reply?.id?.trim() ?? '';
+        const buttonTitle = message.interactive?.button_reply?.title?.trim() ?? '';
+        const body = message.text?.body?.trim() || buttonTitle;
+        const user = await findUserByPhone(message.from);
 
-      await logWhatsAppMessage({
-        userId: user?.id ?? null,
-        phone: message.from,
-        direction: 'incoming',
-        messageType: message.type,
-        messageBody: body,
-        status: 'received',
-        providerMessageId: message.id,
-        payload: message,
-      });
+        await logWhatsAppMessage({
+          userId: user?.id ?? null,
+          phone: message.from,
+          direction: 'incoming',
+          messageType: message.type,
+          messageBody: body || buttonId,
+          status: 'received',
+          providerMessageId: message.id,
+          payload: message,
+        });
 
-      if (!body) {
-        await sendWhatsAppText(message.from, 'Please reply with 1, 2, 3, or 4.', user?.id);
-        continue;
+        if (buttonId.startsWith('FREE_SAMPLE_RECEIVED:') || buttonId.startsWith('FREE_SAMPLE_NOT_RECEIVED:')) {
+          const [action, orderId] = buttonId.split(':');
+          if (!orderId) {
+            await sendWhatsAppText(message.from, 'We could not read that free sample response. Please contact the kitchen.', user?.id);
+            continue;
+          }
+
+          const deliveryStatus = action === 'FREE_SAMPLE_RECEIVED' ? 'received' : 'not_received';
+          const order = await markFreeSampleDeliveryStatus({
+            orderId,
+            status: deliveryStatus,
+            payload: message,
+          });
+
+          await sendWhatsAppText(
+            message.from,
+            deliveryStatus === 'received'
+              ? `Thank you for confirming. We marked free sample order ${order?.id ?? orderId} as received.`
+              : `We marked free sample order ${order?.id ?? orderId} as not received. The kitchen team will check it.`,
+            user?.id
+          );
+          continue;
+        }
+
+        const checkoutCode = findCheckoutCode(body);
+        if (checkoutCode) {
+          const result = await convertCheckoutIntentFromWhatsApp({
+            code: checkoutCode,
+            whatsappFrom: message.from,
+            whatsappMessageId: message.id,
+          });
+          await sendWhatsAppText(message.from, result.message, result.order?.user_id ?? user?.id);
+          continue;
+        }
+
+        const reply = await buildBotReply(body);
+        await sendWhatsAppText(message.from, reply, user?.id);
+      } catch (error) {
+        errors.push(
+          `Could not process message ${message.id}: ${
+            error instanceof Error ? error.message : 'Unknown error'
+          }`
+        );
       }
-
-      const reply = await buildBotReply(body);
-      await sendWhatsAppText(message.from, reply, user?.id);
     }
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true, errors });
 }

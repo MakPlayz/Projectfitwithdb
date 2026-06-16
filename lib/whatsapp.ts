@@ -9,6 +9,15 @@ import type {
 } from '@/lib/backend-types';
 
 const welcomeTemplateName = 'welcome_projectfit';
+const defaultBotMenu = [
+  'Welcome to ProjectFit Vizag.',
+  '',
+  'Reply with:',
+  '1 - View menu',
+  '2 - Today\'s specials',
+  '3 - Meal plans',
+  '4 - Contact kitchen',
+].join('\n');
 
 type WhatsAppMessageResponse = {
   messages?: Array<{ id: string }>;
@@ -54,6 +63,10 @@ export function getWhatsAppVerifyToken() {
 
 export function getInternalApiSecret() {
   return requireEnv(process.env.PROJECTFIT_INTERNAL_API_SECRET, 'PROJECTFIT_INTERNAL_API_SECRET');
+}
+
+export function getWelcomeTemplateName() {
+  return welcomeTemplateName;
 }
 
 export function formatWhatsAppPhone(phone: string) {
@@ -178,7 +191,7 @@ export async function sendWelcomeTemplate(user: ProjectFitUser) {
     template: {
       name: welcomeTemplateName,
       language: {
-        code: 'en',
+        code: 'en_US',
       },
     },
   };
@@ -250,6 +263,84 @@ export async function sendWhatsAppText(phone: string, body: string, userId?: str
     });
     throw error;
   }
+}
+
+export async function sendFreeSampleApprovalButtons(phone: string, orderId: string, userId?: string | null) {
+  const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
+  const body = [
+    'Your free sample request has been approved.',
+    '',
+    'Our chef team will send it within a few minutes.',
+    '',
+    'Please confirm delivery status once it reaches you.',
+  ].join('\n');
+  const payload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: formattedPhone,
+    type: 'interactive',
+    interactive: {
+      type: 'button',
+      body: {
+        text: body,
+      },
+      action: {
+        buttons: [
+          {
+            type: 'reply',
+            reply: {
+              id: `FREE_SAMPLE_RECEIVED:${orderId}`,
+              title: 'Received',
+            },
+          },
+          {
+            type: 'reply',
+            reply: {
+              id: `FREE_SAMPLE_NOT_RECEIVED:${orderId}`,
+              title: 'Not received',
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  try {
+    const providerMessageId = await sendWhatsAppPayload(payload);
+    await logWhatsAppMessage({
+      userId,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'interactive',
+      messageBody: body,
+      status: 'sent',
+      providerMessageId,
+      payload,
+    });
+    return providerMessageId;
+  } catch (error) {
+    await logWhatsAppMessage({
+      userId,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'interactive',
+      messageBody: body,
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : 'Could not send free sample approval buttons.',
+      payload,
+    });
+    throw error;
+  }
+}
+
+export async function sendAdminWhatsAppText(phone: string, body: string, userId?: string | null) {
+  const message = body.trim();
+
+  if (!message) {
+    throw new Error('Message is required.');
+  }
+
+  return sendWhatsAppText(phone, message, userId);
 }
 
 export async function findUserByPhone(phone: string) {
@@ -327,16 +418,35 @@ export function buildKitchenContactReply() {
 }
 
 export async function buildBotReply(message: string) {
-  switch (message.trim()) {
+  const normalized = message.trim().toLowerCase();
+
+  if (['hi', 'hello', 'hey', 'menu', 'start', 'help'].includes(normalized)) {
+    return defaultBotMenu;
+  }
+
+  switch (normalized) {
     case '1':
+    case 'one':
+    case 'view menu':
+    case 'full menu':
       return buildMenuReply();
     case '2':
+    case 'two':
+    case 'special':
+    case 'specials':
+    case 'today specials':
       return buildSpecialsReply();
     case '3':
+    case 'three':
+    case 'plans':
+    case 'meal plans':
       return buildMealPlansReply();
     case '4':
+    case 'four':
+    case 'contact':
+    case 'kitchen':
       return buildKitchenContactReply();
     default:
-      return 'Please reply with 1, 2, 3, or 4.';
+      return defaultBotMenu;
   }
 }
