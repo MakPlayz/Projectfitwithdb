@@ -63,6 +63,9 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'menu', label: 'Menus', icon: Soup },
   { id: 'pricing', label: 'Pricing', icon: WalletCards },
 ];
+const tabIds = new Set<Tab>(tabs.map((tab) => tab.id));
+const activeTabStorageKey = 'projectfit.chef.activeTab';
+const overviewRefreshMs = 15_000;
 
 function formatDate(value: string | null | undefined) {
   if (!value) return 'Not set';
@@ -189,6 +192,17 @@ export default function ChefDashboard() {
   const [menuMode, setMenuMode] = useState<'menu' | 'free_sample'>('menu');
 
   useEffect(() => {
+    const storedTab = localStorage.getItem(activeTabStorageKey) as Tab | null;
+    if (storedTab && tabIds.has(storedTab)) {
+      setActiveTab(storedTab);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(activeTabStorageKey, activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function verifyAdmin() {
@@ -253,6 +267,13 @@ export default function ChefDashboard() {
   useEffect(() => {
     if (!isAuthorized) return;
     loadOverview();
+    const interval = window.setInterval(() => {
+      if (!document.hidden) {
+        void loadOverview();
+      }
+    }, overviewRefreshMs);
+
+    return () => window.clearInterval(interval);
   }, [isAuthorized, loadOverview]);
 
   useEffect(() => {
