@@ -634,7 +634,9 @@
   display: grid;
   grid-template-columns: minmax(300px, 0.42fr) minmax(0, 1fr);
   gap: 14px;
-  min-height: 650px;
+  height: calc(100dvh - 220px);
+  min-height: 620px;
+  max-height: 820px;
 }
 
 .chatList,
@@ -651,8 +653,10 @@
   align-content: start;
   gap: 8px;
   padding: 14px;
-  max-height: 760px;
-  overflow: auto;
+  height: 100%;
+  min-height: 0;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
 }
 
 .chatRow,
@@ -714,6 +718,7 @@
 .chatPanel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -761,10 +766,29 @@
   gap: 10px;
   min-height: 0;
   padding: 18px;
-  overflow: auto;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
     rgba(8, 15, 13, 0.42);
+}
+
+.chatList::-webkit-scrollbar,
+.messageThread::-webkit-scrollbar {
+  width: 10px;
+}
+
+.chatList::-webkit-scrollbar-track,
+.messageThread::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.chatList::-webkit-scrollbar-thumb,
+.messageThread::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(18, 25, 22, 0.9);
+  border-radius: 999px;
+  background: rgba(201, 242, 77, 0.46);
 }
 
 .messageIncoming,
@@ -1096,11 +1120,19 @@
   }
 
   .chatShell {
+    height: auto;
+    max-height: none;
     grid-template-columns: 1fr;
   }
 
   .chatList {
+    height: auto;
     max-height: 360px;
+  }
+
+  .chatPanel {
+    height: min(640px, 80dvh);
+    min-height: 520px;
   }
 }
 

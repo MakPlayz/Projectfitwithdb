@@ -9,15 +9,6 @@ import type {
 } from '@/lib/backend-types';
 
 const welcomeTemplateName = 'welcome_projectfit';
-const defaultBotMenu = [
-  'Welcome to ProjectFit Vizag.',
-  '',
-  'Reply with:',
-  '1 - View menu',
-  '2 - Today\'s specials',
-  '3 - Meal plans',
-  '4 - Contact kitchen',
-].join('\n');
 
 type WhatsAppMessageResponse = {
   messages?: Array<{ id: string }>;
@@ -492,38 +483,4 @@ export function buildKitchenContactReply() {
     process.env.WHATSAPP_KITCHEN_CONTACT_MESSAGE?.trim() ||
     'Contact ProjectFit Vizag Kitchen:\nPhone: +91 90000 00000\nHours: 8 AM - 9 PM'
   );
-}
-
-export async function buildBotReply(message: string) {
-  const normalized = message.trim().toLowerCase();
-
-  if (['hi', 'hello', 'hey', 'menu', 'start', 'help'].includes(normalized)) {
-    return defaultBotMenu;
-  }
-
-  switch (normalized) {
-    case '1':
-    case 'one':
-    case 'view menu':
-    case 'full menu':
-      return buildMenuReply();
-    case '2':
-    case 'two':
-    case 'special':
-    case 'specials':
-    case 'today specials':
-      return buildSpecialsReply();
-    case '3':
-    case 'three':
-    case 'plans':
-    case 'meal plans':
-      return buildMealPlansReply();
-    case '4':
-    case 'four':
-    case 'contact':
-    case 'kitchen':
-      return buildKitchenContactReply();
-    default:
-      return defaultBotMenu;
-  }
 }

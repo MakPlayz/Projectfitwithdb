@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getRequestIp, isRateLimited } from '@/lib/rate-limit';
 import {
-  buildBotReply,
   findUserByPhone,
   getWhatsAppVerifyToken,
   logWhatsAppMessage,
@@ -174,9 +173,6 @@ export async function POST(request: Request) {
           await sendWhatsAppText(message.from, result.message, result.order?.user_id ?? user?.id);
           continue;
         }
-
-        const reply = await buildBotReply(body);
-        await sendWhatsAppText(message.from, reply, user?.id);
       } catch (error) {
         errors.push(
           `Could not process message ${message.id}: ${

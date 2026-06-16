@@ -1,6 +1,6 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarCheck,
@@ -184,6 +184,7 @@ export default function ChefDashboard() {
   const [selectedChatPhone, setSelectedChatPhone] = useState<string | null>(null);
   const [chatDraft, setChatDraft] = useState('');
   const [isSendingChat, setIsSendingChat] = useState(false);
+  const messageThreadRef = useRef<HTMLDivElement | null>(null);
   const [menuProgram, setMenuProgram] = useState('main');
   const [menuMode, setMenuMode] = useState<'menu' | 'free_sample'>('menu');
 
@@ -395,6 +396,12 @@ export default function ChefDashboard() {
       setSelectedChatPhone(whatsappConversations[0].phone);
     }
   }, [selectedChatPhone, whatsappConversations]);
+
+  useEffect(() => {
+    const thread = messageThreadRef.current;
+    if (!thread) return;
+    thread.scrollTop = thread.scrollHeight;
+  }, [selectedConversation?.phone, selectedConversation?.messages.length]);
 
   const visibleMenuItems = data.menuItems.filter(
     (item) =>
@@ -822,7 +829,7 @@ export default function ChefDashboard() {
                           </span>
                         </header>
 
-                        <div className={styles.messageThread}>
+                        <div className={styles.messageThread} ref={messageThreadRef}>
                           {selectedConversation.messages.map((message) => (
                             <WhatsAppBubble key={message.id} message={message} />
                           ))}
