@@ -65,6 +65,7 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
     return [
       'Hi Project Fit, I want to confirm my free sample request.',
       '',
+      `User ID: ${intent.user_id}`,
       `Checkout code: ${intent.code}`,
       `Name: ${intent.customer_name ?? 'Project Fit customer'}`,
       `Phone: ${intent.delivery_address.phone}`,
@@ -80,6 +81,7 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
   return [
     'Hi Project Fit, I want to confirm my meal plan order.',
     '',
+    `User ID: ${intent.user_id}`,
     `Checkout code: ${intent.code}`,
     `Name: ${intent.customer_name ?? 'Project Fit customer'}`,
     `Phone: ${intent.delivery_address.phone}`,
@@ -91,7 +93,7 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
     'Plan/items:',
     itemList,
     '',
-    'Please create my order and send the QR payment scanner. I will share the payment screenshot after payment.',
+    'can you send the QR payment scanner. I will share the payment screenshot after payment.',
   ].join('\n');
 }
 
