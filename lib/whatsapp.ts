@@ -69,6 +69,39 @@ export function getWelcomeTemplateName() {
   return welcomeTemplateName;
 }
 
+function normalizePhoneForWaLink(value: string | undefined) {
+  const digits = normalizeEnv(value)?.replace(/\D/g, '') ?? '';
+  if (!digits) return null;
+  return digits.startsWith('91') ? digits : `91${digits}`;
+}
+
+export async function getWhatsAppBusinessPhoneForLinks() {
+  const configured =
+    normalizePhoneForWaLink(process.env.WHATSAPP_BUSINESS_PHONE_NUMBER) ||
+    normalizePhoneForWaLink(process.env.WHATSAPP_ORDER_PHONE_NUMBER);
+
+  if (configured) {
+    return configured;
+  }
+
+  const response = await fetch(
+    `https://graph.facebook.com/${getGraphApiVersion()}/${getPhoneNumberId()}?fields=display_phone_number`,
+    {
+      headers: {
+        Authorization: `Bearer ${getWhatsAppAccessToken()}`,
+      },
+      cache: 'no-store',
+    }
+  );
+  const data = (await response.json()) as { display_phone_number?: string };
+
+  if (!response.ok || !data.display_phone_number) {
+    return normalizePhoneForWaLink(process.env.MY_NUMBER);
+  }
+
+  return normalizePhoneForWaLink(data.display_phone_number);
+}
+
 export function formatWhatsAppPhone(phone: string) {
   const trimmed = phone.trim();
 

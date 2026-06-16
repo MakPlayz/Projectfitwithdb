@@ -13,6 +13,7 @@ import {
 import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
 import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
 import { getUserFromAccessToken, supabaseRestFetch } from '@/lib/supabase-rest';
+import { getWhatsAppBusinessPhoneForLinks } from '@/lib/whatsapp';
 
 interface CreateIntentBody {
   items?: CartItem[];
@@ -24,17 +25,6 @@ interface CreateIntentBody {
 
 function normalizeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
-}
-
-function getManualPaymentWhatsAppNumber() {
-  const raw = process.env.MY_NUMBER?.trim() ?? '';
-  const digits = raw.replace(/\D/g, '');
-
-  if (!digits) {
-    return null;
-  }
-
-  return digits.startsWith('91') ? digits : `91${digits}`;
 }
 
 function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
@@ -273,7 +263,7 @@ export async function POST(request: Request) {
   const tax = isFreeSampleOrder ? 0 : Math.round(subtotal * 0.05);
   const total = subtotal + tax;
   const customerName = buildCustomerName(profile, user.user_metadata?.name ?? null, user.email ?? null);
-  const whatsappNumber = getManualPaymentWhatsAppNumber();
+  const whatsappNumber = await getWhatsAppBusinessPhoneForLinks();
 
   if (!whatsappNumber) {
     return NextResponse.json({ error: 'WhatsApp order number is not configured.' }, { status: 500 });

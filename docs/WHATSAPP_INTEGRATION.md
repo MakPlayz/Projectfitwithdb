@@ -9,6 +9,7 @@ Set these in Vercel for Production and Preview if preview webhooks are tested:
 ```text
 WHATSAPP_ACCESS_TOKEN
 WHATSAPP_PHONE_NUMBER_ID
+WHATSAPP_BUSINESS_PHONE_NUMBER
 WHATSAPP_VERIFY_TOKEN
 WHATSAPP_APP_SECRET
 WHATSAPP_GRAPH_API_VERSION
@@ -18,6 +19,7 @@ WHATSAPP_ADMIN_TOKEN
 ```
 
 `WHATSAPP_GRAPH_API_VERSION` defaults to `v21.0` if omitted.
+`WHATSAPP_BUSINESS_PHONE_NUMBER` is optional; checkout links resolve the phone number from `WHATSAPP_PHONE_NUMBER_ID` when it is not set. If you set it, it must be the Meta WhatsApp Business number that owns the webhook, not a personal kitchen number.
 
 ## Meta Dashboard Setup
 
@@ -37,6 +39,7 @@ https://projectfitvizag.com/api/webhooks/whatsapp
 - Signup calls `/api/whatsapp/welcome` for opted-in users.
 - `/api/webhooks/whatsapp` verifies Meta signatures, logs incoming messages, updates delivery statuses, and replies to menu commands.
 - Cart checkout creates a `checkout_intents` row first and opens WhatsApp with a checkout code.
+- Checkout links must point to the Meta WhatsApp Business number, because only that number sends webhooks to the app.
 - The real `orders` row is created only after the customer sends the WhatsApp checkout message.
 - Free sample approval sends a WhatsApp button message with `Received` and `Not received` actions.
 - Customers can reply with `1`, `2`, `3`, `4`, or words like `menu`, `specials`, `plans`, and `contact`.
