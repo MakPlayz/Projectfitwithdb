@@ -298,6 +298,50 @@ export async function sendWhatsAppText(phone: string, body: string, userId?: str
   }
 }
 
+export async function downloadWhatsAppMedia(mediaId: string) {
+  const metadataResponse = await fetch(
+    `https://graph.facebook.com/${getGraphApiVersion()}/${encodeURIComponent(mediaId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${getWhatsAppAccessToken()}`,
+      },
+      cache: 'no-store',
+    }
+  );
+  const metadata = (await metadataResponse.json()) as {
+    url?: string;
+    mime_type?: string;
+    error?: {
+      message?: string;
+      error_user_msg?: string;
+    };
+  };
+
+  if (!metadataResponse.ok || !metadata.url) {
+    throw new Error(
+      metadata.error?.error_user_msg ||
+        metadata.error?.message ||
+        `Could not load WhatsApp media metadata with ${metadataResponse.status}`
+    );
+  }
+
+  const mediaResponse = await fetch(metadata.url, {
+    headers: {
+      Authorization: `Bearer ${getWhatsAppAccessToken()}`,
+    },
+    cache: 'no-store',
+  });
+
+  if (!mediaResponse.ok) {
+    throw new Error(`Could not download WhatsApp media with ${mediaResponse.status}`);
+  }
+
+  return {
+    bytes: await mediaResponse.arrayBuffer(),
+    contentType: metadata.mime_type || mediaResponse.headers.get('content-type') || 'application/octet-stream',
+  };
+}
+
 export async function sendFreeSampleApprovalButtons(phone: string, orderId: string, userId?: string | null) {
   const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
   const body = [

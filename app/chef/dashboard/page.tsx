@@ -12,6 +12,7 @@ import {
   Pencil,
   RefreshCw,
   Search,
+  Send,
   ShieldCheck,
   Soup,
   Trash2,
@@ -19,7 +20,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { dietCategories } from '@/data/diets';
-import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
+import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
 import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
@@ -33,10 +34,11 @@ type AdminOverview = {
   menuItems: MenuItem[];
   mealPlans: MealPlan[];
   programOverrides: ProgramPlanOverride[];
+  whatsappMessages: WhatsAppMessageLog[];
   warnings?: string[];
 };
 
-type Tab = 'pending' | 'samples' | 'approved-samples' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
+type Tab = 'pending' | 'samples' | 'approved-samples' | 'chats' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
@@ -46,6 +48,7 @@ const emptyOverview: AdminOverview = {
   menuItems: [],
   mealPlans: [],
   programOverrides: [],
+  whatsappMessages: [],
   warnings: [],
 };
 
@@ -53,6 +56,7 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'pending', label: 'Pending orders', icon: ClipboardList },
   { id: 'samples', label: 'Sample requests', icon: Soup },
   { id: 'approved-samples', label: 'Approved samples', icon: CheckCircle2 },
+  { id: 'chats', label: 'WhatsApp chats', icon: MessageSquareText },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
@@ -83,6 +87,90 @@ function getPrimaryPlan(order: ApiOrder) {
   return order.items[0]?.name ?? 'Meal plan';
 }
 
+type WhatsAppMedia = {
+  id: string;
+  type: 'image' | 'document';
+  caption?: string;
+  filename?: string;
+  mimeType?: string;
+};
+
+type WhatsAppConversation = {
+  phone: string;
+  user: ProjectFitUser | null;
+  messages: WhatsAppMessageLog[];
+  lastMessage: WhatsAppMessageLog;
+  lastIncomingAt: string | null;
+  unreadCount: number;
+};
+
+const whatsappReplyWindowMs = 24 * 60 * 60 * 1000;
+
+function getPhoneKey(phone: string | null | undefined) {
+  return String(phone ?? '').replace(/\D/g, '');
+}
+
+function getPhoneVariants(phone: string | null | undefined) {
+  const digits = getPhoneKey(phone);
+  if (!digits) return [];
+  return Array.from(new Set([digits, digits.startsWith('91') ? digits.slice(2) : `91${digits}`]));
+}
+
+function getPayloadRecord(payload: unknown) {
+  return payload && typeof payload === 'object' ? payload as Record<string, unknown> : {};
+}
+
+function getNestedRecord(parent: Record<string, unknown>, key: string) {
+  const value = parent[key];
+  return value && typeof value === 'object' ? value as Record<string, unknown> : null;
+}
+
+function getWhatsAppMedia(message: WhatsAppMessageLog): WhatsAppMedia | null {
+  const payload = getPayloadRecord(message.payload);
+  const image = getNestedRecord(payload, 'image');
+  const document = getNestedRecord(payload, 'document');
+
+  if (image?.id && typeof image.id === 'string') {
+    return {
+      id: image.id,
+      type: 'image',
+      caption: typeof image.caption === 'string' ? image.caption : undefined,
+      mimeType: typeof image.mime_type === 'string' ? image.mime_type : undefined,
+    };
+  }
+
+  if (document?.id && typeof document.id === 'string') {
+    return {
+      id: document.id,
+      type: 'document',
+      caption: typeof document.caption === 'string' ? document.caption : undefined,
+      filename: typeof document.filename === 'string' ? document.filename : undefined,
+      mimeType: typeof document.mime_type === 'string' ? document.mime_type : undefined,
+    };
+  }
+
+  return null;
+}
+
+function getWhatsAppMessageText(message: WhatsAppMessageLog) {
+  const media = getWhatsAppMedia(message);
+  return message.message_body || media?.caption || media?.filename || (media ? `${media.type} message` : message.message_type);
+}
+
+function isReplyWindowOpen(lastIncomingAt: string | null) {
+  if (!lastIncomingAt) return false;
+  return Date.now() - new Date(lastIncomingAt).getTime() <= whatsappReplyWindowMs;
+}
+
+function getReplyWindowLabel(lastIncomingAt: string | null) {
+  if (!lastIncomingAt) return 'No customer message yet';
+  const remainingMs = whatsappReplyWindowMs - (Date.now() - new Date(lastIncomingAt).getTime());
+  if (remainingMs <= 0) return '24-hour reply window closed';
+  const hours = Math.floor(remainingMs / 3_600_000);
+  const minutes = Math.max(0, Math.floor((remainingMs % 3_600_000) / 60_000));
+  return hours > 0 ? `${hours}h ${minutes}m left to reply` : `${minutes}m left to reply`;
+}
+
 export default function ChefDashboard() {
   const router = useRouter();
   const [data, setData] = useState<AdminOverview>(emptyOverview);
@@ -93,6 +181,9 @@ export default function ChefDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedChatPhone, setSelectedChatPhone] = useState<string | null>(null);
+  const [chatDraft, setChatDraft] = useState('');
+  const [isSendingChat, setIsSendingChat] = useState(false);
   const [menuProgram, setMenuProgram] = useState('main');
   const [menuMode, setMenuMode] = useState<'menu' | 'free_sample'>('menu');
 
@@ -173,6 +264,15 @@ export default function ChefDashboard() {
     () => new Map(data.profiles.map((profile) => [profile.user_id, profile])),
     [data.profiles]
   );
+  const usersByPhone = useMemo(() => {
+    const phoneMap = new Map<string, ProjectFitUser>();
+    for (const user of data.users) {
+      for (const variant of getPhoneVariants(user.phone)) {
+        phoneMap.set(variant, user);
+      }
+    }
+    return phoneMap;
+  }, [data.users]);
   const overridesByPlanId = useMemo(
     () => new Map(data.programOverrides.map((override) => [override.plan_id, override])),
     [data.programOverrides]
@@ -242,6 +342,60 @@ export default function ChefDashboard() {
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
 
+  const whatsappConversations = useMemo(() => {
+    const groups = new Map<string, WhatsAppMessageLog[]>();
+
+    for (const message of data.whatsappMessages) {
+      const key = getPhoneKey(message.phone);
+      if (!key) continue;
+      groups.set(key, [...(groups.get(key) ?? []), message]);
+    }
+
+    return Array.from(groups.entries())
+      .map(([phone, messages]): WhatsAppConversation => {
+        const sortedMessages = [...messages].sort(
+          (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        );
+        const lastMessage = sortedMessages[sortedMessages.length - 1];
+        const lastIncoming = [...sortedMessages]
+          .reverse()
+          .find((message) => message.direction === 'incoming');
+        const user = getPhoneVariants(phone).map((variant) => usersByPhone.get(variant)).find(Boolean) ?? null;
+
+        return {
+          phone,
+          user,
+          messages: sortedMessages,
+          lastMessage,
+          lastIncomingAt: lastIncoming?.created_at ?? null,
+          unreadCount: sortedMessages.filter((message) => message.direction === 'incoming' && message.status === 'received').length,
+        };
+      })
+      .filter((conversation) => Boolean(conversation.lastMessage))
+      .sort((a, b) => new Date(b.lastMessage.created_at).getTime() - new Date(a.lastMessage.created_at).getTime());
+  }, [data.whatsappMessages, usersByPhone]);
+
+  const filteredWhatsappConversations = whatsappConversations.filter((conversation) => {
+    if (!normalizedQuery) return true;
+    return [
+      conversation.phone,
+      conversation.user?.name,
+      conversation.user?.email,
+      getWhatsAppMessageText(conversation.lastMessage),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const selectedConversation =
+    whatsappConversations.find((conversation) => conversation.phone === selectedChatPhone) ??
+    filteredWhatsappConversations[0] ??
+    whatsappConversations[0] ??
+    null;
+
+  useEffect(() => {
+    if (!selectedChatPhone && whatsappConversations[0]) {
+      setSelectedChatPhone(whatsappConversations[0].phone);
+    }
+  }, [selectedChatPhone, whatsappConversations]);
+
   const visibleMenuItems = data.menuItems.filter(
     (item) =>
       (item.program_slug || 'main') === menuProgram &&
@@ -283,6 +437,43 @@ export default function ChefDashboard() {
       orders: current.orders.map((order) => (order.id === orderId ? result.order : order)),
     }));
     setStatus(payload.action === 'confirm' ? 'Order confirmed and plan dates were set.' : 'Order updated.');
+  }
+
+  async function sendChatReply(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedConversation) return;
+
+    setStatus('');
+    setError('');
+    setIsSendingChat(true);
+
+    try {
+      const response = await fetch('/api/admin/whatsapp/reply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getChefAuthHeaders()),
+        },
+        body: JSON.stringify({
+          phone: selectedConversation.phone,
+          user_id: selectedConversation.user?.id ?? null,
+          message: chatDraft,
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error ?? 'Could not send WhatsApp reply.');
+      }
+
+      setChatDraft('');
+      setStatus('WhatsApp reply sent.');
+      await loadOverview();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send WhatsApp reply.');
+    } finally {
+      setIsSendingChat(false);
+    }
   }
 
   async function resetFreeSampleLimit(userId: string | null | undefined) {
@@ -579,6 +770,90 @@ export default function ChefDashboard() {
                 </section>
               )}
 
+              {activeTab === 'chats' && (
+                <section className={styles.chatShell}>
+                  <aside className={styles.chatList}>
+                    <div className={styles.sectionHead}>
+                      <div>
+                        <h2>WhatsApp chats</h2>
+                        <p>Customer messages received on the Project Fit WhatsApp number.</p>
+                      </div>
+                      <span>{filteredWhatsappConversations.length} chats</span>
+                    </div>
+
+                    {filteredWhatsappConversations.length === 0 ? (
+                      <EmptyState title="No WhatsApp chats" text="Incoming customer messages will appear here after webhook delivery." />
+                    ) : (
+                      filteredWhatsappConversations.map((conversation) => (
+                        <button
+                          key={conversation.phone}
+                          type="button"
+                          className={selectedConversation?.phone === conversation.phone ? styles.chatRowActive : styles.chatRow}
+                          onClick={() => setSelectedChatPhone(conversation.phone)}
+                        >
+                          <span className={styles.chatAvatar}>
+                            {(conversation.user?.name ?? conversation.phone).slice(0, 1).toUpperCase()}
+                          </span>
+                          <span>
+                            <strong>{conversation.user?.name ?? `+${conversation.phone}`}</strong>
+                            <small>{getWhatsAppMessageText(conversation.lastMessage)}</small>
+                          </span>
+                          <em>{formatDateTime(conversation.lastMessage.created_at)}</em>
+                        </button>
+                      ))
+                    )}
+                  </aside>
+
+                  <section className={styles.chatPanel}>
+                    {!selectedConversation ? (
+                      <EmptyState title="No chat selected" text="Select a WhatsApp conversation to read messages." />
+                    ) : (
+                      <>
+                        <header className={styles.chatHeader}>
+                          <div>
+                            <h2>{selectedConversation.user?.name ?? `+${selectedConversation.phone}`}</h2>
+                            <p>
+                              +{selectedConversation.phone}
+                              {selectedConversation.user?.email ? ` | ${selectedConversation.user.email}` : ''}
+                            </p>
+                          </div>
+                          <span className={isReplyWindowOpen(selectedConversation.lastIncomingAt) ? styles.windowOpen : styles.windowClosed}>
+                            {getReplyWindowLabel(selectedConversation.lastIncomingAt)}
+                          </span>
+                        </header>
+
+                        <div className={styles.messageThread}>
+                          {selectedConversation.messages.map((message) => (
+                            <WhatsAppBubble key={message.id} message={message} />
+                          ))}
+                        </div>
+
+                        <form className={styles.chatComposer} onSubmit={sendChatReply}>
+                          <textarea
+                            value={chatDraft}
+                            onChange={(event) => setChatDraft(event.target.value)}
+                            placeholder={
+                              isReplyWindowOpen(selectedConversation.lastIncomingAt)
+                                ? 'Reply to customer on WhatsApp'
+                                : 'Customer must message again before you can reply'
+                            }
+                            rows={3}
+                            disabled={!isReplyWindowOpen(selectedConversation.lastIncomingAt) || isSendingChat}
+                          />
+                          <button
+                            type="submit"
+                            disabled={!chatDraft.trim() || !isReplyWindowOpen(selectedConversation.lastIncomingAt) || isSendingChat}
+                          >
+                            <Send size={16} />
+                            Send reply
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </section>
+                </section>
+              )}
+
               {activeTab === 'active' && (
                 <section className={styles.orderBoard}>
                   <div className={styles.sectionHead}>
@@ -775,6 +1050,84 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
+function WhatsAppBubble({ message }: { message: WhatsAppMessageLog }) {
+  const media = getWhatsAppMedia(message);
+  const isIncoming = message.direction === 'incoming';
+
+  return (
+    <article className={isIncoming ? styles.messageIncoming : styles.messageOutgoing}>
+      {media && <WhatsAppMediaPreview media={media} />}
+      <p>{getWhatsAppMessageText(message)}</p>
+      <footer>
+        <span>{formatDateTime(message.created_at)}</span>
+        <span>{message.status}</span>
+        {message.error_message && <span>{message.error_message}</span>}
+      </footer>
+    </article>
+  );
+}
+
+function WhatsAppMediaPreview({ media }: { media: WhatsAppMedia }) {
+  const [src, setSrc] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl = '';
+
+    async function loadMedia() {
+      if (media.type !== 'image') return;
+
+      try {
+        const response = await fetch(`/api/admin/whatsapp/media/${encodeURIComponent(media.id)}`, {
+          cache: 'no-store',
+          headers: await getChefAuthHeaders(),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error ?? 'Could not load image.');
+        }
+
+        const blob = await response.blob();
+        objectUrl = URL.createObjectURL(blob);
+        if (!cancelled) setSrc(objectUrl);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : 'Could not load image.');
+      }
+    }
+
+    void loadMedia();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [media.id, media.type]);
+
+  if (media.type !== 'image') {
+    return (
+      <div className={styles.mediaDocument}>
+        <strong>{media.filename ?? 'WhatsApp document'}</strong>
+        <span>{media.mimeType ?? 'Document'}</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className={styles.mediaError}>{error}</div>;
+  }
+
+  if (!src) {
+    return <div className={styles.mediaLoading}>Loading image...</div>;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img className={styles.chatImage} src={src} alt={media.caption || 'WhatsApp image'} />
+  );
+}
+
 function OrderCard({
   order,
   profile,
@@ -927,18 +1280,6 @@ function OrderCard({
         {order.order_type === 'free_sample' && (
           <button type="button" className={styles.secondaryBtn} onClick={() => onResetFreeSampleLimit(order.user_id)}>
             Reset sample limit
-          </button>
-        )}
-        {order.status === 'confirmed' && (
-          <button type="button" onClick={() => onPatch(order.id, { status: 'preparing' })}>
-            <ClipboardList size={15} />
-            Preparing
-          </button>
-        )}
-        {order.status === 'preparing' && (
-          <button type="button" onClick={() => onPatch(order.id, { status: 'ready' })}>
-            <CheckCircle2 size={15} />
-            Ready
           </button>
         )}
       </div>

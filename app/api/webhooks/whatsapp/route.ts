@@ -29,6 +29,17 @@ type WhatsAppWebhookPayload = {
           text?: {
             body?: string;
           };
+          image?: {
+            id?: string;
+            caption?: string;
+            mime_type?: string;
+          };
+          document?: {
+            id?: string;
+            caption?: string;
+            filename?: string;
+            mime_type?: string;
+          };
           interactive?: {
             type?: string;
             button_reply?: {
@@ -111,7 +122,11 @@ export async function POST(request: Request) {
       try {
         const buttonId = message.interactive?.button_reply?.id?.trim() ?? '';
         const buttonTitle = message.interactive?.button_reply?.title?.trim() ?? '';
-        const body = message.text?.body?.trim() || buttonTitle;
+        const body =
+          message.text?.body?.trim() ||
+          message.image?.caption?.trim() ||
+          message.document?.caption?.trim() ||
+          buttonTitle;
         const user = await findUserByPhone(message.from);
 
         await logWhatsAppMessage({

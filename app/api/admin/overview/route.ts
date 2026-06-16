@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { getProgramPlanOverrides } from '@/lib/program-plan-overrides';
 import { supabaseAuthAdminFetch, supabaseRestFetch } from '@/lib/supabase-rest';
-import type { ApiOrder, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, ProjectFitUser } from '@/lib/backend-types';
+import type { ApiOrder, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 
 type AuthAdminUser = {
   id: string;
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
-  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, feedbackResult, programOverrides] =
+  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult, programOverrides] =
     await Promise.all([
       supabaseRestFetch<ProjectFitUser[]>('/users?select=*&order=created_at.desc'),
       supabaseAuthAdminFetch<AuthUsersResponse>('/admin/users?per_page=1000'),
@@ -64,6 +64,7 @@ export async function GET(request: Request) {
       supabaseRestFetch<MenuItem[]>('/menu_items?select=*&order=category.asc,name.asc'),
       supabaseRestFetch<MealPlan[]>('/meal_plans?select=*&order=name.asc'),
       supabaseRestFetch<CustomerFeedback[]>('/customer_feedback?select=*&order=created_at.desc'),
+      supabaseRestFetch<WhatsAppMessageLog[]>('/whatsapp_message_logs?select=*&order=created_at.desc&limit=400'),
       getProgramPlanOverrides(),
     ]);
 
@@ -73,7 +74,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: failed.error }, { status: failed.status });
   }
 
-  const warnings = [authUsersResult, menuResult, mealPlansResult, feedbackResult]
+  const warnings = [authUsersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult]
     .filter((result) => result.error)
     .map((result) => result.error as string);
   const users = mergeUsers(usersResult.data ?? [], authUsersResult.data?.users ?? []);
@@ -94,6 +95,7 @@ export async function GET(request: Request) {
     menuItems: menuResult.error ? [] : menuResult.data ?? [],
     mealPlans: mealPlansResult.error ? [] : mealPlansResult.data ?? [],
     feedback,
+    whatsappMessages: whatsappResult.error ? [] : whatsappResult.data ?? [],
     programOverrides,
     warnings,
   });
