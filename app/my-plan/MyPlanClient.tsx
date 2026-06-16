@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarClock, CreditCard, Sparkles, Soup } from 'lucide-react';
 import { getAuthHeaders } from '@/lib/auth-client';
 import type { ApiOrder } from '@/lib/backend-types';
+import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
 import styles from './page.module.css';
 
 function formatDate(value: string | null | undefined) {
@@ -183,6 +184,7 @@ export default function MyPlanClient() {
                 <span>Requested start: {formatDate(order.requested_start_date)}</span>
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>
+                <span>Service days left: {getOrderServiceDaysRemaining(order) ?? 'Not set'}</span>
                 <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>
               </article>
             ))}

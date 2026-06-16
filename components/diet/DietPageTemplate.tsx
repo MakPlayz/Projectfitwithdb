@@ -280,8 +280,8 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           {monthPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
-                <h3>💎 Month Plan (26/27-Day)</h3>
-                <p>A 26/27-day subscription block. Required if custom calorie/macro adjustments or ingredient swaps are needed.</p>
+                <h3>💎 Month Plan (30-Day)</h3>
+                <p>A 30-calendar-day subscription block with 26 service days. Sundays are off, and this plan is required for custom calorie/macro adjustments or ingredient swaps.</p>
               </div>
               <div className={styles.plansGrid}>
                 {monthPlans.map((plan, i) => renderPlanCard(plan, i))}

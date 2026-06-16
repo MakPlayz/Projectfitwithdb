@@ -3,6 +3,7 @@ import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { ApiOrder, ApiOrderStatus, PaymentStatus } from '@/lib/backend-types';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { sendFreeSampleApprovalButtons } from '@/lib/whatsapp';
+import { inferPlanCalendarDaysFromItems } from '@/lib/plan-duration';
 
 const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
@@ -15,14 +16,19 @@ interface StatusBody {
   confirmation_user_id?: string;
   payment_transaction_id?: string;
   cancellation_reason?: string;
+  cancel_confirmation?: string;
 }
 
 function inferPlanDays(order: ApiOrder | null) {
-  const text = order?.items.map((item) => `${item.id} ${item.name}`).join(' ').toLowerCase() ?? '';
+  return inferPlanCalendarDaysFromItems(order?.items ?? []);
+}
 
-  if (text.includes('month') || text.includes('26/27')) return 27;
-  if (text.includes('6-day') || text.includes('6 day') || text.includes('-6-')) return 6;
-  return 1;
+function isActivePaidPlan(order: ApiOrder) {
+  return (
+    order.order_type !== 'free_sample' &&
+    ['confirmed', 'preparing', 'ready'].includes(order.status) &&
+    order.payment_status === 'paid'
+  );
 }
 
 export async function PATCH(
@@ -38,6 +44,26 @@ export async function PATCH(
   const body = (await request.json()) as StatusBody;
 
   if (body.action === 'cancel') {
+    const current = await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(id)}&select=*`
+    );
+
+    if (current.error) {
+      return NextResponse.json({ error: current.error }, { status: current.status });
+    }
+
+    const order = current.data?.[0] ?? null;
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+    }
+
+    const activePaidPlan = isActivePaidPlan(order);
+    const cancelConfirmation = String(body.cancel_confirmation ?? '').trim().toLowerCase();
+
+    if (activePaidPlan && cancelConfirmation !== 'confirm') {
+      return NextResponse.json({ error: 'Type confirm to cancel an active plan.' }, { status: 400 });
+    }
+
     const cancellationReason = String(body.cancellation_reason ?? '').trim();
     const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
       `/orders?id=eq.${encodeURIComponent(id)}`,
@@ -45,8 +71,8 @@ export async function PATCH(
         method: 'PATCH',
         body: JSON.stringify({
           status: 'cancelled',
-          payment_status: 'failed',
-          cancellation_reason: cancellationReason || null,
+          payment_status: activePaidPlan ? 'paid' : 'failed',
+          cancellation_reason: cancellationReason || (activePaidPlan ? 'Active plan cancelled by chef.' : null),
         }),
       }
     );

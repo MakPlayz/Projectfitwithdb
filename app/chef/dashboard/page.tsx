@@ -22,6 +22,7 @@ import { dietCategories } from '@/data/diets';
 import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
+import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
 import styles from './page.module.css';
 
 type AdminOverview = {
@@ -76,12 +77,6 @@ function formatDateTime(value: string | null | undefined) {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
-}
-
-function daysLeft(value: string | null | undefined) {
-  if (!value) return null;
-  const diff = new Date(value).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86400000));
 }
 
 function getPrimaryPlan(order: ApiOrder) {
@@ -193,7 +188,8 @@ export default function ChefDashboard() {
   const activePlans = data.orders.filter(
     (order) =>
       order.order_type !== 'free_sample' &&
-      order.status === 'confirmed' &&
+      ['confirmed', 'preparing', 'ready'].includes(order.status) &&
+      order.payment_status === 'paid' &&
       order.plan_expires_at &&
       new Date(order.plan_expires_at) >= new Date()
   );
@@ -262,6 +258,7 @@ export default function ChefDashboard() {
       confirmation_user_id?: string;
       payment_transaction_id?: string;
       cancellation_reason?: string;
+      cancel_confirmation?: string;
     }
   ) {
     setStatus('');
@@ -583,28 +580,29 @@ export default function ChefDashboard() {
               )}
 
               {activeTab === 'active' && (
-                <section className={styles.planGrid}>
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Active plans</h2>
+                      <p>Monthly plans run for 30 calendar days with 26 service days. Sundays do not consume a service day.</p>
+                    </div>
+                    <span>{activePlans.length} active</span>
+                  </div>
+
                   {activePlans.length === 0 ? (
                     <EmptyState title="No active plans" text="Confirmed orders with plan dates will appear here." />
                   ) : (
-                    activePlans.map((order) => (
-                      <article key={order.id} className={styles.planCard}>
-                        <div>
-                          <span className={styles.badgeGreen}>Active</span>
-                          <h2>{order.customer_name ?? 'Customer'}</h2>
-                          <p>{getPrimaryPlan(order)}</p>
-                        </div>
-                        <dl className={styles.planMeta}>
-                          <div><dt>Order</dt><dd>{order.id}</dd></div>
-                          <div><dt>User ID</dt><dd>{order.user_id ?? 'Guest'}</dd></div>
-                          <div><dt>Phone</dt><dd>{order.delivery_address.phone}</dd></div>
-                          <div><dt>Requested start</dt><dd>{formatDate(order.requested_start_date)}</dd></div>
-                          <div><dt>Activated</dt><dd>{formatDate(order.plan_activated_at)}</dd></div>
-                          <div><dt>Expiry</dt><dd>{formatDate(order.plan_expires_at)}</dd></div>
-                          <div><dt>Days left</dt><dd>{daysLeft(order.plan_expires_at) ?? 'Not set'}</dd></div>
-                        </dl>
-                      </article>
-                    ))
+                    <div className={styles.orderGrid}>
+                      {activePlans.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
                   )}
                 </section>
               )}
@@ -795,11 +793,19 @@ function OrderCard({
       confirmation_user_id?: string;
       payment_transaction_id?: string;
       cancellation_reason?: string;
+      cancel_confirmation?: string;
     }
   ) => void;
   onResetFreeSampleLimit: (userId: string | null | undefined) => void;
 }) {
   const [sampleCancelReason, setSampleCancelReason] = useState('');
+  const [activeCancelConfirm, setActiveCancelConfirm] = useState('');
+  const [activeCancelReason, setActiveCancelReason] = useState('');
+  const isActivePaidPlan =
+    order.order_type !== 'free_sample' &&
+    ['confirmed', 'preparing', 'ready'].includes(order.status) &&
+    order.payment_status === 'paid';
+  const serviceDaysRemaining = getOrderServiceDaysRemaining(order);
 
   function handleConfirm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -818,6 +824,16 @@ function OrderCard({
       cancellation_reason: sampleCancelReason.trim(),
     });
     setSampleCancelReason('');
+  }
+
+  function handleCancelActivePlan() {
+    onPatch(order.id, {
+      action: 'cancel',
+      cancel_confirmation: activeCancelConfirm.trim(),
+      cancellation_reason: activeCancelReason.trim() || 'Active plan cancelled by chef.',
+    });
+    setActiveCancelConfirm('');
+    setActiveCancelReason('');
   }
 
   return (
@@ -851,6 +867,13 @@ function OrderCard({
         <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
         <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
         <p>Requested start: {formatDate(order.requested_start_date)}</p>
+        {isActivePaidPlan && (
+          <>
+            <p>Program start: {formatDate(order.plan_activated_at)}</p>
+            <p>Program end: {formatDate(order.plan_expires_at)}</p>
+            <p>Service days left: {serviceDaysRemaining ?? 'Not set'}</p>
+          </>
+        )}
         {order.order_type === 'free_sample' && (
           <>
             <p>Created after WhatsApp: {order.whatsapp_checkout_intent_id ? 'Yes' : 'Legacy/direct order'}</p>
@@ -931,6 +954,34 @@ function OrderCard({
           </label>
           <button type="button" className={styles.dangerBtn} onClick={handleCancelSample}>
             Cancel free sample
+          </button>
+        </div>
+      )}
+      {isActivePaidPlan && (
+        <div className={`${styles.confirmBox} ${styles.dangerBox}`}>
+          <label>
+            <span>Type confirm to cancel active plan</span>
+            <input
+              value={activeCancelConfirm}
+              onChange={(event) => setActiveCancelConfirm(event.target.value)}
+              placeholder="confirm"
+            />
+          </label>
+          <label>
+            <span>Cancellation reason</span>
+            <input
+              value={activeCancelReason}
+              onChange={(event) => setActiveCancelReason(event.target.value)}
+              placeholder="Shown in order history"
+            />
+          </label>
+          <button
+            type="button"
+            className={styles.dangerBtn}
+            disabled={activeCancelConfirm.trim().toLowerCase() !== 'confirm'}
+            onClick={handleCancelActivePlan}
+          >
+            Cancel active plan
           </button>
         </div>
       )}
