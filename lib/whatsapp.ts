@@ -1,6 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type {
+  ApiOrder,
   MealPlan,
   MenuItem,
   ProjectFitUser,
@@ -9,6 +12,10 @@ import type {
 } from '@/lib/backend-types';
 
 const welcomeTemplateName = 'welcome_projectfit';
+const remainingPaymentReminderTemplateName = 'remaining_payment_reminder_projectfit';
+const projectFitManagerName = 'Lohit';
+const projectFitManagerPhone = '+91 77990 66991';
+const paymentQrPath = path.join(process.cwd(), 'public', 'payment-qr-scanner.jpeg');
 
 type WhatsAppMessageResponse = {
   messages?: Array<{ id: string }>;
@@ -155,6 +162,42 @@ async function sendWhatsAppPayload(payload: unknown) {
   return data.messages?.[0]?.id ?? null;
 }
 
+async function uploadWhatsAppMedia(filePath: string, mimeType: string) {
+  const file = await readFile(filePath);
+  const formData = new FormData();
+  formData.append('messaging_product', 'whatsapp');
+  formData.append('type', mimeType);
+  formData.append('file', new Blob([file], { type: mimeType }), path.basename(filePath));
+
+  const response = await fetch(
+    `https://graph.facebook.com/${getGraphApiVersion()}/${getPhoneNumberId()}/media`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${getWhatsAppAccessToken()}`,
+      },
+      body: formData,
+    }
+  );
+  const data = (await response.json()) as {
+    id?: string;
+    error?: {
+      message?: string;
+      error_user_msg?: string;
+    };
+  };
+
+  if (!response.ok || !data.id) {
+    throw new Error(
+      data.error?.error_user_msg ||
+        data.error?.message ||
+        `WhatsApp media upload failed with ${response.status}`
+    );
+  }
+
+  return data.id;
+}
+
 export async function logWhatsAppMessage(entry: {
   userId?: string | null;
   phone: string;
@@ -289,6 +332,52 @@ export async function sendWhatsAppText(phone: string, body: string, userId?: str
   }
 }
 
+export async function sendWhatsAppImage(
+  phone: string,
+  mediaId: string,
+  caption?: string | null,
+  userId?: string | null
+) {
+  const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
+  const payload = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: formattedPhone,
+    type: 'image',
+    image: {
+      id: mediaId,
+      ...(caption ? { caption } : {}),
+    },
+  };
+
+  try {
+    const providerMessageId = await sendWhatsAppPayload(payload);
+    await logWhatsAppMessage({
+      userId,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'image',
+      messageBody: caption ?? null,
+      status: 'sent',
+      providerMessageId,
+      payload,
+    });
+    return providerMessageId;
+  } catch (error) {
+    await logWhatsAppMessage({
+      userId,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'image',
+      messageBody: caption ?? null,
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : 'Could not send WhatsApp image.',
+      payload,
+    });
+    throw error;
+  }
+}
+
 export async function downloadWhatsAppMedia(mediaId: string) {
   const metadataResponse = await fetch(
     `https://graph.facebook.com/${getGraphApiVersion()}/${encodeURIComponent(mediaId)}`,
@@ -346,11 +435,11 @@ export async function sendWhatsAppReadReceipt(messageId: string) {
 export async function sendFreeSampleApprovalButtons(phone: string, orderId: string, userId?: string | null) {
   const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
   const body = [
-    'Your free sample request has been approved.',
+    'Your free sample delivery request has been accepted.',
     '',
-    'Our chef team will send it within a few minutes.',
+    'Please confirm after you receive the delivery.',
     '',
-    'Please confirm delivery status once it reaches you.',
+    'Tap one option below once the sample reaches you.',
   ].join('\n');
   const payload = {
     messaging_product: 'whatsapp',
@@ -368,7 +457,7 @@ export async function sendFreeSampleApprovalButtons(phone: string, orderId: stri
             type: 'reply',
             reply: {
               id: `FREE_SAMPLE_RECEIVED:${orderId}`,
-              title: 'Received',
+              title: 'Delivery received',
             },
           },
           {
@@ -405,6 +494,196 @@ export async function sendFreeSampleApprovalButtons(phone: string, orderId: stri
       messageBody: body,
       status: 'failed',
       errorMessage: error instanceof Error ? error.message : 'Could not send free sample approval buttons.',
+      payload,
+    });
+    throw error;
+  }
+}
+
+function formatMoney(amount: number | null | undefined) {
+  return `Rs ${(amount ?? 0).toLocaleString('en-IN')}`;
+}
+
+function formatOrderDate(value: string | null | undefined) {
+  if (!value) return 'Not selected';
+  return new Date(value).toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function getPrimaryOrderItem(order: ApiOrder) {
+  return order.items[0]?.name ?? 'Project Fit plan';
+}
+
+export async function sendProgramPaymentInstructions(order: ApiOrder) {
+  const phone = order.delivery_address.phone;
+  const amountDue = order.payment_option === 'half' ? order.initial_payment_amount : order.total;
+  const paymentLines =
+    order.payment_option === 'half'
+      ? [
+          `Amount due now: ${formatMoney(amountDue)}`,
+          `Remaining payment after plan starts: ${formatMoney(order.remaining_payment_amount)}`,
+        ]
+      : [`Amount due now: ${formatMoney(amountDue)}`];
+
+  await sendWhatsAppText(
+    phone,
+    [
+      `Thank you for your interest in ${getPrimaryOrderItem(order)}.`,
+      '',
+      `Order ID: ${order.id}`,
+      ...paymentLines,
+      '',
+      `Before making the payment, please talk to ${projectFitManagerName}, Project Fit manager, so your plan can be activated quickly after payment.`,
+      `Manager phone: ${projectFitManagerPhone}`,
+      '',
+      'Please use the QR scanner for payment. After paying, reply here with your name, transaction ID, and payment screenshot.',
+    ].join('\n'),
+    order.user_id
+  );
+
+  const mediaId = await uploadWhatsAppMedia(paymentQrPath, 'image/jpeg');
+  await sendWhatsAppImage(
+    phone,
+    mediaId,
+    `Project Fit payment QR for order ${order.id}.`,
+    order.user_id
+  );
+}
+
+export async function sendFreeSampleContactInstructions(order: ApiOrder) {
+  return sendWhatsAppText(
+    order.delivery_address.phone,
+    [
+      'Your free sample request has been created.',
+      '',
+      `Order ID: ${order.id}`,
+      '',
+      `Please contact ${projectFitManagerName}, Project Fit manager, to confirm your free sample delivery.`,
+      `Phone: ${projectFitManagerPhone}`,
+      '',
+      'The chef team will review the request and update you here.',
+    ].join('\n'),
+    order.user_id
+  );
+}
+
+export async function sendPlanActivatedMessage(order: ApiOrder) {
+  const paymentLine =
+    order.payment_option === 'half'
+      ? `First payment received: ${formatMoney(order.initial_payment_amount)}. Remaining payment: ${formatMoney(order.remaining_payment_amount)} due on ${formatOrderDate(order.remaining_payment_due_at)}.`
+      : `Payment received: ${formatMoney(order.total)}.`;
+
+  return sendWhatsAppText(
+    order.delivery_address.phone,
+    [
+      'Your Project Fit plan has been activated.',
+      '',
+      `Order ID: ${order.id}`,
+      `Plan: ${getPrimaryOrderItem(order)}`,
+      `Start date: ${formatOrderDate(order.plan_activated_at ?? order.requested_start_date)}`,
+      paymentLine,
+    ].join('\n'),
+    order.user_id
+  );
+}
+
+export async function sendRemainingPaymentConfirmedMessage(order: ApiOrder) {
+  return sendWhatsAppText(
+    order.delivery_address.phone,
+    [
+      'Your remaining payment has been confirmed.',
+      '',
+      `Order ID: ${order.id}`,
+      `Plan: ${getPrimaryOrderItem(order)}`,
+      'Your monthly plan is now fully paid.',
+    ].join('\n'),
+    order.user_id
+  );
+}
+
+export async function sendPlanStoppedMidwayMessage(order: ApiOrder) {
+  return sendWhatsAppText(
+    order.delivery_address.phone,
+    [
+      'Your Project Fit monthly plan has been closed.',
+      '',
+      `Order ID: ${order.id}`,
+      order.completion_reason || 'The plan was ended after the first half of service days.',
+    ].join('\n'),
+    order.user_id
+  );
+}
+
+export async function sendOrderCancellationMessage(order: ApiOrder) {
+  const reason = order.cancellation_reason?.trim();
+  const message =
+    order.order_type === 'free_sample'
+      ? [
+          'Your free sample delivery request has been cancelled.',
+          reason ? `Reason: ${reason}` : null,
+        ]
+      : [
+          'Your Project Fit plan request has been cancelled.',
+          reason ? `Reason: ${reason}` : null,
+        ];
+
+  return sendWhatsAppText(
+    order.delivery_address.phone,
+    message.filter(Boolean).join('\n\n'),
+    order.user_id
+  );
+}
+
+export async function sendRemainingPaymentReminderTemplate(order: ApiOrder) {
+  const formattedPhone = formatWhatsAppPhone(order.delivery_address.phone) ?? order.delivery_address.phone;
+  const payload = {
+    messaging_product: 'whatsapp',
+    to: formattedPhone,
+    type: 'template',
+    template: {
+      name: remainingPaymentReminderTemplateName,
+      language: {
+        code: 'en_US',
+      },
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: order.customer_name || 'Project Fit customer' },
+            { type: 'text', text: String(order.remaining_payment_amount) },
+            { type: 'text', text: order.id },
+            { type: 'text', text: formatOrderDate(order.remaining_payment_due_at) },
+          ],
+        },
+      ],
+    },
+  };
+
+  try {
+    const providerMessageId = await sendWhatsAppPayload(payload);
+    await logWhatsAppMessage({
+      userId: order.user_id,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'template',
+      templateName: remainingPaymentReminderTemplateName,
+      status: 'sent',
+      providerMessageId,
+      payload,
+    });
+    return providerMessageId;
+  } catch (error) {
+    await logWhatsAppMessage({
+      userId: order.user_id,
+      phone: formattedPhone,
+      direction: 'outgoing',
+      messageType: 'template',
+      templateName: remainingPaymentReminderTemplateName,
+      status: 'failed',
+      errorMessage: error instanceof Error ? error.message : 'Could not send remaining payment reminder.',
       payload,
     });
     throw error;

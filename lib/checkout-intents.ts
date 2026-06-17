@@ -64,6 +64,7 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
   if (intent.order_type === 'free_sample') {
     return [
       'Hi Project Fit, I want to confirm my free sample request.',
+      '(Please don\'t change or edit this message before sending.)',
       '',
       `User ID: ${intent.user_id}`,
       `Checkout code: ${intent.code}`,
@@ -80,6 +81,7 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
 
   return [
     'Hi Project Fit, I want to confirm my meal plan order.',
+    '(Please don\'t change or edit this message before sending.)',
     '',
     `User ID: ${intent.user_id}`,
     `Checkout code: ${intent.code}`,

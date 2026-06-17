@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { ApiOrder, ApiOrderStatus, PaymentStatus } from '@/lib/backend-types';
 import { requireAdminUser } from '@/lib/admin-auth';
-import { sendFreeSampleApprovalButtons } from '@/lib/whatsapp';
+import {
+  sendFreeSampleApprovalButtons,
+  sendOrderCancellationMessage,
+  sendPlanActivatedMessage,
+  sendPlanStoppedMidwayMessage,
+  sendRemainingPaymentConfirmedMessage,
+} from '@/lib/whatsapp';
 import { inferPlanCalendarDaysFromItems } from '@/lib/plan-duration';
 
 const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
@@ -81,7 +87,13 @@ export async function PATCH(
       return NextResponse.json({ error }, { status });
     }
 
-    return NextResponse.json({ order: data?.[0] ?? null });
+    const updatedOrder = data?.[0] ?? null;
+
+    if (updatedOrder) {
+      await sendOrderCancellationMessage(updatedOrder).catch(() => undefined);
+    }
+
+    return NextResponse.json({ order: updatedOrder });
   }
 
   if (body.action === 'complete_payment' || body.action === 'stop_midway') {
@@ -136,7 +148,13 @@ export async function PATCH(
       );
 
       if (error) return NextResponse.json({ error }, { status });
-      return NextResponse.json({ order: data?.[0] ?? null });
+
+      const updatedOrder = data?.[0] ?? null;
+      if (updatedOrder) {
+        await sendRemainingPaymentConfirmedMessage(updatedOrder).catch(() => undefined);
+      }
+
+      return NextResponse.json({ order: updatedOrder });
     }
 
     const reason = String(body.cancellation_reason ?? '').trim() || 'Customer chose to end the monthly plan after the first half.';
@@ -155,7 +173,13 @@ export async function PATCH(
     );
 
     if (error) return NextResponse.json({ error }, { status });
-    return NextResponse.json({ order: data?.[0] ?? null });
+
+    const updatedOrder = data?.[0] ?? null;
+    if (updatedOrder) {
+      await sendPlanStoppedMidwayMessage(updatedOrder).catch(() => undefined);
+    }
+
+    return NextResponse.json({ order: updatedOrder });
   }
 
   if (body.action === 'confirm') {
@@ -235,6 +259,10 @@ export async function PATCH(
         updatedOrder.id,
         updatedOrder.user_id
       ).catch(() => undefined);
+    }
+
+    if (!isFreeSampleOrder && updatedOrder) {
+      await sendPlanActivatedMessage(updatedOrder).catch(() => undefined);
     }
 
     return NextResponse.json({ order: updatedOrder });

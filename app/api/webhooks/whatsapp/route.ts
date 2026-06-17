@@ -5,6 +5,8 @@ import {
   findUserByPhone,
   getWhatsAppVerifyToken,
   logWhatsAppMessage,
+  sendFreeSampleContactInstructions,
+  sendProgramPaymentInstructions,
   sendWhatsAppText,
   verifyMetaSignature,
 } from '@/lib/whatsapp';
@@ -170,7 +172,16 @@ export async function POST(request: Request) {
             whatsappFrom: message.from,
             whatsappMessageId: message.id,
           });
-          await sendWhatsAppText(message.from, result.message, result.order?.user_id ?? user?.id);
+          if (!result.order) {
+            await sendWhatsAppText(message.from, result.message, user?.id);
+            continue;
+          }
+
+          if (result.order.order_type === 'free_sample') {
+            await sendFreeSampleContactInstructions(result.order);
+          } else {
+            await sendProgramPaymentInstructions(result.order);
+          }
           continue;
         }
       } catch (error) {
