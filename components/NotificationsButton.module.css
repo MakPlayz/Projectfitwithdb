@@ -1,0 +1,58 @@
+.wrapper {
+  position: fixed;
+  left: 18px;
+  bottom: 18px;
+  z-index: 1200;
+}
+
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--green);
+  color: var(--white);
+  box-shadow: 0 16px 38px rgba(5, 150, 105, 0.28);
+}
+
+.button span {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.panel {
+  display: grid;
+  gap: 8px;
+  width: min(320px, calc(100vw - 36px));
+  margin-bottom: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
+.panel strong {
+  font-family: var(--font-display);
+}
+
+.panel p {
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}

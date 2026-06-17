@@ -1,7 +1,9 @@
 import type { CartItem } from '@/store/cartStore';
 
-export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready' | 'cancelled';
+export type ApiOrderStatus = 'new' | 'confirmed' | 'preparing' | 'ready' | 'completed' | 'cancelled';
 export type PaymentStatus = 'pending' | 'paid' | 'failed';
+export type PaymentOption = 'full' | 'half';
+export type PaymentStage = 'pending_initial' | 'half_paid' | 'paid_full' | 'stopped_midway' | 'completed';
 export type CheckoutIntentStatus = 'pending' | 'converted' | 'expired' | 'cancelled';
 export type CustomerDeliveryStatus = 'pending' | 'received' | 'not_received';
 export type CustomerGoal =
@@ -113,6 +115,9 @@ export interface CheckoutIntent {
   subtotal: number;
   tax: number;
   total: number;
+  payment_option: PaymentOption;
+  payable_now: number;
+  remaining_amount: number;
   order_type: 'paid_plan' | 'free_sample';
   delivery_address: DeliveryAddress;
   requested_start_date: string | null;
@@ -193,6 +198,14 @@ export interface ApiOrder {
   order_type: 'paid_plan' | 'free_sample';
   status: ApiOrderStatus;
   payment_status: PaymentStatus;
+  payment_option: PaymentOption;
+  payment_stage: PaymentStage;
+  initial_payment_amount: number;
+  remaining_payment_amount: number;
+  remaining_payment_due_at: string | null;
+  remaining_payment_paid_at: string | null;
+  plan_completed_at: string | null;
+  completion_reason: string | null;
   razorpay_order_id: string | null;
   razorpay_payment_id: string | null;
   payment_transaction_id: string | null;

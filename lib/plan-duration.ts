@@ -28,6 +28,10 @@ function isMonthlyPlanText(text: string) {
   );
 }
 
+export function isMonthlyPlanItems(items: CartItem[]) {
+  return isMonthlyPlanText(getPlanText(items));
+}
+
 export function inferPlanCalendarDaysFromItems(items: CartItem[]) {
   const text = getPlanText(items);
 

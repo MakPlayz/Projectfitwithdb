@@ -42,6 +42,10 @@ function getFreeSampleStatusText(order: ApiOrder) {
       ? `Your free sample has been cancelled by the chef team due to ${reason}.`
       : 'Your free sample has been cancelled by the chef team.';
   }
+
+  if (order.payment_stage === 'stopped_midway') {
+    return order.completion_reason || 'Your monthly plan was closed after the first half of service.';
+  }
   if (order.customer_delivery_status === 'received') return 'You marked this free sample as received.';
   if (order.customer_delivery_status === 'not_received') return 'You marked this free sample as not received. The kitchen team can follow up.';
   return 'Your delivery for free sample has been accepted and delivery is on the way.';
@@ -120,8 +124,12 @@ export default function MyPlanClient() {
     () => orders.filter((order) => isActivePaidPlan(order)),
     [orders]
   );
+  const halfPaymentOrders = useMemo(
+    () => orders.filter((order) => order.order_type !== 'free_sample' && order.payment_stage === 'half_paid'),
+    [orders]
+  );
   const planHistoryOrders = useMemo(
-    () => orders.filter((order) => order.order_type !== 'free_sample' && order.status !== 'new' && !isActivePaidPlan(order)),
+    () => orders.filter((order) => order.order_type !== 'free_sample' && order.status !== 'new' && !isActivePaidPlan(order) && order.payment_stage !== 'half_paid'),
     [orders]
   );
 
@@ -142,7 +150,7 @@ export default function MyPlanClient() {
     );
   }
 
-  if (pendingOrders.length === 0 && activeOrders.length === 0 && planHistoryOrders.length === 0 && sampleOrders.length === 0) {
+  if (pendingOrders.length === 0 && halfPaymentOrders.length === 0 && activeOrders.length === 0 && planHistoryOrders.length === 0 && sampleOrders.length === 0) {
     return (
       <div className={styles.emptyCard}>
         <div className={styles.iconWrap}>
@@ -179,6 +187,12 @@ export default function MyPlanClient() {
                 <span>Ordered on: {formatDate(order.created_at)}</span>
                 <span>Requested start: {formatDate(order.requested_start_date)}</span>
                 <span>Amount: Rs {order.total.toLocaleString('en-IN')}</span>
+                {order.payment_option === 'half' && (
+                  <span>
+                    Half payment selected: Rs {order.initial_payment_amount.toLocaleString('en-IN')} is due first.
+                    The remaining Rs {order.remaining_payment_amount.toLocaleString('en-IN')} will be requested after your plan starts.
+                  </span>
+                )}
               </article>
             ))}
           </div>
@@ -208,6 +222,29 @@ export default function MyPlanClient() {
         </section>
       )}
 
+      {halfPaymentOrders.length > 0 && (
+        <section className={styles.planPanel}>
+          <span className={styles.badge}>Remaining payment pending</span>
+          <h2>Half payment confirmed</h2>
+          <p>
+            Your plan has started with the first half payment. We will remind you to complete the remaining payment after day 10 of your plan.
+          </p>
+          <div className={styles.planGrid}>
+            {halfPaymentOrders.map((order) => (
+              <article key={order.id} className={styles.planCard}>
+                <CreditCard size={20} />
+                <strong>{getPlanName(order)}</strong>
+                <span>Order ID: {order.id}</span>
+                <span>Start: {formatDate(order.plan_activated_at)}</span>
+                <span>First payment received: Rs {order.initial_payment_amount.toLocaleString('en-IN')}</span>
+                <span>Remaining payment: Rs {order.remaining_payment_amount.toLocaleString('en-IN')}</span>
+                <span>Reminder date: {formatDate(order.remaining_payment_due_at)}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       {activeOrders.length > 0 && (
         <section className={styles.planPanel}>
           <span className={styles.badgeActive}>Active plan</span>
@@ -223,6 +260,11 @@ export default function MyPlanClient() {
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>
                 <span>Service days left: {getOrderServiceDaysRemaining(order) ?? 'Not set'}</span>
+                {order.payment_option === 'half' && order.remaining_payment_amount > 0 && (
+                  <span>
+                    Half payment received at activation. Remaining payment of Rs {order.remaining_payment_amount.toLocaleString('en-IN')} is due on {formatDate(order.remaining_payment_due_at)}.
+                  </span>
+                )}
                 <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>
               </article>
             ))}
@@ -243,6 +285,11 @@ export default function MyPlanClient() {
                 <span>Type: {getOrderLabel(order)}</span>
                 <span>Order ID: {order.id}</span>
                 <span>{getPlanHistoryStatusText(order)}</span>
+                {order.payment_option === 'half' && (
+                  <span>
+                    Payment: first half Rs {order.initial_payment_amount.toLocaleString('en-IN')}, remaining Rs {order.remaining_payment_amount.toLocaleString('en-IN')}.
+                  </span>
+                )}
                 <span>Requested start: {formatDate(order.requested_start_date)}</span>
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>

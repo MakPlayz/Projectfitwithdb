@@ -11,6 +11,7 @@ import {
   normalizeDeliveryAddressForStorage,
 } from '@/lib/checkout-intents';
 import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
+import { isMonthlyPlanItems } from '@/lib/plan-duration';
 import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
 import { getUserFromAccessToken, supabaseRestFetch } from '@/lib/supabase-rest';
 import { getWhatsAppBusinessPhoneForLinks } from '@/lib/whatsapp';
@@ -21,6 +22,7 @@ interface CreateIntentBody {
   deliveryAddress?: Partial<DeliveryAddress>;
   requestedStartDate?: string;
   freeSampleDeviceId?: string;
+  paymentOption?: 'full' | 'half';
 }
 
 function normalizeText(value: unknown) {
@@ -262,6 +264,11 @@ export async function POST(request: Request) {
   const subtotal = isFreeSampleOrder ? 0 : body.subtotal;
   const tax = isFreeSampleOrder ? 0 : Math.round(subtotal * 0.05);
   const total = subtotal + tax;
+  const paymentOption = !isFreeSampleOrder && body.paymentOption === 'half' && isMonthlyPlanItems(body.items)
+    ? 'half'
+    : 'full';
+  const payableNow = isFreeSampleOrder ? 0 : paymentOption === 'half' ? Math.ceil(total / 2) : total;
+  const remainingAmount = isFreeSampleOrder ? 0 : Math.max(0, total - payableNow);
   const customerName = buildCustomerName(profile, user.user_metadata?.name ?? null, user.email ?? null);
   const whatsappNumber = await getWhatsAppBusinessPhoneForLinks();
 
@@ -277,6 +284,9 @@ export async function POST(request: Request) {
     subtotal,
     tax,
     total,
+    payment_option: paymentOption,
+    payable_now: payableNow,
+    remaining_amount: remainingAmount,
     order_type: isFreeSampleOrder ? 'free_sample' : 'paid_plan',
     delivery_address: addressValidation.deliveryAddress,
     requested_start_date: startDate.date,

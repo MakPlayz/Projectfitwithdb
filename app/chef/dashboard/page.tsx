@@ -44,7 +44,9 @@ type Tab =
   | 'approved-samples'
   | 'sample-status'
   | 'chats'
+  | 'half-payments'
   | 'active'
+  | 'completed'
   | 'plan-history'
   | 'users'
   | 'feedback'
@@ -69,7 +71,9 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'approved-samples', label: 'Approved samples', icon: CheckCircle2 },
   { id: 'sample-status', label: 'Sample status', icon: CheckCircle2 },
   { id: 'chats', label: 'WhatsApp chats', icon: MessageSquareText },
+  { id: 'half-payments', label: 'Half payments', icon: WalletCards },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
+  { id: 'completed', label: 'Completed orders', icon: CheckCircle2 },
   { id: 'plan-history', label: 'Plan history', icon: ClipboardList },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
@@ -120,6 +124,14 @@ function getPlanLifecycleText(order: ApiOrder) {
     return reason
       ? `Cancelled by chef: ${reason}`
       : 'Cancelled by chef';
+  }
+
+  if (order.payment_stage === 'half_paid') {
+    return 'Half payment received. Remaining payment is pending.';
+  }
+
+  if (order.payment_stage === 'stopped_midway' || order.status === 'completed') {
+    return order.completion_reason ?? 'Completed';
   }
 
   if (order.status === 'new' || order.payment_status === 'pending') {
@@ -363,7 +375,7 @@ export default function ChefDashboard() {
   const normalizedQuery = query.trim().toLowerCase();
 
   const pendingOrders = data.orders.filter(
-    (order) => order.order_type !== 'free_sample' && (order.status === 'new' || order.payment_status === 'pending')
+    (order) => order.order_type !== 'free_sample' && order.status === 'new' && order.payment_stage !== 'half_paid'
   );
   const sampleOrders = data.orders.filter((order) => order.order_type === 'free_sample');
   const sampleRequests = sampleOrders.filter((order) => order.status === 'new');
@@ -374,8 +386,20 @@ export default function ChefDashboard() {
       order.order_type !== 'free_sample' &&
       ['confirmed', 'preparing', 'ready'].includes(order.status) &&
       order.payment_status === 'paid' &&
+      order.payment_stage === 'paid_full' &&
       order.plan_expires_at &&
       new Date(order.plan_expires_at) >= new Date()
+  );
+  const halfPaymentOrders = data.orders.filter(
+    (order) => order.order_type !== 'free_sample' && order.payment_option === 'half' && order.payment_stage === 'half_paid'
+  );
+  const completedOrders = data.orders.filter(
+    (order) =>
+      order.order_type !== 'free_sample' &&
+      (order.status === 'completed' ||
+        order.payment_stage === 'completed' ||
+        order.payment_stage === 'stopped_midway' ||
+        Boolean(order.plan_expires_at && new Date(order.plan_expires_at) < new Date()))
   );
   const planHistoryOrders = data.orders.filter((order) => order.order_type !== 'free_sample');
   const selectedUser = data.users.find((user) => user.id === selectedUserId) ?? data.users[0] ?? null;
@@ -450,6 +474,28 @@ export default function ChefDashboard() {
       order.status,
       order.payment_status,
       order.cancellation_reason,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredHalfPaymentOrders = halfPaymentOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.remaining_payment_amount,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredCompletedOrders = completedOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.completion_reason,
       ...order.items.map((item) => item.name),
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
@@ -559,7 +605,7 @@ export default function ChefDashboard() {
     payload: {
       status?: ApiOrderStatus;
       payment_status?: PaymentStatus;
-      action?: 'confirm' | 'cancel';
+      action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
@@ -588,7 +634,15 @@ export default function ChefDashboard() {
       ...current,
       orders: current.orders.map((order) => (order.id === orderId ? result.order : order)),
     }));
-    setStatus(payload.action === 'confirm' ? 'Order confirmed and plan dates were set.' : 'Order updated.');
+    setStatus(
+      payload.action === 'confirm'
+        ? 'Order confirmed and plan dates were set.'
+        : payload.action === 'complete_payment'
+          ? 'Remaining payment confirmed. Plan moved to active plans.'
+          : payload.action === 'stop_midway'
+            ? 'Half-payment plan closed and moved to completed orders.'
+            : 'Order updated.'
+    );
   }
 
   async function sendChatReply(event: FormEvent<HTMLFormElement>) {
@@ -1040,6 +1094,33 @@ export default function ChefDashboard() {
                 </section>
               )}
 
+              {activeTab === 'half-payments' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Half payment plans</h2>
+                      <p>These customers paid the first half. Confirm the remaining payment to move them into active plans.</p>
+                    </div>
+                    <span>{filteredHalfPaymentOrders.length} pending balance</span>
+                  </div>
+
+                  {filteredHalfPaymentOrders.length === 0 ? (
+                    <EmptyState title="No half-payment plans" text="Monthly plans with first-half payment confirmed will appear here." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredHalfPaymentOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {activeTab === 'active' && (
                 <section className={styles.orderBoard}>
                   <div className={styles.sectionHead}>
@@ -1055,6 +1136,33 @@ export default function ChefDashboard() {
                   ) : (
                     <div className={styles.orderGrid}>
                       {activePlans.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === 'completed' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Completed orders</h2>
+                      <p>Plans that naturally ended or were closed midway after the first half payment.</p>
+                    </div>
+                    <span>{filteredCompletedOrders.length} completed</span>
+                  </div>
+
+                  {filteredCompletedOrders.length === 0 ? (
+                    <EmptyState title="No completed orders" text="Expired or midway-stopped plans will appear here." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredCompletedOrders.map((order) => (
                         <OrderCard
                           key={order.id}
                           order={order}
@@ -1360,7 +1468,7 @@ function OrderCard({
     payload: {
       status?: ApiOrderStatus;
       payment_status?: PaymentStatus;
-      action?: 'confirm' | 'cancel';
+      action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
@@ -1373,6 +1481,7 @@ function OrderCard({
   const [sampleCancelReason, setSampleCancelReason] = useState('');
   const [activeCancelConfirm, setActiveCancelConfirm] = useState('');
   const [activeCancelReason, setActiveCancelReason] = useState('');
+  const [midwayReason, setMidwayReason] = useState('');
   const isActivePaidPlan =
     order.order_type !== 'free_sample' &&
     ['confirmed', 'preparing', 'ready'].includes(order.status) &&
@@ -1408,6 +1517,25 @@ function OrderCard({
     setActiveCancelReason('');
   }
 
+  function handleCompleteRemainingPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    onPatch(order.id, {
+      action: 'complete_payment',
+      confirmation_order_id: String(form.get('confirmation_order_id') ?? ''),
+      confirmation_user_id: String(form.get('confirmation_user_id') ?? ''),
+      payment_transaction_id: String(form.get('payment_transaction_id') ?? ''),
+    });
+  }
+
+  function handleStopMidway() {
+    onPatch(order.id, {
+      action: 'stop_midway',
+      cancellation_reason: midwayReason.trim(),
+    });
+    setMidwayReason('');
+  }
+
   return (
     <article className={styles.orderCard}>
       <div className={styles.cardHeader}>
@@ -1441,6 +1569,15 @@ function OrderCard({
         <p>Requested start: {formatDate(order.requested_start_date)}</p>
         {order.order_type !== 'free_sample' && (
           <p>Plan lifecycle: {getPlanLifecycleText(order)}</p>
+        )}
+        {order.order_type !== 'free_sample' && (
+          <>
+            <p>Payment choice: {order.payment_option === 'half' ? 'Half payment' : 'Full payment'}</p>
+            <p>Initial payment: Rs {order.initial_payment_amount.toLocaleString('en-IN')}</p>
+            {order.remaining_payment_amount > 0 && (
+              <p>Remaining payment: Rs {order.remaining_payment_amount.toLocaleString('en-IN')} due {formatDate(order.remaining_payment_due_at)}</p>
+            )}
+          </>
         )}
         {isActivePaidPlan && (
           <>
@@ -1478,6 +1615,17 @@ function OrderCard({
           <button type="submit">
             <ShieldCheck size={15} />
             Confirm order
+          </button>
+        </form>
+      )}
+      {order.payment_stage === 'half_paid' && (
+        <form className={styles.confirmBox} onSubmit={handleCompleteRemainingPayment}>
+          <Field name="confirmation_order_id" label="Re-enter order ID" defaultValue="" required />
+          <Field name="confirmation_user_id" label="Re-enter user ID" defaultValue="" required />
+          <Field name="payment_transaction_id" label="Remaining payment transaction ID" defaultValue="" required />
+          <button type="submit">
+            <ShieldCheck size={15} />
+            Confirm remaining payment
           </button>
         </form>
       )}
@@ -1539,6 +1687,21 @@ function OrderCard({
             onClick={handleCancelActivePlan}
           >
             Cancel active plan
+          </button>
+        </div>
+      )}
+      {order.payment_stage === 'half_paid' && (
+        <div className={`${styles.confirmBox} ${styles.dangerBox}`}>
+          <label>
+            <span>Close midway reason</span>
+            <input
+              value={midwayReason}
+              onChange={(event) => setMidwayReason(event.target.value)}
+              placeholder="Customer chose to stop after the first half"
+            />
+          </label>
+          <button type="button" className={styles.dangerBtn} onClick={handleStopMidway}>
+            Move to completed
           </button>
         </div>
       )}

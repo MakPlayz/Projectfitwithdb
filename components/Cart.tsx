@@ -13,6 +13,7 @@ import { getFreeSampleDeviceId } from '@/lib/free-sample-device';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
+import { isMonthlyPlanItems } from '@/lib/plan-duration';
 
 const initialDeliveryAddress: DeliveryAddress = {
   addressLine1: '',
@@ -65,6 +66,7 @@ export default function Cart() {
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(initialDeliveryAddress);
   const [requestedStartDate, setRequestedStartDate] = useState(getTomorrowDateValue);
+  const [paymentOption, setPaymentOption] = useState<'full' | 'half'>('full');
   const router = useRouter();
 
   useEffect(() => {
@@ -85,6 +87,9 @@ export default function Cart() {
 
   const total = getTotal();
   const isFreeSampleCheckout = items.length === 1 && items[0]?.itemType === 'free_sample';
+  const canUseHalfPayment = !isFreeSampleCheckout && isMonthlyPlanItems(items);
+  const payableNow = canUseHalfPayment && paymentOption === 'half' ? Math.ceil(total / 2) : total;
+  const remainingAmount = Math.max(0, total - payableNow);
   const hasValidPincode = /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim());
   const isOutsideDeliverableArea =
     hasValidPincode && !isDeliverablePincode(deliveryAddress.pincode);
@@ -159,6 +164,7 @@ export default function Cart() {
           deliveryAddress,
           requestedStartDate: isFreeSampleCheckout ? null : requestedStartDate,
           freeSampleDeviceId: isFreeSampleCheckout ? getFreeSampleDeviceId() : undefined,
+          paymentOption: canUseHalfPayment ? paymentOption : 'full',
         }),
       });
       const data = await response.json();
@@ -337,6 +343,34 @@ export default function Cart() {
 
                 {!isFreeSampleCheckout && (
                   <>
+                    {canUseHalfPayment && (
+                      <div className={styles.paymentChoice}>
+                        <span>Payment option</span>
+                        <div className={styles.paymentSwitch}>
+                          <button
+                            type="button"
+                            className={paymentOption === 'full' ? styles.paymentActive : styles.paymentButton}
+                            onClick={() => setPaymentOption('full')}
+                          >
+                            Pay full
+                          </button>
+                          <button
+                            type="button"
+                            className={paymentOption === 'half' ? styles.paymentActive : styles.paymentButton}
+                            onClick={() => setPaymentOption('half')}
+                          >
+                            Pay half now
+                          </button>
+                        </div>
+                        {paymentOption === 'half' ? (
+                          <p>
+                            Pay Rs {payableNow.toLocaleString('en-IN')} now. The remaining Rs {remainingAmount.toLocaleString('en-IN')} is due after day 10 of your plan.
+                          </p>
+                        ) : (
+                          <p>Pay the full amount once and keep the plan payment complete from day one.</p>
+                        )}
+                      </div>
+                    )}
                     <label className={styles.field}>
                       <span>Plan start date</span>
                       <input
@@ -357,6 +391,13 @@ export default function Cart() {
               </div>
 
               {error && <p className={styles.error}>{error}</p>}
+              {!isFreeSampleCheckout && (
+                <div className={styles.paymentSummary}>
+                  <span>Due now</span>
+                  <strong>Rs {payableNow.toLocaleString('en-IN')}</strong>
+                  {remainingAmount > 0 && <small>Remaining later: Rs {remainingAmount.toLocaleString('en-IN')}</small>}
+                </div>
+              )}
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }} onClick={handleCheckout} disabled={isSubmitting}>
                 {isSubmitting ? 'Placing Order...' : 'Place Order'}
               </button>

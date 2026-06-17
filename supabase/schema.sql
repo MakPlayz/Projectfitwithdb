@@ -43,8 +43,17 @@ create table if not exists public.orders (
   subtotal integer not null,
   tax integer not null,
   total integer not null,
+  payment_option text not null default 'full' check (payment_option in ('full', 'half')),
+  payment_stage text not null default 'pending_initial'
+    check (payment_stage in ('pending_initial', 'half_paid', 'paid_full', 'stopped_midway', 'completed')),
+  initial_payment_amount integer not null default 0,
+  remaining_payment_amount integer not null default 0,
+  remaining_payment_due_at timestamptz,
+  remaining_payment_paid_at timestamptz,
+  plan_completed_at timestamptz,
+  completion_reason text,
   order_type text not null default 'paid_plan' check (order_type in ('paid_plan', 'free_sample')),
-  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled')),
+  status text not null default 'new' check (status in ('new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled')),
   payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed')),
   razorpay_order_id text,
   razorpay_payment_id text,
@@ -134,6 +143,9 @@ create table if not exists public.checkout_intents (
   subtotal integer not null,
   tax integer not null,
   total integer not null,
+  payment_option text not null default 'full' check (payment_option in ('full', 'half')),
+  payable_now integer not null default 0,
+  remaining_amount integer not null default 0,
   order_type text not null check (order_type in ('paid_plan', 'free_sample')),
   delivery_address jsonb not null default '{}'::jsonb,
   requested_start_date date,
@@ -179,7 +191,7 @@ alter table public.orders
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders
   add constraint orders_status_check
-  check (status in ('new', 'confirmed', 'preparing', 'ready', 'cancelled'));
+  check (status in ('new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'));
 
 alter table public.orders drop constraint if exists orders_order_type_check;
 alter table public.orders

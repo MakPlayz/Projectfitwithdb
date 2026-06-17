@@ -5,13 +5,13 @@ import { requireAdminUser } from '@/lib/admin-auth';
 import { sendFreeSampleApprovalButtons } from '@/lib/whatsapp';
 import { inferPlanCalendarDaysFromItems } from '@/lib/plan-duration';
 
-const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'cancelled'];
+const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
 
 interface StatusBody {
   status?: ApiOrderStatus;
   payment_status?: PaymentStatus;
-  action?: 'confirm' | 'cancel';
+  action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
   confirmation_order_id?: string;
   confirmation_user_id?: string;
   payment_transaction_id?: string;
@@ -84,6 +84,80 @@ export async function PATCH(
     return NextResponse.json({ order: data?.[0] ?? null });
   }
 
+  if (body.action === 'complete_payment' || body.action === 'stop_midway') {
+    const current = await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(id)}&select=*`
+    );
+
+    if (current.error) {
+      return NextResponse.json({ error: current.error }, { status: current.status });
+    }
+
+    const order = current.data?.[0] ?? null;
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+    }
+
+    if (order.payment_option !== 'half') {
+      return NextResponse.json({ error: 'This action is only available for half-payment plans.' }, { status: 400 });
+    }
+
+    if (body.action === 'complete_payment') {
+      const enteredOrderId = String(body.confirmation_order_id ?? '').trim();
+      const enteredUserId = String(body.confirmation_user_id ?? '').trim();
+      const transactionId = String(body.payment_transaction_id ?? '').trim();
+
+      if (enteredOrderId !== order.id) {
+        return NextResponse.json({ error: 'Entered order ID does not match this order.' }, { status: 400 });
+      }
+
+      if (!order.user_id || enteredUserId !== order.user_id) {
+        return NextResponse.json({ error: 'Entered user ID does not match this order.' }, { status: 400 });
+      }
+
+      if (transactionId.length < 4) {
+        return NextResponse.json({ error: 'Enter the remaining payment transaction ID.' }, { status: 400 });
+      }
+
+      const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
+        `/orders?id=eq.${encodeURIComponent(id)}`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({
+            status: 'confirmed',
+            payment_status: 'paid',
+            payment_stage: 'paid_full',
+            remaining_payment_paid_at: new Date().toISOString(),
+            payment_transaction_id: transactionId,
+            cancellation_reason: null,
+            completion_reason: null,
+          }),
+        }
+      );
+
+      if (error) return NextResponse.json({ error }, { status });
+      return NextResponse.json({ order: data?.[0] ?? null });
+    }
+
+    const reason = String(body.cancellation_reason ?? '').trim() || 'Customer chose to end the monthly plan after the first half.';
+    const { data, error, status } = await supabaseRestFetch<ApiOrder[]>(
+      `/orders?id=eq.${encodeURIComponent(id)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'completed',
+          payment_stage: 'stopped_midway',
+          payment_status: 'paid',
+          plan_completed_at: new Date().toISOString(),
+          completion_reason: reason,
+        }),
+      }
+    );
+
+    if (error) return NextResponse.json({ error }, { status });
+    return NextResponse.json({ order: data?.[0] ?? null });
+  }
+
   if (body.action === 'confirm') {
     const current = await supabaseRestFetch<ApiOrder[]>(
       `/orders?id=eq.${encodeURIComponent(id)}&select=*`
@@ -124,11 +198,17 @@ export async function PATCH(
     const expiresAt = new Date(activatedAt);
     expiresAt.setDate(expiresAt.getDate() + inferPlanDays(order));
 
+    const isHalfPaymentOrder = !isFreeSampleOrder && order.payment_option === 'half';
+    const dueAt = new Date(activatedAt);
+    dueAt.setDate(dueAt.getDate() + 11);
+
     const confirmPayload = {
       status: 'confirmed',
-      payment_status: 'paid',
+      payment_status: isHalfPaymentOrder ? 'pending' : 'paid',
+      payment_stage: isFreeSampleOrder ? 'paid_full' : isHalfPaymentOrder ? 'half_paid' : 'paid_full',
       plan_activated_at: activatedAt.toISOString(),
       plan_expires_at: expiresAt.toISOString(),
+      remaining_payment_due_at: isHalfPaymentOrder ? dueAt.toISOString() : null,
       confirmed_at: confirmedAt.toISOString(),
       confirmed_by: admin.user?.id ?? null,
       payment_transaction_id: isFreeSampleOrder ? null : transactionId,

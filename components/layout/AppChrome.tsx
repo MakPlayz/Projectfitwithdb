@@ -7,6 +7,7 @@ import BackgroundDecor from '@/components/layout/BackgroundDecor';
 import Cart from '@/components/Cart';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/Navbar';
+import NotificationsButton from '@/components/NotificationsButton';
 
 interface AppChromeProps {
   children: React.ReactNode;
@@ -33,6 +34,7 @@ export default function AppChrome({ children }: AppChromeProps) {
       <AuthGuard>{children}</AuthGuard>
       <Footer />
       <Cart />
+      <NotificationsButton />
     </>
   );
 }
