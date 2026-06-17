@@ -72,7 +72,7 @@ export async function PATCH(
         body: JSON.stringify({
           status: 'cancelled',
           payment_status: activePaidPlan ? 'paid' : 'failed',
-          cancellation_reason: cancellationReason || (activePaidPlan ? 'Active plan cancelled by chef.' : null),
+          cancellation_reason: cancellationReason || null,
         }),
       }
     );

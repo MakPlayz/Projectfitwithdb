@@ -435,7 +435,6 @@
 }
 
 .badges span,
-.profileMini span,
 .badgeGreen {
   display: inline-flex;
   align-items: center;
@@ -487,13 +486,6 @@
 .items {
   display: grid;
   gap: 6px;
-}
-
-.profileMini {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
 }
 
 .actions {
@@ -693,6 +685,9 @@
   color: #a8b5aa;
   font-size: 12px;
   font-style: normal;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
 }
 
 .chatRow small,
@@ -713,6 +708,21 @@
   background: #c9f24d;
   color: #12200e;
   font-weight: 950;
+}
+
+.unreadBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #22c55e;
+  color: #052e16;
+  font-size: 12px;
+  font-weight: 950;
+  font-style: normal;
 }
 
 .chatPanel {
@@ -826,6 +836,11 @@
   gap: 8px;
   color: #a8b5aa;
   font-size: 11px;
+}
+
+.readReceipt {
+  color: #60a5fa;
+  font-weight: 900;
 }
 
 .chatImage {
@@ -959,6 +974,18 @@
 .orderHistory div {
   display: grid;
   gap: 3px;
+}
+
+.reportLink {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(201, 242, 77, 0.12);
+  color: #eaff9d;
+  font-weight: 850;
+  overflow-wrap: anywhere;
 }
 
 .menuStudio,

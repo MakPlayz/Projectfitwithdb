@@ -15,6 +15,9 @@ interface ProfileRequestBody extends Partial<CustomerProfilePayload> {
   phone?: string;
 }
 
+const maxMedicalReportBytes = 1_500_000;
+const allowedMedicalReportTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
+
 function getAccessToken(request: Request) {
   const authHeader = request.headers.get('authorization');
   return authHeader?.replace(/^Bearer\s+/i, '');
@@ -65,6 +68,15 @@ function validateProfile(body: ProfileRequestBody) {
   }
   if (!body.gender) return 'Gender is required.';
   if (!body.health_notes?.trim()) return 'Health notes are required. Enter "None" if there are no concerns.';
+  if (body.medical_report_file_data) {
+    if (!body.medical_report_file_name?.trim()) return 'Medical report file name is required.';
+    if (!body.medical_report_file_type || !allowedMedicalReportTypes.has(body.medical_report_file_type)) {
+      return 'Upload a PDF, JPG, PNG, or WebP report file.';
+    }
+    if (body.medical_report_file_data.length > maxMedicalReportBytes * 1.4) {
+      return 'Medical report file must be below 1.5 MB.';
+    }
+  }
 
   return null;
 }
@@ -128,6 +140,10 @@ export async function POST(request: Request) {
     diet_preference: body.diet_preference ?? 'balanced',
     allergies: Array.isArray(body.allergies) ? body.allergies : [],
     health_notes: body.health_notes?.trim() ?? '',
+    medical_report_file_name: body.medical_report_file_data ? body.medical_report_file_name?.trim() ?? null : null,
+    medical_report_file_type: body.medical_report_file_data ? body.medical_report_file_type ?? null : null,
+    medical_report_file_data: body.medical_report_file_data ?? null,
+    medical_report_uploaded_at: body.medical_report_file_data ? new Date().toISOString() : null,
   };
 
   const userResult = await supabaseRestFetch('/users?on_conflict=id', {
@@ -161,6 +177,10 @@ export async function POST(request: Request) {
         user_id: auth.user.id,
         ...profile,
         health_notes: profile.health_notes || null,
+        medical_report_file_name: profile.medical_report_file_name,
+        medical_report_file_type: profile.medical_report_file_type,
+        medical_report_file_data: profile.medical_report_file_data,
+        medical_report_uploaded_at: profile.medical_report_uploaded_at,
         recommended_path: getRecommendedPath(profile),
         recommendation_summary: buildRecommendationSummary(profile),
         coach_notes: buildCoachNotes(profile),

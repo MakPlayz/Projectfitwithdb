@@ -44,6 +44,10 @@ export interface CustomerProfile {
   recommendation_summary: string;
   coach_notes: string[];
   is_profile_complete: boolean;
+  medical_report_file_name: string | null;
+  medical_report_file_type: string | null;
+  medical_report_file_data: string | null;
+  medical_report_uploaded_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -60,6 +64,10 @@ export interface CustomerProfilePayload {
   diet_preference: DietPreference;
   allergies: string[];
   health_notes: string;
+  medical_report_file_name?: string | null;
+  medical_report_file_type?: string | null;
+  medical_report_file_data?: string | null;
+  medical_report_uploaded_at?: string | null;
 }
 
 export interface ProjectFitUser {

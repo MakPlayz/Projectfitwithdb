@@ -37,7 +37,10 @@ function isActivePaidPlan(order: ApiOrder) {
 function getFreeSampleStatusText(order: ApiOrder) {
   if (order.status === 'new') return 'Your free sample order is pending chef approval.';
   if (order.status === 'cancelled') {
-    return `Your delivery for free sample has been cancelled by chef.${order.cancellation_reason ? ` Reason: ${order.cancellation_reason}` : ''}`;
+    const reason = getCustomerCancellationReason(order.cancellation_reason);
+    return reason
+      ? `Your free sample has been cancelled by the chef team due to ${reason}.`
+      : 'Your free sample has been cancelled by the chef team.';
   }
   if (order.customer_delivery_status === 'received') return 'You marked this free sample as received.';
   if (order.customer_delivery_status === 'not_received') return 'You marked this free sample as not received. The kitchen team can follow up.';
@@ -46,9 +49,10 @@ function getFreeSampleStatusText(order: ApiOrder) {
 
 function getPlanHistoryStatusText(order: ApiOrder) {
   if (order.status === 'cancelled') {
-    return order.cancellation_reason
-      ? `Your plan has been cancelled by chef. Reason: ${order.cancellation_reason}`
-      : 'Your plan has been cancelled by chef.';
+    const reason = getCustomerCancellationReason(order.cancellation_reason);
+    return reason
+      ? `Your plan has been cancelled by the chef team due to ${reason}.`
+      : 'Your plan has been cancelled by the chef team.';
   }
 
   if (order.plan_expires_at && new Date(order.plan_expires_at) < new Date()) {
@@ -56,6 +60,12 @@ function getPlanHistoryStatusText(order: ApiOrder) {
   }
 
   return `Status: ${order.status}.`;
+}
+
+function getCustomerCancellationReason(reason: string | null | undefined) {
+  const cleaned = reason?.trim().replace(/\.$/, '');
+  if (!cleaned || cleaned.toLowerCase() === 'active plan cancelled by chef') return null;
+  return cleaned;
 }
 
 export default function MyPlanClient() {

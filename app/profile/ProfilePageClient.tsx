@@ -4,7 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Camera, CheckCircle2, Mail, MapPin, MessageSquareText, ShieldCheck, UserCircle } from 'lucide-react';
+import { Camera, CheckCircle2, FileText, Mail, MapPin, MessageSquareText, ShieldCheck, UserCircle, X } from 'lucide-react';
 import { ensureSession, getAuthHeaders, getSession, saveSession, type ProjectFitSession } from '@/lib/auth-client';
 import type { CustomerFeedback, DeliveryAddress } from '@/lib/backend-types';
 import {
@@ -40,6 +40,12 @@ export default function ProfilePageClient() {
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
+  const [medicalReport, setMedicalReport] = useState<{
+    name: string;
+    type: string;
+    data: string;
+    uploadedAt?: string | null;
+  } | null>(null);
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
   const nextPath = getSafeNextPath(searchParams.get('next'));
@@ -102,6 +108,16 @@ export default function ProfilePageClient() {
           weight: remote?.weight_kg ?? currentProfile.weight,
           healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
         }));
+        setMedicalReport(
+          remote?.medical_report_file_data
+            ? {
+                name: remote.medical_report_file_name ?? 'Health report',
+                type: remote.medical_report_file_type ?? 'application/octet-stream',
+                data: remote.medical_report_file_data,
+                uploadedAt: remote.medical_report_uploaded_at,
+              }
+            : null
+        );
         setFeedback(feedbackData?.feedback ?? []);
     }
 
@@ -180,6 +196,36 @@ export default function ProfilePageClient() {
     reader.readAsDataURL(file);
   };
 
+  const handleMedicalReportChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setError('Upload a PDF, JPG, PNG, or WebP report file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 1_500_000) {
+      setError('Medical report file must be below 1.5 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMedicalReport({
+        name: file.name,
+        type: file.type,
+        data: String(reader.result ?? ''),
+      });
+      setStatus('');
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
@@ -217,6 +263,9 @@ export default function ProfilePageClient() {
           height_cm: height,
           weight_kg: Number(nextProfile.weight),
           health_notes: nextProfile.healthNotes,
+          medical_report_file_name: medicalReport?.name ?? null,
+          medical_report_file_type: medicalReport?.type ?? null,
+          medical_report_file_data: medicalReport?.data ?? null,
         }),
       });
       const data = await response.json();
@@ -431,6 +480,39 @@ export default function ProfilePageClient() {
                 required
               />
             </label>
+
+            <div className={styles.reportBox}>
+              <div>
+                <span>Doctor report or recent test report (optional)</span>
+                <p>
+                  If you have a recent doctor report or test report related to fatigue, vitamin or mineral
+                  deficiencies, or food-related fitness concerns, you can share it here. It is optional,
+                  but it helps us understand your issue better and suggest more suitable food options.
+                </p>
+              </div>
+              {medicalReport ? (
+                <div className={styles.reportPreview}>
+                  <FileText size={18} />
+                  <div>
+                    <strong>{medicalReport.name}</strong>
+                    <small>
+                      {medicalReport.uploadedAt
+                        ? `Uploaded ${new Date(medicalReport.uploadedAt).toLocaleDateString('en-IN')}`
+                        : 'Ready to save'}
+                    </small>
+                  </div>
+                  <button type="button" onClick={() => setMedicalReport(null)} aria-label="Remove report">
+                    <X size={16} />
+                  </button>
+                </div>
+              ) : (
+                <label className={styles.reportUpload}>
+                  <FileText size={17} />
+                  Upload report
+                  <input type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={handleMedicalReportChange} />
+                </label>
+              )}
+            </div>
 
             <div className={styles.addressSection}>
               <div className={styles.addressHeader}>

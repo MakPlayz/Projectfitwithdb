@@ -27,6 +27,10 @@ create table if not exists public.customer_profiles (
   recommendation_summary text not null,
   coach_notes text[] not null default '{}',
   is_profile_complete boolean not null default false,
+  medical_report_file_name text,
+  medical_report_file_type text,
+  medical_report_file_data text,
+  medical_report_uploaded_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

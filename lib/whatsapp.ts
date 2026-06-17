@@ -333,6 +333,16 @@ export async function downloadWhatsAppMedia(mediaId: string) {
   };
 }
 
+export async function sendWhatsAppReadReceipt(messageId: string) {
+  const payload = {
+    messaging_product: 'whatsapp',
+    status: 'read',
+    message_id: messageId,
+  };
+
+  await sendWhatsAppPayload(payload);
+}
+
 export async function sendFreeSampleApprovalButtons(phone: string, orderId: string, userId?: string | null) {
   const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
   const body = [

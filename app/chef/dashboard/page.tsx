@@ -105,7 +105,10 @@ function getPrimaryPlan(order: ApiOrder) {
 
 function getFreeSampleStatusText(order: ApiOrder) {
   if (order.status === 'new') return 'Pending chef approval';
-  if (order.status === 'cancelled') return order.cancellation_reason ? `Cancelled: ${order.cancellation_reason}` : 'Cancelled by chef';
+  if (order.status === 'cancelled') {
+    const reason = getChefCancellationReason(order.cancellation_reason);
+    return reason ? `Cancelled: ${reason}` : 'Cancelled by chef';
+  }
   if (order.customer_delivery_status === 'received') return 'Customer marked received';
   if (order.customer_delivery_status === 'not_received') return 'Customer marked not received';
   return 'Approved, waiting for customer delivery confirmation';
@@ -113,8 +116,9 @@ function getFreeSampleStatusText(order: ApiOrder) {
 
 function getPlanLifecycleText(order: ApiOrder) {
   if (order.status === 'cancelled') {
-    return order.cancellation_reason
-      ? `Cancelled by chef: ${order.cancellation_reason}`
+    const reason = getChefCancellationReason(order.cancellation_reason);
+    return reason
+      ? `Cancelled by chef: ${reason}`
       : 'Cancelled by chef';
   }
 
@@ -131,6 +135,12 @@ function getPlanLifecycleText(order: ApiOrder) {
   }
 
   return `${order.status} / ${order.payment_status}`;
+}
+
+function getChefCancellationReason(reason: string | null | undefined) {
+  const cleaned = reason?.trim();
+  if (!cleaned || cleaned.toLowerCase() === 'active plan cancelled by chef.') return null;
+  return cleaned;
 }
 
 type WhatsAppMedia = {
@@ -215,6 +225,14 @@ function getReplyWindowLabel(lastIncomingAt: string | null) {
   const hours = Math.floor(remainingMs / 3_600_000);
   const minutes = Math.max(0, Math.floor((remainingMs % 3_600_000) / 60_000));
   return hours > 0 ? `${hours}h ${minutes}m left to reply` : `${minutes}m left to reply`;
+}
+
+function getWhatsAppDeliveryLabel(message: WhatsAppMessageLog) {
+  if (message.direction === 'incoming') return message.status === 'read' ? 'Seen' : 'Unread';
+  if (message.status === 'read') return '✓✓ Read';
+  if (message.status === 'delivered') return '✓✓ Delivered';
+  if (message.status === 'sent') return '✓ Sent';
+  return message.status;
 }
 
 export default function ChefDashboard() {
@@ -368,7 +386,7 @@ export default function ChefDashboard() {
   const filteredUsers = data.users.filter((user) => {
     if (!normalizedQuery) return true;
     const profile = profilesByUserId.get(user.id);
-    return [user.id, user.name, user.email, user.phone, profile?.primary_goal, profile?.health_focus].some((value) =>
+    return [user.id, user.name, user.email, user.phone, profile?.health_notes, profile?.medical_report_file_name].some((value) =>
       String(value ?? '').toLowerCase().includes(normalizedQuery)
     );
   });
@@ -495,6 +513,40 @@ export default function ChefDashboard() {
     if (!thread) return;
     thread.scrollTop = thread.scrollHeight;
   }, [selectedConversation?.phone, selectedConversation?.messages.length]);
+
+  useEffect(() => {
+    if (activeTab !== 'chats' || !selectedConversation || selectedConversation.unreadCount === 0) return;
+    let cancelled = false;
+
+    async function markConversationRead() {
+      await fetch('/api/admin/whatsapp/read', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getChefAuthHeaders()),
+        },
+        body: JSON.stringify({ phone: selectedConversation?.phone }),
+      }).catch(() => undefined);
+
+      if (cancelled || !selectedConversation) return;
+      setData((current) => ({
+        ...current,
+        whatsappMessages: current.whatsappMessages.map((message) =>
+          getPhoneKey(message.phone) === selectedConversation.phone &&
+          message.direction === 'incoming' &&
+          message.status === 'received'
+            ? { ...message, status: 'read' }
+            : message
+        ),
+      }));
+    }
+
+    void markConversationRead();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, selectedConversation]);
 
   const visibleMenuItems = data.menuItems.filter(
     (item) =>
@@ -804,7 +856,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -832,7 +883,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -860,7 +910,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -895,7 +944,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -933,7 +981,10 @@ export default function ChefDashboard() {
                             <strong>{conversation.user?.name ?? `+${conversation.phone}`}</strong>
                             <small>{getWhatsAppMessageText(conversation.lastMessage)}</small>
                           </span>
-                          <em>{formatDateTime(conversation.lastMessage.created_at)}</em>
+                          <em>
+                            {conversation.unreadCount > 0 && <b className={styles.unreadBadge}>{conversation.unreadCount}</b>}
+                            {formatDateTime(conversation.lastMessage.created_at)}
+                          </em>
                         </button>
                       ))
                     )}
@@ -1007,7 +1058,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -1042,7 +1092,6 @@ export default function ChefDashboard() {
                         <OrderCard
                           key={order.id}
                           order={order}
-                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
                           onPatch={patchOrder}
                           onResetFreeSampleLimit={resetFreeSampleLimit}
                         />
@@ -1230,7 +1279,9 @@ function WhatsAppBubble({ message }: { message: WhatsAppMessageLog }) {
       <p>{getWhatsAppMessageText(message)}</p>
       <footer>
         <span>{formatDateTime(message.created_at)}</span>
-        <span>{message.status}</span>
+        <span className={message.direction === 'outgoing' && message.status === 'read' ? styles.readReceipt : undefined}>
+          {getWhatsAppDeliveryLabel(message)}
+        </span>
         {message.error_message && <span>{message.error_message}</span>}
       </footer>
     </article>
@@ -1300,12 +1351,10 @@ function WhatsAppMediaPreview({ media }: { media: WhatsAppMedia }) {
 
 function OrderCard({
   order,
-  profile,
   onPatch,
   onResetFreeSampleLimit,
 }: {
   order: ApiOrder;
-  profile?: CustomerProfile | null;
   onPatch: (
     orderId: string,
     payload: {
@@ -1353,7 +1402,7 @@ function OrderCard({
     onPatch(order.id, {
       action: 'cancel',
       cancel_confirmation: activeCancelConfirm.trim(),
-      cancellation_reason: activeCancelReason.trim() || 'Active plan cancelled by chef.',
+      cancellation_reason: activeCancelReason.trim(),
     });
     setActiveCancelConfirm('');
     setActiveCancelReason('');
@@ -1421,13 +1470,6 @@ function OrderCard({
           <p key={`${order.id}-${item.id}`}>{item.quantity}x {item.name} | Rs {item.totalPrice.toLocaleString('en-IN')}</p>
         ))}
       </div>
-      {profile && (
-        <div className={styles.profileMini}>
-          <span>{profile.primary_goal}</span>
-          <span>{profile.health_focus}</span>
-          <span>{profile.diet_preference}</span>
-        </div>
-      )}
       {order.status === 'new' && order.order_type !== 'free_sample' && (
         <form className={styles.confirmBox} onSubmit={handleConfirm}>
           <Field name="confirmation_order_id" label="Enter order ID" defaultValue="" required />
@@ -1500,9 +1542,9 @@ function OrderCard({
           </button>
         </div>
       )}
-      {order.status === 'cancelled' && order.cancellation_reason && (
+      {order.status === 'cancelled' && getChefCancellationReason(order.cancellation_reason) && (
         <div className={styles.detailBlock}>
-          <p>Cancel reason: {order.cancellation_reason}</p>
+          <p>Cancel reason: {getChefCancellationReason(order.cancellation_reason)}</p>
         </div>
       )}
     </article>
@@ -1536,18 +1578,29 @@ function UserDetail({
       </div>
       <dl className={styles.detailGrid}>
         <div><dt>Phone</dt><dd>{user.phone || 'Not provided'}</dd></div>
-        <div><dt>WhatsApp opt-in</dt><dd>{user.whatsapp_opt_in ? 'Yes' : 'No'}</dd></div>
         <div><dt>Joined</dt><dd>{formatDate(user.created_at)}</dd></div>
         <div><dt>Profile</dt><dd>{profile?.is_profile_complete ? 'Complete' : 'Incomplete'}</dd></div>
         <div><dt>Age</dt><dd>{profile?.age ?? 'Not set'}</dd></div>
         <div><dt>Gender</dt><dd>{profile?.gender ?? 'Not set'}</dd></div>
         <div><dt>Height</dt><dd>{profile ? `${profile.height_cm} cm` : 'Not set'}</dd></div>
         <div><dt>Weight</dt><dd>{profile ? `${profile.weight_kg} kg` : 'Not set'}</dd></div>
-        <div><dt>Goal</dt><dd>{profile?.primary_goal ?? 'Not set'}</dd></div>
-        <div><dt>Health focus</dt><dd>{profile?.health_focus ?? 'Not set'}</dd></div>
-        <div><dt>Diet</dt><dd>{profile?.diet_preference ?? 'Not set'}</dd></div>
-        <div><dt>Allergies</dt><dd>{profile?.allergies?.join(', ') || 'None listed'}</dd></div>
       </dl>
+      <div className={styles.notesBox}>
+        <strong>Health report</strong>
+        {profile?.medical_report_file_data ? (
+          <a
+            className={styles.reportLink}
+            href={profile.medical_report_file_data}
+            target="_blank"
+            rel="noreferrer"
+            download={profile.medical_report_file_name ?? 'project-fit-health-report'}
+          >
+            View {profile.medical_report_file_name ?? 'uploaded report'}
+          </a>
+        ) : (
+          <p>No report uploaded.</p>
+        )}
+      </div>
       <div className={styles.notesBox}>
         <strong>Notes</strong>
         <p>{profile?.health_notes || profile?.recommendation_summary || 'No profile notes yet.'}</p>
