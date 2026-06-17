@@ -38,7 +38,18 @@ type AdminOverview = {
   warnings?: string[];
 };
 
-type Tab = 'pending' | 'samples' | 'approved-samples' | 'chats' | 'active' | 'users' | 'feedback' | 'menu' | 'pricing';
+type Tab =
+  | 'pending'
+  | 'samples'
+  | 'approved-samples'
+  | 'sample-status'
+  | 'chats'
+  | 'active'
+  | 'plan-history'
+  | 'users'
+  | 'feedback'
+  | 'menu'
+  | 'pricing';
 
 const emptyOverview: AdminOverview = {
   users: [],
@@ -56,8 +67,10 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'pending', label: 'Pending orders', icon: ClipboardList },
   { id: 'samples', label: 'Sample requests', icon: Soup },
   { id: 'approved-samples', label: 'Approved samples', icon: CheckCircle2 },
+  { id: 'sample-status', label: 'Sample status', icon: CheckCircle2 },
   { id: 'chats', label: 'WhatsApp chats', icon: MessageSquareText },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
+  { id: 'plan-history', label: 'Plan history', icon: ClipboardList },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
   { id: 'menu', label: 'Menus', icon: Soup },
@@ -88,6 +101,36 @@ function formatDateTime(value: string | null | undefined) {
 
 function getPrimaryPlan(order: ApiOrder) {
   return order.items[0]?.name ?? 'Meal plan';
+}
+
+function getFreeSampleStatusText(order: ApiOrder) {
+  if (order.status === 'new') return 'Pending chef approval';
+  if (order.status === 'cancelled') return order.cancellation_reason ? `Cancelled: ${order.cancellation_reason}` : 'Cancelled by chef';
+  if (order.customer_delivery_status === 'received') return 'Customer marked received';
+  if (order.customer_delivery_status === 'not_received') return 'Customer marked not received';
+  return 'Approved, waiting for customer delivery confirmation';
+}
+
+function getPlanLifecycleText(order: ApiOrder) {
+  if (order.status === 'cancelled') {
+    return order.cancellation_reason
+      ? `Cancelled by chef: ${order.cancellation_reason}`
+      : 'Cancelled by chef';
+  }
+
+  if (order.status === 'new' || order.payment_status === 'pending') {
+    return 'Pending chef confirmation';
+  }
+
+  if (order.plan_expires_at && new Date(order.plan_expires_at) < new Date()) {
+    return 'Completed';
+  }
+
+  if (['confirmed', 'preparing', 'ready'].includes(order.status) && order.payment_status === 'paid') {
+    return 'Active';
+  }
+
+  return `${order.status} / ${order.payment_status}`;
 }
 
 type WhatsAppMedia = {
@@ -307,6 +350,7 @@ export default function ChefDashboard() {
   const sampleOrders = data.orders.filter((order) => order.order_type === 'free_sample');
   const sampleRequests = sampleOrders.filter((order) => order.status === 'new');
   const approvedSampleOrders = sampleOrders.filter((order) => ['confirmed', 'preparing', 'ready'].includes(order.status));
+  const sampleStatusOrders = sampleOrders;
   const activePlans = data.orders.filter(
     (order) =>
       order.order_type !== 'free_sample' &&
@@ -315,6 +359,7 @@ export default function ChefDashboard() {
       order.plan_expires_at &&
       new Date(order.plan_expires_at) >= new Date()
   );
+  const planHistoryOrders = data.orders.filter((order) => order.order_type !== 'free_sample');
   const selectedUser = data.users.find((user) => user.id === selectedUserId) ?? data.users[0] ?? null;
   const selectedProfile = selectedUser ? profilesByUserId.get(selectedUser.id) ?? null : null;
   const selectedUserOrders = selectedUser ? data.orders.filter((order) => order.user_id === selectedUser.id) : [];
@@ -360,6 +405,33 @@ export default function ChefDashboard() {
       order.delivery_address?.phone,
       order.delivery_address?.pincode,
       order.customer_delivery_status,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredSampleStatusOrders = sampleStatusOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.delivery_address?.pincode,
+      order.status,
+      order.customer_delivery_status,
+      ...order.items.map((item) => item.name),
+    ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
+  });
+  const filteredPlanHistoryOrders = planHistoryOrders.filter((order) => {
+    if (!normalizedQuery) return true;
+    return [
+      order.id,
+      order.user_id,
+      order.customer_name,
+      order.delivery_address?.phone,
+      order.delivery_address?.pincode,
+      order.status,
+      order.payment_status,
+      order.cancellation_reason,
       ...order.items.map((item) => item.name),
     ].some((value) => String(value ?? '').toLowerCase().includes(normalizedQuery));
   });
@@ -798,6 +870,41 @@ export default function ChefDashboard() {
                 </section>
               )}
 
+              {activeTab === 'sample-status' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Free sample status</h2>
+                      <p>See every free sample request and whether the customer marked it pending, received, or not received.</p>
+                    </div>
+                    <span>{filteredSampleStatusOrders.length} samples</span>
+                  </div>
+
+                  <section className={styles.stats}>
+                    <Metric label="Pending response" value={sampleStatusOrders.filter((order) => order.customer_delivery_status === 'pending').length} />
+                    <Metric label="Received" value={sampleStatusOrders.filter((order) => order.customer_delivery_status === 'received').length} />
+                    <Metric label="Not received" value={sampleStatusOrders.filter((order) => order.customer_delivery_status === 'not_received').length} />
+                    <Metric label="Cancelled" value={sampleStatusOrders.filter((order) => order.status === 'cancelled').length} />
+                  </section>
+
+                  {filteredSampleStatusOrders.length === 0 ? (
+                    <EmptyState title="No free sample history" text="Free sample requests will appear here after WhatsApp checkout." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredSampleStatusOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
               {activeTab === 'chats' && (
                 <section className={styles.chatShell}>
                   <aside className={styles.chatList}>
@@ -897,6 +1004,41 @@ export default function ChefDashboard() {
                   ) : (
                     <div className={styles.orderGrid}>
                       {activePlans.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          profile={order.user_id ? profilesByUserId.get(order.user_id) : null}
+                          onPatch={patchOrder}
+                          onResetFreeSampleLimit={resetFreeSampleLimit}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {activeTab === 'plan-history' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Plan history</h2>
+                      <p>All paid plan orders, including pending, active, cancelled, and expired/completed plans.</p>
+                    </div>
+                    <span>{filteredPlanHistoryOrders.length} plans</span>
+                  </div>
+
+                  <section className={styles.stats}>
+                    <Metric label="Pending" value={planHistoryOrders.filter((order) => order.status === 'new' || order.payment_status === 'pending').length} />
+                    <Metric label="Active" value={activePlans.length} />
+                    <Metric label="Cancelled" value={planHistoryOrders.filter((order) => order.status === 'cancelled').length} />
+                    <Metric label="Expired" value={planHistoryOrders.filter((order) => order.plan_expires_at && new Date(order.plan_expires_at) < new Date()).length} />
+                  </section>
+
+                  {filteredPlanHistoryOrders.length === 0 ? (
+                    <EmptyState title="No plan history" text="Paid plan orders will appear here after checkout." />
+                  ) : (
+                    <div className={styles.orderGrid}>
+                      {filteredPlanHistoryOrders.map((order) => (
                         <OrderCard
                           key={order.id}
                           order={order}
@@ -1248,6 +1390,9 @@ function OrderCard({
         <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
         <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
         <p>Requested start: {formatDate(order.requested_start_date)}</p>
+        {order.order_type !== 'free_sample' && (
+          <p>Plan lifecycle: {getPlanLifecycleText(order)}</p>
+        )}
         {isActivePaidPlan && (
           <>
             <p>Program start: {formatDate(order.plan_activated_at)}</p>
@@ -1258,6 +1403,7 @@ function OrderCard({
         {order.order_type === 'free_sample' && (
           <>
             <p>Created after WhatsApp: {order.whatsapp_checkout_intent_id ? 'Yes' : 'Legacy/direct order'}</p>
+            <p>Final sample status: {getFreeSampleStatusText(order)}</p>
             <p>
               Delivery confirmation:{' '}
               {order.customer_delivery_status === 'pending'

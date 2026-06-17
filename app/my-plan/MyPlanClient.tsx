@@ -25,6 +25,39 @@ function getOrderLabel(order: ApiOrder) {
   return order.order_type === 'free_sample' ? 'Free sample' : 'Meal plan';
 }
 
+function isActivePaidPlan(order: ApiOrder) {
+  return (
+    order.order_type !== 'free_sample' &&
+    ['confirmed', 'preparing', 'ready'].includes(order.status) &&
+    order.payment_status === 'paid' &&
+    (!order.plan_expires_at || new Date(order.plan_expires_at) >= new Date())
+  );
+}
+
+function getFreeSampleStatusText(order: ApiOrder) {
+  if (order.status === 'new') return 'Your free sample order is pending chef approval.';
+  if (order.status === 'cancelled') {
+    return `Your delivery for free sample has been cancelled by chef.${order.cancellation_reason ? ` Reason: ${order.cancellation_reason}` : ''}`;
+  }
+  if (order.customer_delivery_status === 'received') return 'You marked this free sample as received.';
+  if (order.customer_delivery_status === 'not_received') return 'You marked this free sample as not received. The kitchen team can follow up.';
+  return 'Your delivery for free sample has been accepted and delivery is on the way.';
+}
+
+function getPlanHistoryStatusText(order: ApiOrder) {
+  if (order.status === 'cancelled') {
+    return order.cancellation_reason
+      ? `Your plan has been cancelled by chef. Reason: ${order.cancellation_reason}`
+      : 'Your plan has been cancelled by chef.';
+  }
+
+  if (order.plan_expires_at && new Date(order.plan_expires_at) < new Date()) {
+    return 'This plan has been completed.';
+  }
+
+  return `Status: ${order.status}.`;
+}
+
 export default function MyPlanClient() {
   const [orders, setOrders] = useState<ApiOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +107,11 @@ export default function MyPlanClient() {
     [orders]
   );
   const activeOrders = useMemo(
-    () => orders.filter((order) => order.order_type !== 'free_sample' && ['confirmed', 'preparing', 'ready'].includes(order.status) && order.payment_status === 'paid'),
+    () => orders.filter((order) => isActivePaidPlan(order)),
+    [orders]
+  );
+  const planHistoryOrders = useMemo(
+    () => orders.filter((order) => order.order_type !== 'free_sample' && order.status !== 'new' && !isActivePaidPlan(order)),
     [orders]
   );
 
@@ -95,7 +132,7 @@ export default function MyPlanClient() {
     );
   }
 
-  if (pendingOrders.length === 0 && activeOrders.length === 0 && sampleOrders.length === 0) {
+  if (pendingOrders.length === 0 && activeOrders.length === 0 && planHistoryOrders.length === 0 && sampleOrders.length === 0) {
     return (
       <div className={styles.emptyCard}>
         <div className={styles.iconWrap}>
@@ -103,7 +140,7 @@ export default function MyPlanClient() {
         </div>
         <span className={styles.badge}>No active plan</span>
         <h2>You do not have a plan yet</h2>
-        <p>Pending and active plans will appear here after you place an order.</p>
+        <p>Your orders, samples, active plans, completed plans, and cancelled plans will appear here after you place an order.</p>
         <div className={styles.actions}>
           <Link href="/" className="btn-primary">Browse programs</Link>
           <Link href="/profile" className="btn-secondary">Update profile</Link>
@@ -152,18 +189,9 @@ export default function MyPlanClient() {
                 <strong>{getPlanName(order)}</strong>
                 <span>Order ID: {order.id}</span>
                 <span>Ordered on: {formatDate(order.created_at)}</span>
-                {order.status === 'new' && (
-                  <span>Status: Your free sample order is pending chef approval.</span>
-                )}
-                {['confirmed', 'preparing', 'ready'].includes(order.status) && (
-                  <span>Status: Your delivery for free sample has been accepted and delivery is on the way.</span>
-                )}
-                {order.status === 'cancelled' && (
-                  <span>
-                    Status: Your delivery for free sample has been cancelled by chef.
-                    {order.cancellation_reason ? ` Reason: ${order.cancellation_reason}` : ''}
-                  </span>
-                )}
+                <span>Status: {getFreeSampleStatusText(order)}</span>
+                <span>Delivery confirmation: {order.customer_delivery_status.replace('_', ' ')}</span>
+                <span>Last response: {formatDate(order.customer_delivery_confirmed_at)}</span>
               </article>
             ))}
           </div>
@@ -185,6 +213,29 @@ export default function MyPlanClient() {
                 <span>Start: {formatDate(order.plan_activated_at)}</span>
                 <span>Expiry: {formatDate(order.plan_expires_at)}</span>
                 <span>Service days left: {getOrderServiceDaysRemaining(order) ?? 'Not set'}</span>
+                <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {planHistoryOrders.length > 0 && (
+        <section className={styles.planPanel}>
+          <span className={styles.badgeHistory}>Plan history</span>
+          <h2>Past and cancelled plans</h2>
+          <p>Completed and cancelled plan events remain visible here for your records.</p>
+          <div className={styles.planGrid}>
+            {planHistoryOrders.map((order) => (
+              <article key={order.id} className={styles.planCard}>
+                <CalendarClock size={20} />
+                <strong>{getPlanName(order)}</strong>
+                <span>Type: {getOrderLabel(order)}</span>
+                <span>Order ID: {order.id}</span>
+                <span>{getPlanHistoryStatusText(order)}</span>
+                <span>Requested start: {formatDate(order.requested_start_date)}</span>
+                <span>Start: {formatDate(order.plan_activated_at)}</span>
+                <span>Expiry: {formatDate(order.plan_expires_at)}</span>
                 <span>Transaction: {order.payment_transaction_id ?? 'Verified manually'}</span>
               </article>
             ))}
