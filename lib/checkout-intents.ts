@@ -16,6 +16,28 @@ function createCheckoutCode() {
   return code;
 }
 
+function normalizeCheckoutPhone(value: string | null | undefined) {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return null;
+  if (/^[6-9]\d{9}$/.test(digits)) return `91${digits}`;
+  if (/^91[6-9]\d{9}$/.test(digits)) return digits;
+  return digits;
+}
+
+function phoneMatchesCheckoutSender(whatsappFrom: string, intent: CheckoutIntent) {
+  const sender = normalizeCheckoutPhone(whatsappFrom);
+  if (!sender) return false;
+
+  const allowedPhones = [
+    intent.phone,
+    intent.delivery_address.phone,
+  ]
+    .map(normalizeCheckoutPhone)
+    .filter((phone): phone is string => Boolean(phone));
+
+  return allowedPhones.includes(sender);
+}
+
 export function findCheckoutCode(message: string) {
   return message.match(intentCodePattern)?.[0]?.toUpperCase() ?? null;
 }
@@ -165,6 +187,13 @@ export async function convertCheckoutIntentFromWhatsApp({
       body: JSON.stringify({ status: 'expired' }),
     });
     return { order: null, message: `Checkout code ${code} has expired. Please start checkout again from the website.` };
+  }
+
+  if (!phoneMatchesCheckoutSender(whatsappFrom, intent)) {
+    return {
+      order: null,
+      message: 'This checkout code is linked to a different phone number. Please open checkout from your own account and send the WhatsApp message again.',
+    };
   }
 
   if (intent.order_type === 'free_sample') {

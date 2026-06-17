@@ -37,6 +37,17 @@ function isActivePaidPlan(order: ApiOrder) {
   );
 }
 
+async function captureWhatsAppWarning(sendMessage: () => Promise<unknown>) {
+  try {
+    await sendMessage();
+    return null;
+  } catch (error) {
+    return error instanceof Error
+      ? `Order updated, but WhatsApp could not be sent: ${error.message}`
+      : 'Order updated, but WhatsApp could not be sent.';
+  }
+}
+
 export async function PATCH(
   request: Request,
   context: { params: Promise<{ id: string }> }
@@ -89,11 +100,11 @@ export async function PATCH(
 
     const updatedOrder = data?.[0] ?? null;
 
-    if (updatedOrder) {
-      await sendOrderCancellationMessage(updatedOrder).catch(() => undefined);
-    }
+    const whatsappWarning = updatedOrder
+      ? await captureWhatsAppWarning(() => sendOrderCancellationMessage(updatedOrder))
+      : null;
 
-    return NextResponse.json({ order: updatedOrder });
+    return NextResponse.json({ order: updatedOrder, whatsappWarning });
   }
 
   if (body.action === 'complete_payment' || body.action === 'stop_midway') {
@@ -150,11 +161,11 @@ export async function PATCH(
       if (error) return NextResponse.json({ error }, { status });
 
       const updatedOrder = data?.[0] ?? null;
-      if (updatedOrder) {
-        await sendRemainingPaymentConfirmedMessage(updatedOrder).catch(() => undefined);
-      }
+      const whatsappWarning = updatedOrder
+        ? await captureWhatsAppWarning(() => sendRemainingPaymentConfirmedMessage(updatedOrder))
+        : null;
 
-      return NextResponse.json({ order: updatedOrder });
+      return NextResponse.json({ order: updatedOrder, whatsappWarning });
     }
 
     const reason = String(body.cancellation_reason ?? '').trim() || 'Customer chose to end the monthly plan after the first half.';
@@ -175,11 +186,11 @@ export async function PATCH(
     if (error) return NextResponse.json({ error }, { status });
 
     const updatedOrder = data?.[0] ?? null;
-    if (updatedOrder) {
-      await sendPlanStoppedMidwayMessage(updatedOrder).catch(() => undefined);
-    }
+    const whatsappWarning = updatedOrder
+      ? await captureWhatsAppWarning(() => sendPlanStoppedMidwayMessage(updatedOrder))
+      : null;
 
-    return NextResponse.json({ order: updatedOrder });
+    return NextResponse.json({ order: updatedOrder, whatsappWarning });
   }
 
   if (body.action === 'confirm') {
@@ -253,19 +264,19 @@ export async function PATCH(
 
     const updatedOrder = data?.[0] ?? null;
 
-    if (isFreeSampleOrder && updatedOrder) {
-      await sendFreeSampleApprovalButtons(
-        updatedOrder.delivery_address.phone,
-        updatedOrder.id,
-        updatedOrder.user_id
-      ).catch(() => undefined);
-    }
+    const whatsappWarning = updatedOrder
+      ? await captureWhatsAppWarning(() =>
+          isFreeSampleOrder
+            ? sendFreeSampleApprovalButtons(
+                updatedOrder.delivery_address.phone,
+                updatedOrder.id,
+                updatedOrder.user_id
+              )
+            : sendPlanActivatedMessage(updatedOrder)
+        )
+      : null;
 
-    if (!isFreeSampleOrder && updatedOrder) {
-      await sendPlanActivatedMessage(updatedOrder).catch(() => undefined);
-    }
-
-    return NextResponse.json({ order: updatedOrder });
+    return NextResponse.json({ order: updatedOrder, whatsappWarning });
   }
 
   if (body.status && !statuses.includes(body.status)) {

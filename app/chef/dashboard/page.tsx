@@ -623,26 +623,34 @@ export default function ChefDashboard() {
       },
       body: JSON.stringify(payload),
     });
-    const result = await response.json();
+    const result = await response.json() as {
+      order?: ApiOrder;
+      error?: string;
+      whatsappWarning?: string | null;
+    };
 
     if (!response.ok) {
       setError(result.error ?? 'Could not update order.');
       return;
     }
 
-    setData((current) => ({
-      ...current,
-      orders: current.orders.map((order) => (order.id === orderId ? result.order : order)),
-    }));
-    setStatus(
+    if (result.order) {
+      setData((current) => ({
+        ...current,
+        orders: current.orders.map((order) => (order.id === orderId ? result.order as ApiOrder : order)),
+      }));
+    }
+
+    const successMessage =
       payload.action === 'confirm'
         ? 'Order confirmed and plan dates were set.'
         : payload.action === 'complete_payment'
           ? 'Remaining payment confirmed. Plan moved to active plans.'
           : payload.action === 'stop_midway'
             ? 'Half-payment plan closed and moved to completed orders.'
-            : 'Order updated.'
-    );
+            : 'Order updated.';
+
+    setStatus(result.whatsappWarning ? `${successMessage} ${result.whatsappWarning}` : successMessage);
   }
 
   async function sendChatReply(event: FormEvent<HTMLFormElement>) {

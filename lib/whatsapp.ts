@@ -67,6 +67,10 @@ export function getWelcomeTemplateName() {
   return welcomeTemplateName;
 }
 
+function getPaymentQrMediaId() {
+  return normalizeEnv(process.env.WHATSAPP_PAYMENT_QR_MEDIA_ID);
+}
+
 function normalizePhoneForWaLink(value: string | undefined) {
   const digits = normalizeEnv(value)?.replace(/\D/g, '') ?? '';
   if (!digits) return null;
@@ -544,7 +548,7 @@ export async function sendProgramPaymentInstructions(order: ApiOrder) {
     order.user_id
   );
 
-  const mediaId = await uploadWhatsAppMedia(paymentQrPath, 'image/jpeg');
+  const mediaId = getPaymentQrMediaId() ?? await uploadWhatsAppMedia(paymentQrPath, 'image/jpeg');
   await sendWhatsAppImage(
     phone,
     mediaId,
