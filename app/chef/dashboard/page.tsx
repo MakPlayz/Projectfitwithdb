@@ -605,7 +605,7 @@ export default function ChefDashboard() {
     payload: {
       status?: ApiOrderStatus;
       payment_status?: PaymentStatus;
-      action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
+      action?: 'confirm' | 'cancel' | 'complete_payment' | 'send_payment_reminder' | 'stop_midway';
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
@@ -646,9 +646,11 @@ export default function ChefDashboard() {
         ? 'Order confirmed and plan dates were set.'
         : payload.action === 'complete_payment'
           ? 'Remaining payment confirmed. Plan moved to active plans.'
-          : payload.action === 'stop_midway'
-            ? 'Half-payment plan closed and moved to completed orders.'
-            : 'Order updated.';
+          : payload.action === 'send_payment_reminder'
+            ? 'Remaining payment reminder template sent.'
+            : payload.action === 'stop_midway'
+              ? 'Half-payment plan closed and moved to completed orders.'
+              : 'Order updated.';
 
     setStatus(result.whatsappWarning ? `${successMessage} ${result.whatsappWarning}` : successMessage);
   }
@@ -1476,7 +1478,7 @@ function OrderCard({
     payload: {
       status?: ApiOrderStatus;
       payment_status?: PaymentStatus;
-      action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
+      action?: 'confirm' | 'cancel' | 'complete_payment' | 'send_payment_reminder' | 'stop_midway';
       confirmation_order_id?: string;
       confirmation_user_id?: string;
       payment_transaction_id?: string;
@@ -1534,6 +1536,10 @@ function OrderCard({
       confirmation_user_id: String(form.get('confirmation_user_id') ?? ''),
       payment_transaction_id: String(form.get('payment_transaction_id') ?? ''),
     });
+  }
+
+  function handleSendRemainingPaymentReminder() {
+    onPatch(order.id, { action: 'send_payment_reminder' });
   }
 
   function handleStopMidway() {
@@ -1627,15 +1633,23 @@ function OrderCard({
         </form>
       )}
       {order.payment_stage === 'half_paid' && (
-        <form className={styles.confirmBox} onSubmit={handleCompleteRemainingPayment}>
-          <Field name="confirmation_order_id" label="Re-enter order ID" defaultValue="" required />
-          <Field name="confirmation_user_id" label="Re-enter user ID" defaultValue="" required />
-          <Field name="payment_transaction_id" label="Remaining payment transaction ID" defaultValue="" required />
-          <button type="submit">
-            <ShieldCheck size={15} />
-            Confirm remaining payment
-          </button>
-        </form>
+        <>
+          <div className={styles.actions}>
+            <button type="button" onClick={handleSendRemainingPaymentReminder}>
+              <MessageSquareText size={15} />
+              Send payment reminder
+            </button>
+          </div>
+          <form className={styles.confirmBox} onSubmit={handleCompleteRemainingPayment}>
+            <Field name="confirmation_order_id" label="Re-enter order ID" defaultValue="" required />
+            <Field name="confirmation_user_id" label="Re-enter user ID" defaultValue="" required />
+            <Field name="payment_transaction_id" label="Remaining payment transaction ID" defaultValue="" required />
+            <button type="submit">
+              <ShieldCheck size={15} />
+              Confirm remaining payment
+            </button>
+          </form>
+        </>
       )}
       <div className={styles.actions}>
         {order.status === 'new' && order.order_type === 'free_sample' && (

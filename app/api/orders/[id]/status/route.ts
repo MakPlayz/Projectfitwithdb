@@ -6,6 +6,7 @@ import {
   sendFreeSampleApprovalButtons,
   sendOrderCancellationMessage,
   sendPlanActivatedMessage,
+  sendRemainingPaymentReminderTemplate,
   sendPlanStoppedMidwayMessage,
   sendRemainingPaymentConfirmedMessage,
 } from '@/lib/whatsapp';
@@ -17,7 +18,7 @@ const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
 interface StatusBody {
   status?: ApiOrderStatus;
   payment_status?: PaymentStatus;
-  action?: 'confirm' | 'cancel' | 'complete_payment' | 'stop_midway';
+  action?: 'confirm' | 'cancel' | 'complete_payment' | 'send_payment_reminder' | 'stop_midway';
   confirmation_order_id?: string;
   confirmation_user_id?: string;
   payment_transaction_id?: string;
@@ -107,7 +108,11 @@ export async function PATCH(
     return NextResponse.json({ order: updatedOrder, whatsappWarning });
   }
 
-  if (body.action === 'complete_payment' || body.action === 'stop_midway') {
+  if (
+    body.action === 'complete_payment' ||
+    body.action === 'send_payment_reminder' ||
+    body.action === 'stop_midway'
+  ) {
     const current = await supabaseRestFetch<ApiOrder[]>(
       `/orders?id=eq.${encodeURIComponent(id)}&select=*`
     );
@@ -123,6 +128,20 @@ export async function PATCH(
 
     if (order.payment_option !== 'half') {
       return NextResponse.json({ error: 'This action is only available for half-payment plans.' }, { status: 400 });
+    }
+
+    if (body.action === 'send_payment_reminder') {
+      if (order.payment_stage !== 'half_paid') {
+        return NextResponse.json({ error: 'Remaining payment reminders are only available for half-paid plans.' }, { status: 400 });
+      }
+
+      const whatsappWarning = await captureWhatsAppWarning(() => sendRemainingPaymentReminderTemplate(order));
+
+      return NextResponse.json({
+        order,
+        whatsappWarning,
+        reminderSent: !whatsappWarning,
+      });
     }
 
     if (body.action === 'complete_payment') {
