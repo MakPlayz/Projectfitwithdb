@@ -20,10 +20,11 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { dietCategories } from '@/data/diets';
-import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
+import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, PlanPauseRequest, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
 import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
+import { addCalendarDays, formatDateKey, getPlanCategoryLabel, isSundayDateKey } from '@/lib/plan-pauses';
 import styles from './page.module.css';
 
 type AdminOverview = {
@@ -35,6 +36,7 @@ type AdminOverview = {
   mealPlans: MealPlan[];
   programOverrides: ProgramPlanOverride[];
   whatsappMessages: WhatsAppMessageLog[];
+  planPauseRequests: PlanPauseRequest[];
   warnings?: string[];
 };
 
@@ -44,6 +46,7 @@ type Tab =
   | 'approved-samples'
   | 'sample-status'
   | 'chats'
+  | 'delivery-calendar'
   | 'half-payments'
   | 'active'
   | 'completed'
@@ -62,6 +65,7 @@ const emptyOverview: AdminOverview = {
   mealPlans: [],
   programOverrides: [],
   whatsappMessages: [],
+  planPauseRequests: [],
   warnings: [],
 };
 
@@ -71,6 +75,7 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'approved-samples', label: 'Approved samples', icon: CheckCircle2 },
   { id: 'sample-status', label: 'Sample status', icon: CheckCircle2 },
   { id: 'chats', label: 'WhatsApp chats', icon: MessageSquareText },
+  { id: 'delivery-calendar', label: 'Delivery calendar', icon: CalendarCheck },
   { id: 'half-payments', label: 'Half payments', icon: WalletCards },
   { id: 'active', label: 'Active plans', icon: CalendarCheck },
   { id: 'completed', label: 'Completed orders', icon: CheckCircle2 },
@@ -91,6 +96,52 @@ function formatDate(value: string | null | undefined) {
     month: 'short',
     year: 'numeric',
   }).format(new Date(value));
+}
+
+function formatDateKeyForDisplay(dateKey: string) {
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${dateKey}T00:00:00`));
+}
+
+function getDateKeyFromIso(value: string | null | undefined) {
+  return value ? formatDateKey(new Date(value)) : null;
+}
+
+function isOrderDeliveredOnDate(order: ApiOrder, dateKey: string, pauses: PlanPauseRequest[]) {
+  if (order.order_type === 'free_sample') return false;
+  if (!['confirmed', 'preparing', 'ready'].includes(order.status)) return false;
+  if (!['paid_full', 'half_paid'].includes(order.payment_stage)) return false;
+  if (isSundayDateKey(dateKey)) return false;
+
+  const startDate = getDateKeyFromIso(order.plan_activated_at);
+  const endDate = getDateKeyFromIso(order.plan_expires_at);
+  if (!startDate || !endDate) return false;
+  if (dateKey < startDate || dateKey >= endDate) return false;
+
+  return !pauses.some(
+    (pause) =>
+      pause.order_id === order.id &&
+      pause.status === 'approved' &&
+      pause.skipped_dates.includes(dateKey)
+  );
+}
+
+function getDeliveryCalendarDates(days = 30) {
+  const today = formatDateKey(new Date());
+  return Array.from({ length: days }, (_, index) => addCalendarDays(today, index)).filter(
+    (dateKey): dateKey is string => Boolean(dateKey)
+  );
+}
+
+function groupDeliveryOrders(orders: ApiOrder[]) {
+  return {
+    day: orders.filter((order) => getPlanCategoryLabel(order) === 'Day plan'),
+    week: orders.filter((order) => getPlanCategoryLabel(order) === 'Week plan'),
+    month: orders.filter((order) => getPlanCategoryLabel(order) === 'Month plan'),
+  };
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -359,6 +410,10 @@ export default function ChefDashboard() {
     () => new Map(data.profiles.map((profile) => [profile.user_id, profile])),
     [data.profiles]
   );
+  const usersById = useMemo(
+    () => new Map(data.users.map((user) => [user.id, user])),
+    [data.users]
+  );
   const usersByPhone = useMemo(() => {
     const phoneMap = new Map<string, ProjectFitUser>();
     for (const user of data.users) {
@@ -392,6 +447,21 @@ export default function ChefDashboard() {
   );
   const halfPaymentOrders = data.orders.filter(
     (order) => order.order_type !== 'free_sample' && order.payment_option === 'half' && order.payment_stage === 'half_paid'
+  );
+  const deliveryCalendar = useMemo(
+    () =>
+      getDeliveryCalendarDates().map((dateKey) => {
+        const ordersForDay = data.orders.filter((order) =>
+          isOrderDeliveredOnDate(order, dateKey, data.planPauseRequests)
+        );
+        return {
+          dateKey,
+          isSunday: isSundayDateKey(dateKey),
+          orders: ordersForDay,
+          groups: groupDeliveryOrders(ordersForDay),
+        };
+      }),
+    [data.orders, data.planPauseRequests]
   );
   const completedOrders = data.orders.filter(
     (order) =>
@@ -1101,6 +1171,67 @@ export default function ChefDashboard() {
                       </>
                     )}
                   </section>
+                </section>
+              )}
+
+              {activeTab === 'delivery-calendar' && (
+                <section className={styles.orderBoard}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Delivery calendar</h2>
+                      <p>Rolling next-month view of active plan deliveries. Paused dates and Sundays are excluded.</p>
+                    </div>
+                    <span>{deliveryCalendar.reduce((count, day) => count + day.orders.length, 0)} scheduled meals</span>
+                  </div>
+
+                  <div className={styles.deliveryCalendar}>
+                    {deliveryCalendar.map((day) => (
+                      <article key={day.dateKey} className={styles.deliveryDay}>
+                        <header>
+                          <div>
+                            <strong>{formatDateKeyForDisplay(day.dateKey)}</strong>
+                            <span>{new Date(`${day.dateKey}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'long' })}</span>
+                          </div>
+                          <em>{day.isSunday ? 'Kitchen off' : `${day.orders.length} order${day.orders.length === 1 ? '' : 's'}`}</em>
+                        </header>
+
+                        {day.isSunday ? (
+                          <p className={styles.deliveryOff}>No regular deliveries on Sunday.</p>
+                        ) : day.orders.length === 0 ? (
+                          <p className={styles.deliveryOff}>No active plan deliveries.</p>
+                        ) : (
+                          <div className={styles.deliveryGroups}>
+                            {([
+                              ['day', 'Day plans'],
+                              ['week', 'Week plans'],
+                              ['month', 'Month plans'],
+                            ] as const).map(([groupKey, label]) => {
+                              const groupOrders = day.groups[groupKey];
+                              if (groupOrders.length === 0) return null;
+
+                              return (
+                                <section key={groupKey} className={styles.deliveryGroup}>
+                                  <h3>{label}</h3>
+                                  {groupOrders.map((order) => {
+                                    const user = order.user_id ? usersById.get(order.user_id) : null;
+                                    return (
+                                      <div key={order.id} className={styles.deliveryOrder}>
+                                        <strong>{order.customer_name || user?.name || 'Customer'}</strong>
+                                        <span>{order.items.map((item) => item.name).join(', ')}</span>
+                                        <small>
+                                          {order.id} | {order.delivery_address.phone}
+                                        </small>
+                                      </div>
+                                    );
+                                  })}
+                                </section>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </article>
+                    ))}
+                  </div>
                 </section>
               )}
 

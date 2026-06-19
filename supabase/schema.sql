@@ -169,6 +169,23 @@ create table if not exists public.program_plan_overrides (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.plan_pause_requests (
+  id uuid primary key default gen_random_uuid(),
+  order_id text not null references public.orders(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  start_date date not null,
+  end_date date not null,
+  skipped_dates date[] not null default '{}',
+  extension_days integer not null check (extension_days > 0),
+  previous_plan_expires_at timestamptz not null,
+  new_plan_expires_at timestamptz not null,
+  previous_remaining_payment_due_at timestamptz,
+  new_remaining_payment_due_at timestamptz,
+  status text not null default 'approved' check (status in ('approved', 'cancelled')),
+  created_at timestamptz not null default now(),
+  check (end_date >= start_date)
+);
+
 alter table public.orders
   add column if not exists order_type text not null default 'paid_plan',
   add column if not exists payment_status text not null default 'pending'
@@ -241,6 +258,10 @@ create index if not exists checkout_intents_expires_at_idx on public.checkout_in
 create index if not exists checkout_intents_order_id_idx on public.checkout_intents (order_id);
 create index if not exists orders_whatsapp_checkout_intent_idx on public.orders (whatsapp_checkout_intent_id);
 create index if not exists orders_customer_delivery_status_idx on public.orders (customer_delivery_status);
+create index if not exists plan_pause_requests_order_idx on public.plan_pause_requests (order_id);
+create index if not exists plan_pause_requests_user_idx on public.plan_pause_requests (user_id);
+create index if not exists plan_pause_requests_dates_idx on public.plan_pause_requests (start_date, end_date);
+create index if not exists plan_pause_requests_status_idx on public.plan_pause_requests (status);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -309,6 +330,7 @@ alter table public.program_plan_overrides enable row level security;
 alter table public.customer_feedback enable row level security;
 alter table public.free_sample_device_claims enable row level security;
 alter table public.checkout_intents enable row level security;
+alter table public.plan_pause_requests enable row level security;
 
 drop policy if exists "Users can read their own app user row" on public.users;
 create policy "Users can read their own app user row"
@@ -345,3 +367,10 @@ for update
 to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+drop policy if exists "Users can read their own plan pauses" on public.plan_pause_requests;
+create policy "Users can read their own plan pauses"
+on public.plan_pause_requests
+for select
+to authenticated
+using (auth.uid() = user_id);

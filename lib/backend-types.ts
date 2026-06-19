@@ -177,6 +177,24 @@ export interface WhatsAppMessageLog {
   created_at: string;
 }
 
+export type PlanPauseStatus = 'approved' | 'cancelled';
+
+export interface PlanPauseRequest {
+  id: string;
+  order_id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  skipped_dates: string[];
+  extension_days: number;
+  previous_plan_expires_at: string;
+  new_plan_expires_at: string;
+  previous_remaining_payment_due_at: string | null;
+  new_remaining_payment_due_at: string | null;
+  status: PlanPauseStatus;
+  created_at: string;
+}
+
 export interface DeliveryAddress {
   addressLine1: string;
   addressLine2?: string;

@@ -4,9 +4,9 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Camera, CheckCircle2, FileText, Mail, MapPin, MessageSquareText, ShieldCheck, UserCircle, X } from 'lucide-react';
+import { CalendarDays, Camera, CheckCircle2, FileText, Mail, MapPin, MessageSquareText, ShieldCheck, UserCircle, X } from 'lucide-react';
 import { ensureSession, getAuthHeaders, getSession, saveSession, type ProjectFitSession } from '@/lib/auth-client';
-import type { CustomerFeedback, DeliveryAddress } from '@/lib/backend-types';
+import type { ApiOrder, CustomerFeedback, DeliveryAddress, PlanPauseRequest } from '@/lib/backend-types';
 import {
   formatHeightForUnit,
   isValidHeightCm,
@@ -26,6 +26,55 @@ import DeliveryAreaNotice from '@/components/DeliveryAreaNotice';
 import LocationPickerModal from '@/components/LocationPickerModal';
 import styles from './profile.module.css';
 
+type PauseEligibleOrder = ApiOrder & {
+  pause_kind: 'weekly' | 'monthly';
+  pause_limit: number;
+  pauses_used: number;
+  pause_window: {
+    startDate: string;
+    endDate: string;
+  } | null;
+  selectable_pause_dates: string[];
+};
+
+function formatDate(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date(`${value}T00:00:00`));
+}
+
+function addDays(dateKey: string, days: number) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day + days));
+  return date.toISOString().slice(0, 10);
+}
+
+function compareDateKeys(left: string, right: string) {
+  return left.localeCompare(right);
+}
+
+function eachDateKey(startDate: string, endDate: string) {
+  const dates: string[] = [];
+  let cursor = startDate;
+  while (compareDateKeys(cursor, endDate) <= 0) {
+    dates.push(cursor);
+    cursor = addDays(cursor, 1);
+  }
+  return dates;
+}
+
+function isSunday(dateKey: string) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay() === 0;
+}
+
+function getPlanName(order: ApiOrder) {
+  return order.items[0]?.name ?? 'Meal plan';
+}
+
 export default function ProfilePageClient() {
   usePublicConfig();
 
@@ -40,6 +89,14 @@ export default function ProfilePageClient() {
   const [feedbackStatus, setFeedbackStatus] = useState('');
   const [feedbackError, setFeedbackError] = useState('');
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false);
+  const [pauseOrders, setPauseOrders] = useState<PauseEligibleOrder[]>([]);
+  const [pauseRequests, setPauseRequests] = useState<PlanPauseRequest[]>([]);
+  const [selectedPauseOrderId, setSelectedPauseOrderId] = useState('');
+  const [pauseStartDate, setPauseStartDate] = useState('');
+  const [pauseEndDate, setPauseEndDate] = useState('');
+  const [pauseStatus, setPauseStatus] = useState('');
+  const [pauseError, setPauseError] = useState('');
+  const [isPauseSubmitting, setIsPauseSubmitting] = useState(false);
   const [medicalReport, setMedicalReport] = useState<{
     name: string;
     type: string;
@@ -93,6 +150,11 @@ export default function ProfilePageClient() {
         cache: 'no-store',
       });
       const feedbackData = feedbackResponse.ok ? await feedbackResponse.json() : null;
+      const pausesResponse = await fetch('/api/plan-pauses', {
+        headers,
+        cache: 'no-store',
+      });
+      const pausesData = pausesResponse.ok ? await pausesResponse.json() : null;
 
         const remote = data?.profile;
         const appUser = data?.user;
@@ -119,6 +181,10 @@ export default function ProfilePageClient() {
             : null
         );
         setFeedback(feedbackData?.feedback ?? []);
+        const eligiblePauseOrders = pausesData?.eligibleOrders ?? [];
+        setPauseOrders(eligiblePauseOrders);
+        setPauseRequests(pausesData?.pauses ?? []);
+        setSelectedPauseOrderId((currentOrderId) => currentOrderId || eligiblePauseOrders[0]?.id || '');
     }
 
     initializeProfile().catch(() => undefined);
@@ -331,6 +397,82 @@ export default function ProfilePageClient() {
       setIsFeedbackSubmitting(false);
     }
   };
+
+  const selectedPauseOrder = pauseOrders.find((order) => order.id === selectedPauseOrderId) ?? null;
+  const selectablePauseDates = new Set(selectedPauseOrder?.selectable_pause_dates ?? []);
+  const calendarDates = selectedPauseOrder?.pause_window
+    ? eachDateKey(
+        selectedPauseOrder.selectable_pause_dates[0] ?? selectedPauseOrder.pause_window.startDate,
+        selectedPauseOrder.pause_window.endDate
+      )
+    : [];
+  const selectedSkippedDates =
+    pauseStartDate && pauseEndDate && compareDateKeys(pauseEndDate, pauseStartDate) >= 0
+      ? eachDateKey(pauseStartDate, pauseEndDate).filter(
+          (dateKey) => !isSunday(dateKey) && selectablePauseDates.has(dateKey)
+        )
+      : [];
+
+  function handlePauseDateClick(dateKey: string) {
+    setPauseStatus('');
+    setPauseError('');
+
+    if (!pauseStartDate || (pauseStartDate && pauseEndDate) || compareDateKeys(dateKey, pauseStartDate) < 0) {
+      setPauseStartDate(dateKey);
+      setPauseEndDate('');
+      return;
+    }
+
+    setPauseEndDate(dateKey);
+  }
+
+  async function handlePauseSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPauseError('');
+    setPauseStatus('');
+
+    if (!selectedPauseOrder || !pauseStartDate || !pauseEndDate || selectedSkippedDates.length === 0) {
+      setPauseError('Select a valid non-Sunday date range inside your plan.');
+      return;
+    }
+
+    setIsPauseSubmitting(true);
+    try {
+      const response = await fetch('/api/plan-pauses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(await getAuthHeaders()),
+        },
+        body: JSON.stringify({
+          orderId: selectedPauseOrder.id,
+          startDate: pauseStartDate,
+          endDate: pauseEndDate,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error ?? 'Could not pause meals.');
+      }
+
+      const refreshResponse = await fetch('/api/plan-pauses', {
+        headers: await getAuthHeaders(),
+        cache: 'no-store',
+      });
+      const refreshData = refreshResponse.ok ? await refreshResponse.json() : null;
+      setPauseOrders(refreshData?.eligibleOrders ?? []);
+      setPauseRequests(refreshData?.pauses ?? []);
+      setSelectedPauseOrderId(data.order?.id ?? '');
+      setPauseStartDate('');
+      setPauseEndDate('');
+      setPauseStatus(`Meals paused for ${data.pause?.extension_days ?? selectedSkippedDates.length} delivery day${selectedSkippedDates.length === 1 ? '' : 's'}. Your plan was extended automatically.`);
+    } catch (err) {
+      setPauseError(err instanceof Error ? err.message : 'Could not pause meals.');
+    } finally {
+      setIsPauseSubmitting(false);
+    }
+  }
 
   if (!session) {
     return null;
@@ -591,6 +733,117 @@ export default function ProfilePageClient() {
               </Link>
             </div>
           </form>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className="container">
+          <div className={styles.pauseCard}>
+            <div className={styles.formHeader}>
+              <div>
+                <h2>Pause Meals, Keep Your Plan Days</h2>
+                <p>
+                  Week and month plan customers can pause meals from the day after tomorrow onward.
+                  Sundays are unavailable because regular delivery is off.
+                </p>
+              </div>
+              <CalendarDays size={24} />
+            </div>
+
+            {pauseOrders.length === 0 ? (
+              <div className={styles.pauseEmpty}>
+                <strong>Available for active week and month plans</strong>
+                <p>
+                  Once your eligible plan is active, you can select skip dates here and those delivery
+                  days will be added to the end of your plan.
+                </p>
+              </div>
+            ) : (
+              <form className={styles.pauseForm} onSubmit={handlePauseSubmit}>
+                <label className={styles.field}>
+                  <span>Active plan</span>
+                  <select
+                    value={selectedPauseOrderId}
+                    onChange={(event) => {
+                      setSelectedPauseOrderId(event.target.value);
+                      setPauseStartDate('');
+                      setPauseEndDate('');
+                      setPauseStatus('');
+                      setPauseError('');
+                    }}
+                  >
+                    {pauseOrders.map((order) => (
+                      <option key={order.id} value={order.id}>
+                        {getPlanName(order)} - {order.pause_kind === 'monthly' ? 'Month plan' : 'Week plan'} ({order.pause_limit - order.pauses_used} pause request{order.pause_limit - order.pauses_used === 1 ? '' : 's'} left)
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {selectedPauseOrder && (
+                  <>
+                    <div className={styles.pauseSummary}>
+                      <span>Plan window: {formatDate(selectedPauseOrder.pause_window?.startDate)} to {formatDate(selectedPauseOrder.pause_window?.endDate)}</span>
+                      <span>Used: {selectedPauseOrder.pauses_used} / {selectedPauseOrder.pause_limit}</span>
+                      {selectedPauseOrder.payment_stage === 'half_paid' && (
+                        <span>Half-paid plans can pause only inside the already-paid half.</span>
+                      )}
+                    </div>
+
+                    <div className={styles.pauseCalendar} aria-label="Pause meal calendar">
+                      {calendarDates.map((dateKey) => {
+                        const disabled = !selectablePauseDates.has(dateKey);
+                        const selected =
+                          pauseStartDate &&
+                          ((pauseEndDate &&
+                            compareDateKeys(dateKey, pauseStartDate) >= 0 &&
+                            compareDateKeys(dateKey, pauseEndDate) <= 0) ||
+                            dateKey === pauseStartDate);
+
+                        return (
+                          <button
+                            key={dateKey}
+                            type="button"
+                            className={selected ? styles.pauseDateSelected : styles.pauseDate}
+                            disabled={disabled}
+                            onClick={() => handlePauseDateClick(dateKey)}
+                            title={isSunday(dateKey) ? 'Sunday delivery is off' : undefined}
+                          >
+                            <strong>{new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit' })}</strong>
+                            <span>{new Date(`${dateKey}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short' })}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className={styles.pauseSummary}>
+                      <span>Selected: {selectedSkippedDates.length} delivery day{selectedSkippedDates.length === 1 ? '' : 's'}</span>
+                      {pauseStartDate && <span>From: {formatDate(pauseStartDate)}</span>}
+                      {pauseEndDate && <span>To: {formatDate(pauseEndDate)}</span>}
+                    </div>
+                  </>
+                )}
+
+                {pauseStatus && <span className={styles.status}>{pauseStatus}</span>}
+                {pauseError && <span className={styles.status}>{pauseError}</span>}
+                <button type="submit" className="btn-primary" disabled={isPauseSubmitting || selectedSkippedDates.length === 0}>
+                  {isPauseSubmitting ? 'Applying pause...' : 'Confirm meal pause'}
+                </button>
+              </form>
+            )}
+
+            {pauseRequests.length > 0 && (
+              <div className={styles.pauseHistory}>
+                <h3>Pause history</h3>
+                {pauseRequests.slice(0, 5).map((pause) => (
+                  <article key={pause.id}>
+                    <strong>{formatDate(pause.start_date)} to {formatDate(pause.end_date)}</strong>
+                    <span>{pause.extension_days} delivery day{pause.extension_days === 1 ? '' : 's'} added</span>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

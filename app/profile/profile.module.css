@@ -114,6 +114,14 @@
   box-shadow: var(--shadow-lg);
 }
 
+.pauseCard {
+  padding: clamp(24px, 4vw, 36px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--white);
+  box-shadow: var(--shadow-lg);
+}
+
 .formHeader {
   display: flex;
   justify-content: space-between;
@@ -478,6 +486,131 @@
   color: var(--text-muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.pauseEmpty {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+}
+
+.pauseEmpty strong {
+  display: block;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+
+.pauseEmpty p {
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+
+.pauseForm {
+  display: grid;
+  gap: 18px;
+}
+
+.pauseSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pauseSummary span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid rgba(5, 150, 105, 0.18);
+  border-radius: 999px;
+  background: var(--green-light);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.pauseCalendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+}
+
+.pauseDate,
+.pauseDateSelected {
+  display: grid;
+  gap: 3px;
+  min-height: 64px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.pauseDate:hover:not(:disabled) {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+
+.pauseDate:disabled,
+.pauseDateSelected:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.pauseDate strong,
+.pauseDateSelected strong {
+  font-size: 1rem;
+}
+
+.pauseDate span,
+.pauseDateSelected span {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.pauseDateSelected {
+  border-color: var(--green);
+  background: var(--green);
+  color: var(--white);
+}
+
+.pauseDateSelected span {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.pauseHistory {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.pauseHistory h3 {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.pauseHistory article {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-muted);
+}
+
+.pauseHistory span {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 800;
 }
 
 @media (max-width: 760px) {

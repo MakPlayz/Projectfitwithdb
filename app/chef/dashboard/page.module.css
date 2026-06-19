@@ -376,6 +376,113 @@
   gap: 14px;
 }
 
+.deliveryCalendar {
+  display: grid;
+  gap: 14px;
+}
+
+.deliveryDay {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid rgba(205, 221, 210, 0.13);
+  border-radius: 16px;
+  background: rgba(18, 25, 22, 0.82);
+  box-shadow: 0 18px 58px rgba(0, 0, 0, 0.2);
+}
+
+.deliveryDay header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.deliveryDay header strong,
+.deliveryDay header span {
+  display: block;
+}
+
+.deliveryDay header strong {
+  color: #f8fff5;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+}
+
+.deliveryDay header span {
+  margin-top: 3px;
+  color: rgba(235, 246, 239, 0.62);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.deliveryDay header em {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(201, 242, 77, 0.11);
+  color: #eaff9d;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.deliveryOff {
+  color: rgba(235, 246, 239, 0.62);
+  font-size: 14px;
+}
+
+.deliveryGroups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.deliveryGroup {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(205, 221, 210, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.deliveryGroup h3 {
+  color: #f8fff5;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.deliveryOrder {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid rgba(205, 221, 210, 0.1);
+  border-radius: 8px;
+  background: rgba(5, 10, 8, 0.24);
+}
+
+.deliveryOrder strong,
+.deliveryOrder span,
+.deliveryOrder small {
+  overflow-wrap: anywhere;
+}
+
+.deliveryOrder strong {
+  color: #f8fff5;
+  font-size: 0.92rem;
+}
+
+.deliveryOrder span,
+.deliveryOrder small {
+  color: rgba(235, 246, 239, 0.62);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .orderCard,
 .planCard,
 .feedbackCard,
@@ -1173,6 +1280,7 @@
   .planMeta,
   .detailGrid,
   .compactFields,
+  .deliveryGroups,
   .loadingGrid {
     grid-template-columns: 1fr;
   }

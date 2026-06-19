@@ -32,11 +32,16 @@ export function isMonthlyPlanItems(items: CartItem[]) {
   return isMonthlyPlanText(getPlanText(items));
 }
 
+export function isWeeklyPlanItems(items: CartItem[]) {
+  const text = getPlanText(items);
+  return text.includes('6-day') || text.includes('6 day') || text.includes('-6-') || text.includes('week') || text.includes('weekly');
+}
+
 export function inferPlanCalendarDaysFromItems(items: CartItem[]) {
   const text = getPlanText(items);
 
   if (isMonthlyPlanText(text)) return MONTHLY_PLAN_CALENDAR_DAYS;
-  if (text.includes('6-day') || text.includes('6 day') || text.includes('-6-')) return 6;
+  if (isWeeklyPlanItems(items)) return 6;
   return 1;
 }
 
@@ -44,7 +49,7 @@ export function inferPlanServiceDaysFromItems(items: CartItem[]) {
   const text = getPlanText(items);
 
   if (isMonthlyPlanText(text)) return MONTHLY_PLAN_SERVICE_DAYS;
-  if (text.includes('6-day') || text.includes('6 day') || text.includes('-6-')) return 6;
+  if (isWeeklyPlanItems(items)) return 6;
   return 1;
 }
 
