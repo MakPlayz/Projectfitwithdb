@@ -81,6 +81,9 @@
   display: grid;
   align-content: start;
   gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .railButton,
@@ -284,6 +287,21 @@
 
 .mobileTabs {
   display: none;
+  max-width: 100%;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.mobileTabs::-webkit-scrollbar {
+  display: none;
+}
+
+.mobileTabs .tab,
+.mobileTabs .tabActive {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .tab,
@@ -350,6 +368,10 @@
   margin-bottom: 14px;
 }
 
+.sectionHead > div {
+  min-width: 0;
+}
+
 .sectionHead h2,
 .planCard h2,
 .userDetail h2,
@@ -360,11 +382,14 @@
 }
 
 .sectionHead span {
+  flex: 0 0 auto;
+  max-width: 100%;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(201, 242, 77, 0.11);
   color: #eaff9d;
   font-weight: 900;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -379,11 +404,13 @@
 .deliveryCalendar {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .deliveryDay {
   display: grid;
   gap: 14px;
+  min-width: 0;
   padding: 16px;
   border: 1px solid rgba(205, 221, 210, 0.13);
   border-radius: 16px;
@@ -396,6 +423,11 @@
   justify-content: space-between;
   gap: 16px;
   align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.deliveryDay header > div {
+  min-width: 0;
 }
 
 .deliveryDay header strong,
@@ -425,6 +457,7 @@
   font-size: 12px;
   font-style: normal;
   font-weight: 900;
+  white-space: nowrap;
 }
 
 .deliveryOff {
@@ -434,8 +467,9 @@
 
 .deliveryGroups {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 12px;
+  min-width: 0;
 }
 
 .deliveryGroup {
@@ -459,6 +493,7 @@
 .deliveryOrder {
   display: grid;
   gap: 4px;
+  min-width: 0;
   padding: 10px;
   border: 1px solid rgba(205, 221, 210, 0.1);
   border-radius: 8px;
@@ -1243,6 +1278,7 @@
 
   .mobileTabs {
     display: flex;
+    width: 100%;
   }
 
   .toolbar,
@@ -1299,5 +1335,13 @@
   .messageIncoming,
   .messageOutgoing {
     max-width: 92%;
+  }
+
+  .deliveryDay header {
+    flex-direction: column;
+  }
+
+  .deliveryDay header em {
+    align-self: flex-start;
   }
 }
