@@ -50,6 +50,7 @@ export interface CustomerProfile {
   medical_report_file_type: string | null;
   medical_report_file_data: string | null;
   medical_report_uploaded_at: string | null;
+  delivery_address: DeliveryAddress | null;
   created_at: string;
   updated_at: string;
 }
@@ -70,6 +71,7 @@ export interface CustomerProfilePayload {
   medical_report_file_type?: string | null;
   medical_report_file_data?: string | null;
   medical_report_uploaded_at?: string | null;
+  delivery_address?: DeliveryAddress | null;
 }
 
 export interface ProjectFitUser {

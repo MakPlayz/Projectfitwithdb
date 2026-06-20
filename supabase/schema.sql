@@ -31,6 +31,7 @@ create table if not exists public.customer_profiles (
   medical_report_file_type text,
   medical_report_file_data text,
   medical_report_uploaded_at timestamptz,
+  delivery_address jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -204,6 +205,9 @@ alter table public.orders
   add column if not exists customer_delivery_status text not null default 'pending',
   add column if not exists customer_delivery_confirmed_at timestamptz,
   add column if not exists customer_delivery_response_payload jsonb not null default '{}'::jsonb;
+
+alter table public.customer_profiles
+  add column if not exists delivery_address jsonb;
 
 alter table public.orders drop constraint if exists orders_status_check;
 alter table public.orders

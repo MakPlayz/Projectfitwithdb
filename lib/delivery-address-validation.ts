@@ -1,4 +1,5 @@
 import type { DeliveryAddress } from './backend-types';
+import { isDeliverablePincode } from './serviceable-pincodes';
 
 type GeocodeAddressComponent = {
   long_name: string;
@@ -36,6 +37,7 @@ export async function validateAddressPincodeMatch(deliveryAddress: DeliveryAddre
     deliveryAddress.addressLine1,
     deliveryAddress.addressLine2,
     deliveryAddress.city,
+    deliveryAddress.pincode,
     'Andhra Pradesh',
     'India',
   ]
@@ -60,6 +62,10 @@ export async function validateAddressPincodeMatch(deliveryAddress: DeliveryAddre
       .find(Boolean);
 
     if (postalCode && postalCode !== deliveryAddress.pincode) {
+      if (isDeliverablePincode(postalCode) && isDeliverablePincode(deliveryAddress.pincode)) {
+        return { valid: true, error: null };
+      }
+
       return {
         valid: false,
         error: `The selected address appears to belong to pincode ${postalCode}, not ${deliveryAddress.pincode}. Please correct the area or pincode.`,

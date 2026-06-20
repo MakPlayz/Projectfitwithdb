@@ -71,6 +71,7 @@ export default function Cart() {
 
   useEffect(() => {
     if (!isOpen) return;
+    let cancelled = false;
 
     const savedProfile = readStoredProfile();
     if (savedProfile.deliveryAddress) {
@@ -81,6 +82,36 @@ export default function Cart() {
     } else if (savedProfile.phone) {
       setDeliveryAddress((current) => ({ ...current, phone: savedProfile.phone || current.phone }));
     }
+
+    async function loadSavedProfileAddress() {
+      try {
+        const response = await fetch('/api/profile', {
+          headers: await getAuthHeaders(),
+          cache: 'no-store',
+        });
+        const data = response.ok ? await response.json() : null;
+        const remoteAddress = data?.profile?.delivery_address as Partial<DeliveryAddress> | null | undefined;
+
+        if (cancelled || !remoteAddress) return;
+
+        setDeliveryAddress((current) => {
+          const next = normalizeDeliveryAddress({
+            ...remoteAddress,
+            phone: remoteAddress.phone || savedProfile.phone || current.phone,
+          });
+          mergeStoredProfile({ deliveryAddress: next });
+          return next;
+        });
+      } catch {
+        // Checkout can continue with the locally saved or manually entered address.
+      }
+    }
+
+    void loadSavedProfileAddress();
+
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
   if (!isOpen) return null;

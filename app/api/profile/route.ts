@@ -4,15 +4,16 @@ import {
   buildRecommendationSummary,
   getRecommendedPath,
 } from '@/lib/customer-profile';
-import type { CustomerProfile, CustomerProfilePayload } from '@/lib/backend-types';
+import type { CustomerProfile, CustomerProfilePayload, DeliveryAddress } from '@/lib/backend-types';
 import {
   getUserFromAccessToken,
   supabaseRestFetch,
 } from '@/lib/supabase-rest';
 import { formatWhatsAppPhone } from '@/lib/whatsapp';
 
-interface ProfileRequestBody extends Partial<CustomerProfilePayload> {
+interface ProfileRequestBody extends Omit<Partial<CustomerProfilePayload>, 'delivery_address'> {
   phone?: string;
+  delivery_address?: Partial<DeliveryAddress> | null;
 }
 
 const maxMedicalReportBytes = 1_500_000;
@@ -81,6 +82,39 @@ function validateProfile(body: ProfileRequestBody) {
   return null;
 }
 
+function normalizeText(value: unknown) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function normalizeDeliveryAddress(value: Partial<DeliveryAddress> | null | undefined): DeliveryAddress | null {
+  if (!value) return null;
+
+  const deliveryAddress: DeliveryAddress = {
+    addressLine1: normalizeText(value.addressLine1),
+    addressLine2: normalizeText(value.addressLine2) || undefined,
+    city: normalizeText(value.city),
+    pincode: normalizeText(value.pincode),
+    phone: normalizeText(value.phone),
+  };
+
+  if (typeof value.latitude === 'number' && typeof value.longitude === 'number') {
+    deliveryAddress.latitude = value.latitude;
+    deliveryAddress.longitude = value.longitude;
+  }
+
+  const hasAnyAddress = Boolean(
+    deliveryAddress.addressLine1 ||
+      deliveryAddress.addressLine2 ||
+      deliveryAddress.city ||
+      deliveryAddress.pincode ||
+      deliveryAddress.phone ||
+      typeof deliveryAddress.latitude === 'number' ||
+      typeof deliveryAddress.longitude === 'number'
+  );
+
+  return hasAnyAddress ? deliveryAddress : null;
+}
+
 export async function GET(request: Request) {
   const auth = await getAuthenticatedUser(request);
   if (auth.error) return auth.error;
@@ -144,6 +178,7 @@ export async function POST(request: Request) {
     medical_report_file_type: body.medical_report_file_data ? body.medical_report_file_type ?? null : null,
     medical_report_file_data: body.medical_report_file_data ?? null,
     medical_report_uploaded_at: body.medical_report_file_data ? new Date().toISOString() : null,
+    delivery_address: normalizeDeliveryAddress(body.delivery_address),
   };
 
   const userResult = await supabaseRestFetch('/users?on_conflict=id', {
@@ -181,6 +216,7 @@ export async function POST(request: Request) {
         medical_report_file_type: profile.medical_report_file_type,
         medical_report_file_data: profile.medical_report_file_data,
         medical_report_uploaded_at: profile.medical_report_uploaded_at,
+        delivery_address: profile.delivery_address,
         recommended_path: getRecommendedPath(profile),
         recommendation_summary: buildRecommendationSummary(profile),
         coach_notes: buildCoachNotes(profile),

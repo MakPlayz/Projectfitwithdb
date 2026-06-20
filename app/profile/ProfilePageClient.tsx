@@ -169,6 +169,7 @@ export default function ProfilePageClient() {
           height: remote?.height_cm ?? currentProfile.height,
           weight: remote?.weight_kg ?? currentProfile.weight,
           healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
+          deliveryAddress: normalizeDeliveryAddress(remote?.delivery_address ?? currentProfile.deliveryAddress),
         }));
         setMedicalReport(
           remote?.medical_report_file_data
@@ -332,6 +333,7 @@ export default function ProfilePageClient() {
           medical_report_file_name: medicalReport?.name ?? null,
           medical_report_file_type: medicalReport?.type ?? null,
           medical_report_file_data: medicalReport?.data ?? null,
+          delivery_address: nextProfile.deliveryAddress,
         }),
       });
       const data = await response.json();
