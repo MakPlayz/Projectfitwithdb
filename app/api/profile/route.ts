@@ -115,6 +115,10 @@ function normalizeDeliveryAddress(value: Partial<DeliveryAddress> | null | undef
   return hasAnyAddress ? deliveryAddress : null;
 }
 
+function hasOwnKey<T extends object>(value: T, key: PropertyKey) {
+  return Object.prototype.hasOwnProperty.call(value, key);
+}
+
 export async function GET(request: Request) {
   const auth = await getAuthenticatedUser(request);
   if (auth.error) return auth.error;
@@ -162,6 +166,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Valid WhatsApp number is required.' }, { status: 400 });
   }
 
+  const existingProfileResult = await supabaseRestFetch<CustomerProfile[]>(
+    `/customer_profiles?user_id=eq.${auth.user.id}&select=*`
+  );
+  if (existingProfileResult.error && existingProfileResult.status !== 404) {
+    return NextResponse.json(
+      { error: existingProfileResult.error },
+      { status: existingProfileResult.status || 500 }
+    );
+  }
+  const existingProfile = existingProfileResult.data?.[0] ?? null;
+  const hasMedicalReportPayload = hasOwnKey(body, 'medical_report_file_data');
+  const hasDeliveryAddressPayload = hasOwnKey(body, 'delivery_address');
+
   const profile: CustomerProfilePayload = {
     full_name: body.full_name!.trim(),
     age: Number(body.age),
@@ -174,11 +191,27 @@ export async function POST(request: Request) {
     diet_preference: body.diet_preference ?? 'balanced',
     allergies: Array.isArray(body.allergies) ? body.allergies : [],
     health_notes: body.health_notes?.trim() ?? '',
-    medical_report_file_name: body.medical_report_file_data ? body.medical_report_file_name?.trim() ?? null : null,
-    medical_report_file_type: body.medical_report_file_data ? body.medical_report_file_type ?? null : null,
-    medical_report_file_data: body.medical_report_file_data ?? null,
-    medical_report_uploaded_at: body.medical_report_file_data ? new Date().toISOString() : null,
-    delivery_address: normalizeDeliveryAddress(body.delivery_address),
+    medical_report_file_name: hasMedicalReportPayload
+      ? body.medical_report_file_data
+        ? body.medical_report_file_name?.trim() ?? null
+        : null
+      : existingProfile?.medical_report_file_name ?? null,
+    medical_report_file_type: hasMedicalReportPayload
+      ? body.medical_report_file_data
+        ? body.medical_report_file_type ?? null
+        : null
+      : existingProfile?.medical_report_file_type ?? null,
+    medical_report_file_data: hasMedicalReportPayload
+      ? body.medical_report_file_data ?? null
+      : existingProfile?.medical_report_file_data ?? null,
+    medical_report_uploaded_at: hasMedicalReportPayload
+      ? body.medical_report_file_data
+        ? new Date().toISOString()
+        : null
+      : existingProfile?.medical_report_uploaded_at ?? null,
+    delivery_address: hasDeliveryAddressPayload
+      ? normalizeDeliveryAddress(body.delivery_address)
+      : existingProfile?.delivery_address ?? null,
   };
 
   const userResult = await supabaseRestFetch('/users?on_conflict=id', {

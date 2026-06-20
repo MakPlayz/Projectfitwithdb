@@ -53,6 +53,14 @@ export function inferPlanServiceDaysFromItems(items: CartItem[]) {
   return 1;
 }
 
+function toDateKey(value: DateValue) {
+  return [
+    String(value.year).padStart(4, '0'),
+    String(value.month).padStart(2, '0'),
+    String(value.day).padStart(2, '0'),
+  ].join('-');
+}
+
 function getDateValueInTimeZone(value: Date, timeZone = PLAN_TIME_ZONE): DateValue {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone,
@@ -116,4 +124,19 @@ export function getOrderServiceDaysRemaining(order: Pick<ApiOrder, 'items' | 'pl
   const elapsed = serviceDaysElapsedBeforeToday(start, today, end);
 
   return Math.max(0, totalServiceDays - elapsed);
+}
+
+export function addServiceDaysToIsoStartDate(start: Date, serviceDays: number) {
+  const targetServiceDays = Math.max(0, Math.floor(serviceDays));
+  let cursor = getDateValueInTimeZone(start);
+  let added = 0;
+
+  while (added < targetServiceDays) {
+    if (!isSunday(cursor)) {
+      added += 1;
+    }
+    cursor = addDays(cursor, 1);
+  }
+
+  return `${toDateKey(cursor)}T00:00:00.000+05:30`;
 }

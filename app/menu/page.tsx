@@ -140,7 +140,7 @@ export default function MenuPage() {
                 <h2>Recommended path: {profile.recommended_path.replace('-', ' ')}</h2>
                 <p>{profile.recommendation_summary}</p>
               </div>
-              <Link href="/onboarding" className="btn-secondary">
+              <Link href="/profile" className="btn-secondary">
                 Update profile
               </Link>
             </div>

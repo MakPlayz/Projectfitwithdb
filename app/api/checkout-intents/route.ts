@@ -7,9 +7,9 @@ import {
   createCheckoutIntent,
   inferProgramKey,
   isBlockingOrder,
-  isFreeSampleCart,
   normalizeDeliveryAddressForStorage,
 } from '@/lib/checkout-intents';
+import { getTrustedCheckoutPricing } from '@/lib/checkout-pricing';
 import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
 import { isMonthlyPlanItems } from '@/lib/plan-duration';
 import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
@@ -153,7 +153,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const isFreeSampleOrder = isFreeSampleCart(body.items);
+  const trustedPricing = await getTrustedCheckoutPricing(body.items);
+  if (!trustedPricing.ok) {
+    return NextResponse.json({ error: trustedPricing.error }, { status: 400 });
+  }
+
+  const trustedItems = trustedPricing.items;
+  const isFreeSampleOrder = trustedPricing.orderType === 'free_sample';
   const hasMixedFreeSample = body.items.some((item) => item.itemType === 'free_sample') && !isFreeSampleOrder;
   if (hasMixedFreeSample) {
     return NextResponse.json(
@@ -246,7 +252,7 @@ export async function POST(request: Request) {
   }
 
   const duplicateOrder = !isFreeSampleOrder
-    ? (existingOrdersResult.data ?? []).find((order) => isBlockingOrder(order) && inferProgramKey(order.items) === inferProgramKey(body.items ?? []))
+    ? (existingOrdersResult.data ?? []).find((order) => isBlockingOrder(order) && inferProgramKey(order.items) === inferProgramKey(trustedItems))
     : null;
 
   if (duplicateOrder) {
@@ -261,10 +267,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const subtotal = isFreeSampleOrder ? 0 : body.subtotal;
-  const tax = isFreeSampleOrder ? 0 : Math.round(subtotal * 0.05);
-  const total = subtotal + tax;
-  const paymentOption = !isFreeSampleOrder && body.paymentOption === 'half' && isMonthlyPlanItems(body.items)
+  const subtotal = trustedPricing.subtotal;
+  const tax = trustedPricing.tax;
+  const total = trustedPricing.total;
+  const paymentOption = !isFreeSampleOrder && body.paymentOption === 'half' && isMonthlyPlanItems(trustedItems)
     ? 'half'
     : 'full';
   const payableNow = isFreeSampleOrder ? 0 : paymentOption === 'half' ? Math.ceil(total / 2) : total;
@@ -280,7 +286,7 @@ export async function POST(request: Request) {
     user_id: user.id,
     phone: addressValidation.deliveryAddress.phone,
     customer_name: customerName,
-    items: body.items,
+    items: trustedItems,
     subtotal,
     tax,
     total,

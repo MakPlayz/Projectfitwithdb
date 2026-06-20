@@ -16,7 +16,7 @@ function base64Url(value: unknown) {
 
 function createMockToken(user: AuthUser) {
   const now = Math.floor(Date.now() / 1000);
-  const header = base64Url({ alg: 'none', typ: 'JWT' });
+  const header = base64Url({ alg: 'HS256', typ: 'JWT' });
   const payload = base64Url({
     sub: user.id,
     email: user.email,
@@ -27,7 +27,7 @@ function createMockToken(user: AuthUser) {
     iss: 'projectfit-local-auth',
   });
 
-  return `${header}.${payload}.local`;
+  return `${header}.${payload}.local-development-signature`;
 }
 
 function getMockUserId(email: string) {

@@ -328,7 +328,7 @@ export default function AuthForm({
 
         {mode === 'login' && (
           <div className={styles.forgot}>
-            <Link href="/login">Forgot password?</Link>
+            <span>Forgot password? Contact Project Fit support to reset it.</span>
           </div>
         )}
 

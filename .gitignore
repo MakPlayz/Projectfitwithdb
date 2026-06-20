@@ -23,6 +23,10 @@
 # misc
 .DS_Store
 *.pem
+outputs/
+ppt images/
+projectfit-broccoli-auth/
+Payment QR scanner.jpeg
 
 # debug
 npm-debug.log*

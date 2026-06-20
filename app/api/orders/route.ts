@@ -5,6 +5,7 @@ import {
 } from '@/lib/supabase-rest';
 import type { ApiOrder, CustomerProfile, DeliveryAddress, FreeSampleDeviceClaim } from '@/lib/backend-types';
 import type { CartItem } from '@/store/cartStore';
+import { getTrustedCheckoutPricing } from '@/lib/checkout-pricing';
 import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
@@ -181,10 +182,6 @@ function inferProgramKey(items: CartItem[]) {
   return items[0]?.id ?? 'meal-plan';
 }
 
-function isFreeSampleCart(items: CartItem[]) {
-  return items.length === 1 && items[0].itemType === 'free_sample' && items[0].quantity === 1;
-}
-
 function normalizeDeviceId(value: unknown) {
   const deviceId = normalizeText(value);
   return /^[A-Za-z0-9_-]{12,120}$/.test(deviceId) ? deviceId : null;
@@ -279,7 +276,13 @@ export async function POST(request: Request) {
     );
   }
 
-  const isFreeSampleOrder = isFreeSampleCart(body.items);
+  const trustedPricing = await getTrustedCheckoutPricing(body.items);
+  if (!trustedPricing.ok) {
+    return NextResponse.json({ error: trustedPricing.error }, { status: 400 });
+  }
+
+  const trustedItems = trustedPricing.items;
+  const isFreeSampleOrder = trustedPricing.orderType === 'free_sample';
   const hasMixedFreeSample = body.items.some((item) => item.itemType === 'free_sample') && !isFreeSampleOrder;
   if (hasMixedFreeSample) {
     return NextResponse.json(
@@ -311,11 +314,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const subtotal = isFreeSampleOrder ? 0 : body.subtotal;
-  const tax = isFreeSampleOrder ? 0 : Math.round(subtotal * 0.05);
-  const total = subtotal + tax;
+  const subtotal = trustedPricing.subtotal;
+  const tax = trustedPricing.tax;
+  const total = trustedPricing.total;
   const user = userResult.data;
-  const programKey = inferProgramKey(body.items);
+  const programKey = inferProgramKey(trustedItems);
   const existingOrdersResult = await supabaseRestFetch<ApiOrder[]>(
     `/orders?user_id=eq.${user.id}&select=*`
   );
@@ -427,7 +430,7 @@ export async function POST(request: Request) {
     body: JSON.stringify({
       user_id: user.id,
       customer_name: customerName,
-      items: body.items,
+      items: trustedItems,
       subtotal,
       tax,
       total,

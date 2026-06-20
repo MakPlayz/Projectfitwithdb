@@ -255,6 +255,12 @@ create index if not exists customer_feedback_status_idx on public.customer_feedb
 create index if not exists program_plan_overrides_active_idx on public.program_plan_overrides (active);
 create index if not exists free_sample_device_claims_device_active_idx on public.free_sample_device_claims (device_id, active);
 create index if not exists free_sample_device_claims_user_active_idx on public.free_sample_device_claims (user_id, active);
+create unique index if not exists free_sample_device_claims_active_device_uidx
+  on public.free_sample_device_claims (device_id)
+  where active = true;
+create unique index if not exists free_sample_device_claims_active_user_uidx
+  on public.free_sample_device_claims (user_id)
+  where active = true;
 create index if not exists free_sample_device_claims_order_idx on public.free_sample_device_claims (order_id);
 create index if not exists checkout_intents_code_idx on public.checkout_intents (code);
 create index if not exists checkout_intents_user_status_idx on public.checkout_intents (user_id, status);

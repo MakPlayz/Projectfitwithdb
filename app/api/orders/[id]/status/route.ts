@@ -10,7 +10,7 @@ import {
   sendPlanStoppedMidwayMessage,
   sendRemainingPaymentConfirmedMessage,
 } from '@/lib/whatsapp';
-import { inferPlanCalendarDaysFromItems } from '@/lib/plan-duration';
+import { addServiceDaysToIsoStartDate, inferPlanServiceDaysFromItems } from '@/lib/plan-duration';
 
 const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
@@ -27,7 +27,7 @@ interface StatusBody {
 }
 
 function inferPlanDays(order: ApiOrder | null) {
-  return inferPlanCalendarDaysFromItems(order?.items ?? []);
+  return inferPlanServiceDaysFromItems(order?.items ?? []);
 }
 
 function isActivePaidPlan(order: ApiOrder) {
@@ -249,20 +249,18 @@ export async function PATCH(
     const activatedAt = order.requested_start_date
       ? new Date(`${order.requested_start_date}T00:00:00`)
       : confirmedAt;
-    const expiresAt = new Date(activatedAt);
-    expiresAt.setDate(expiresAt.getDate() + inferPlanDays(order));
+    const expiresAt = addServiceDaysToIsoStartDate(activatedAt, inferPlanDays(order));
 
     const isHalfPaymentOrder = !isFreeSampleOrder && order.payment_option === 'half';
-    const dueAt = new Date(activatedAt);
-    dueAt.setDate(dueAt.getDate() + 11);
+    const dueAt = addServiceDaysToIsoStartDate(activatedAt, 10);
 
     const confirmPayload = {
       status: 'confirmed',
       payment_status: isHalfPaymentOrder ? 'pending' : 'paid',
       payment_stage: isFreeSampleOrder ? 'paid_full' : isHalfPaymentOrder ? 'half_paid' : 'paid_full',
       plan_activated_at: activatedAt.toISOString(),
-      plan_expires_at: expiresAt.toISOString(),
-      remaining_payment_due_at: isHalfPaymentOrder ? dueAt.toISOString() : null,
+      plan_expires_at: expiresAt,
+      remaining_payment_due_at: isHalfPaymentOrder ? dueAt : null,
       confirmed_at: confirmedAt.toISOString(),
       confirmed_by: admin.user?.id ?? null,
       payment_transaction_id: isFreeSampleOrder ? null : transactionId,
