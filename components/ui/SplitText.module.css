@@ -7,30 +7,58 @@
 
 .heroTitle {
   font-family: var(--font-display);
-  font-size: clamp(3.35rem, 10vw, 6.35rem);
+  font-size: clamp(3.6rem, 11vw, 7rem);
   font-weight: 900;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.045em;
   line-height: 0.95;
+  background: linear-gradient(
+    115deg,
+    #065f46 0%,
+    #059669 24%,
+    #10b981 44%,
+    #34d399 58%,
+    #16a34a 78%,
+    #047857 100%
+  );
+  background-size: 220% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: titleGradient 7s ease-in-out infinite;
+  filter: drop-shadow(0 6px 22px rgba(5, 150, 105, 0.28));
 }
 
-.heroTitle :global(.split-word:first-child) {
-  color: #064e3b;
+/* Each animated character keeps the same flowing gradient so the entrance
+   stagger and the shimmer stay in sync across the whole word. */
+.heroTitle :global(.split-char) {
+  background: linear-gradient(
+    115deg,
+    #065f46 0%,
+    #059669 24%,
+    #10b981 44%,
+    #34d399 58%,
+    #16a34a 78%,
+    #047857 100%
+  );
+  background-size: 220% 220%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: titleGradient 7s ease-in-out infinite;
 }
 
-.heroTitle :global(.split-word:first-child .split-char) {
-  color: #064e3b;
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.72),
-    0 14px 34px rgba(6, 78, 59, 0.18);
+@keyframes titleGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-.heroTitle :global(.split-word:last-child) {
-  color: #059669;
-}
-
-.heroTitle :global(.split-word:last-child .split-char) {
-  color: #059669;
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.68),
-    0 14px 34px rgba(5, 150, 105, 0.2);
+@media (prefers-reduced-motion: reduce) {
+  .heroTitle,
+  .heroTitle :global(.split-char) {
+    animation: none;
+    background-position: 30% 50%;
+  }
 }

@@ -34,11 +34,37 @@
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.82);
   box-shadow: 0 18px 42px rgba(15, 23, 42, 0.05);
-  transition: transform 0.25s var(--transition), box-shadow 0.25s var(--transition), border-color 0.25s;
+  transition: box-shadow 0.25s var(--transition), border-color 0.25s;
+  position: relative;
+  isolation: isolate;
+}
+
+.step::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    380px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    rgba(5, 150, 105, 0.13),
+    transparent 45%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--transition);
+  pointer-events: none;
+}
+
+.step:hover::before {
+  opacity: 1;
+}
+
+.step > * {
+  position: relative;
+  z-index: 1;
 }
 
 .step:hover {
-  transform: translateY(-3px);
   border-color: rgba(5, 150, 105, 0.24);
   box-shadow: 0 24px 56px rgba(15, 23, 42, 0.08);
 }
@@ -53,6 +79,11 @@
   background-clip: text;
   line-height: 1;
   flex-shrink: 0;
+  transition: transform 0.3s var(--transition);
+}
+
+.step:hover .number {
+  transform: scale(1.08);
 }
 
 .step h3 {

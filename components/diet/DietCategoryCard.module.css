@@ -2,6 +2,11 @@
   height: 100%;
 }
 
+.tilt {
+  height: 100%;
+  will-change: transform;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -15,9 +20,37 @@
   position: relative;
 }
 
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: radial-gradient(
+    320px circle at var(--spot-x, 50%) var(--spot-y, 50%),
+    color-mix(in srgb, var(--diet-accent) 22%, transparent),
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--transition);
+  pointer-events: none;
+}
+
 .card:hover {
   box-shadow: var(--shadow-lg);
   border-color: color-mix(in srgb, var(--diet-accent) 35%, var(--border));
+}
+
+.card:hover::after {
+  opacity: 1;
+}
+
+.imageArea :global(img) {
+  transition: transform 0.6s var(--transition);
+}
+
+.card:hover .imageArea :global(img) {
+  transform: scale(1.07);
 }
 
 .card:hover .arrow {

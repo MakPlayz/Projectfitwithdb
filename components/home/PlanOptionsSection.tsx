@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Calendar, Clock, Gem, CheckCircle2 } from 'lucide-react';
+import { trackSpotlight } from '@/lib/spotlight';
 import styles from './PlanOptionsSection.module.css';
 
 const sections = [
@@ -64,13 +65,19 @@ export default function PlanOptionsSection() {
   return (
     <section className={styles.section} id="plan-options">
       <div className="container">
-        <div className={styles.header}>
+        <motion.div
+          className={styles.header}
+          initial={{ opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-60px' }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        >
           <p className="section-label">Flexible Plans</p>
           <h2 className="section-title">Designed for your lifestyle</h2>
           <p className="section-subtitle">
             Transparent delivery schedules, flexible duration blocks, and diet tiers to match your performance goals.
           </p>
-        </div>
+        </motion.div>
 
         <div className={styles.grid}>
           {sections.map((sec, i) => {
@@ -79,10 +86,13 @@ export default function PlanOptionsSection() {
               <motion.div
                 key={sec.title}
                 className={styles.card}
+                onMouseMove={trackSpotlight}
+                style={{ '--glow-accent': sec.accent } as React.CSSProperties}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-20px' }}
                 transition={{ duration: 0.6, delay: i * 0.12 }}
+                whileHover={{ y: -4 }}
               >
                 <div className={styles.cardHeader}>
                   <div

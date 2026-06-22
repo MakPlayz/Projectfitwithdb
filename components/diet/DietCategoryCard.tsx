@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useMotionValue, useSpring } from 'framer-motion';
 import { ArrowUpRight, Scale, Dumbbell, Heart, Sparkles, Activity } from 'lucide-react';
 import { categoryImages, type DietCategory } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
@@ -27,6 +27,33 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
   const Icon = icons[diet.icon as keyof typeof icons] ?? Scale;
   const categoryImage = categoryImages[diet.slug];
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  const tiltRef = useRef<HTMLAnchorElement>(null);
+  const reduceMotion = useRef(false);
+  const rotateX = useSpring(useMotionValue(0), { stiffness: 220, damping: 18 });
+  const rotateY = useSpring(useMotionValue(0), { stiffness: 220, damping: 18 });
+
+  useEffect(() => {
+    reduceMotion.current = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }, []);
+
+  function handleTilt(event: MouseEvent<HTMLAnchorElement>) {
+    const el = tiltRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const px = (event.clientX - rect.left) / rect.width - 0.5;
+    const py = (event.clientY - rect.top) / rect.height - 0.5;
+    el.style.setProperty('--spot-x', `${event.clientX - rect.left}px`);
+    el.style.setProperty('--spot-y', `${event.clientY - rect.top}px`);
+    if (reduceMotion.current) return;
+    rotateY.set(px * 9);
+    rotateX.set(-py * 9);
+  }
+
+  function resetTilt() {
+    rotateX.set(0);
+    rotateY.set(0);
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -60,10 +87,15 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
       transition={{ duration: 0.55, delay: 0.15 + index * 0.08, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -8 }}
       className={styles.motionWrap}
+      style={{ perspective: 1000 }}
     >
+      <motion.div className={styles.tilt} style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}>
       <Link
+        ref={tiltRef}
         href={isAuthenticated ? diet.href : buildAuthRedirect(diet.href)}
         className={styles.card}
+        onMouseMove={handleTilt}
+        onMouseLeave={resetTilt}
         style={
           {
             '--diet-accent': diet.accent,
@@ -93,6 +125,7 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
 
         <div className={styles.shine} aria-hidden />
       </Link>
+      </motion.div>
     </motion.div>
   );
 }
