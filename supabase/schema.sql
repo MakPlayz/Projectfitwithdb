@@ -187,6 +187,30 @@ create table if not exists public.plan_pause_requests (
   check (end_date >= start_date)
 );
 
+create table if not exists public.order_invoices (
+  id uuid primary key default gen_random_uuid(),
+  order_id text not null references public.orders(id) on delete cascade,
+  user_id uuid references auth.users(id) on delete set null,
+  invoice_number text not null unique,
+  customer_email text not null,
+  customer_name text,
+  subtotal integer not null default 0,
+  tax integer not null default 0,
+  total integer not null default 0,
+  amount_paid integer not null default 0,
+  balance_due integer not null default 0,
+  payment_option text not null default 'full' check (payment_option in ('full', 'half')),
+  payment_stage text not null,
+  status text not null default 'issued' check (status in ('issued', 'void')),
+  issued_at timestamptz not null default now(),
+  email_sent_at timestamptz,
+  provider_message_id text,
+  pdf_filename text,
+  payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 alter table public.orders
   add column if not exists order_type text not null default 'paid_plan',
   add column if not exists payment_status text not null default 'pending'
@@ -272,6 +296,9 @@ create index if not exists plan_pause_requests_order_idx on public.plan_pause_re
 create index if not exists plan_pause_requests_user_idx on public.plan_pause_requests (user_id);
 create index if not exists plan_pause_requests_dates_idx on public.plan_pause_requests (start_date, end_date);
 create index if not exists plan_pause_requests_status_idx on public.plan_pause_requests (status);
+create unique index if not exists order_invoices_order_id_uidx on public.order_invoices (order_id);
+create index if not exists order_invoices_user_id_idx on public.order_invoices (user_id);
+create index if not exists order_invoices_issued_at_idx on public.order_invoices (issued_at desc);
 
 create or replace function public.set_updated_at()
 returns trigger as $$
@@ -289,6 +316,7 @@ drop trigger if exists program_plan_overrides_set_updated_at on public.program_p
 drop trigger if exists customer_feedback_set_updated_at on public.customer_feedback;
 drop trigger if exists free_sample_device_claims_set_updated_at on public.free_sample_device_claims;
 drop trigger if exists checkout_intents_set_updated_at on public.checkout_intents;
+drop trigger if exists order_invoices_set_updated_at on public.order_invoices;
 
 create trigger orders_set_updated_at
 before update on public.orders
@@ -330,6 +358,11 @@ before update on public.checkout_intents
 for each row
 execute function public.set_updated_at();
 
+create trigger order_invoices_set_updated_at
+before update on public.order_invoices
+for each row
+execute function public.set_updated_at();
+
 alter table public.users enable row level security;
 alter table public.orders enable row level security;
 alter table public.customer_profiles enable row level security;
@@ -341,6 +374,7 @@ alter table public.customer_feedback enable row level security;
 alter table public.free_sample_device_claims enable row level security;
 alter table public.checkout_intents enable row level security;
 alter table public.plan_pause_requests enable row level security;
+alter table public.order_invoices enable row level security;
 
 drop policy if exists "Users can read their own app user row" on public.users;
 create policy "Users can read their own app user row"
@@ -381,6 +415,13 @@ with check (auth.uid() = user_id);
 drop policy if exists "Users can read their own plan pauses" on public.plan_pause_requests;
 create policy "Users can read their own plan pauses"
 on public.plan_pause_requests
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "Users can read their own invoices" on public.order_invoices;
+create policy "Users can read their own invoices"
+on public.order_invoices
 for select
 to authenticated
 using (auth.uid() = user_id);

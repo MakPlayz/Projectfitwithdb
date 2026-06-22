@@ -1,6 +1,6 @@
 .shell {
   position: relative;
-  width: min(600px, 94vw);
+  width: min(680px, 95vw);
   aspect-ratio: 1 / 1;
   margin: 0 auto;
   filter: drop-shadow(0 20px 44px rgba(5, 150, 105, 0.24));
@@ -82,7 +82,7 @@
 
 @media (max-width: 480px) {
   .shell {
-    width: min(460px, 96vw);
+    width: min(500px, 97vw);
     aspect-ratio: 1 / 1;
   }
 }

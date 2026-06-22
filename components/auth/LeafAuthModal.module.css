@@ -24,7 +24,7 @@
   z-index: 3002;
   left: 50%;
   top: 50%;
-  width: min(600px, 94vw);
+  width: min(680px, 95vw);
   aspect-ratio: 1 / 1;
   transform-origin: center center;
 }
@@ -60,7 +60,7 @@
 
 @media (max-width: 480px) {
   .panelWrap {
-    width: min(460px, 96vw);
+    width: min(500px, 97vw);
     aspect-ratio: 1 / 1;
   }
 

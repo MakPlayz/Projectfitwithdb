@@ -8,6 +8,7 @@ import { categoryImages, type DietCategory } from '@/data/diets';
 import DietImage from '@/components/ui/DietImage';
 import { ensureSession } from '@/lib/auth-client';
 import { buildAuthRedirect } from '@/lib/protected-routes';
+import { useOpenAuthModal } from '@/lib/auth-modal';
 import styles from './DietCategoryCard.module.css';
 
 const icons = {
@@ -27,6 +28,7 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
   const Icon = icons[diet.icon as keyof typeof icons] ?? Scale;
   const categoryImage = categoryImages[diet.slug];
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const openAuth = useOpenAuthModal();
 
   const tiltRef = useRef<HTMLAnchorElement>(null);
   const reduceMotion = useRef(false);
@@ -94,6 +96,12 @@ export default function DietCategoryCard({ diet, index }: DietCategoryCardProps)
         ref={tiltRef}
         href={isAuthenticated ? diet.href : buildAuthRedirect(diet.href)}
         className={styles.card}
+        onClick={(e) => {
+          if (!isAuthenticated) {
+            e.preventDefault();
+            openAuth(e, { mode: 'signup', nextPath: diet.href });
+          }
+        }}
         onMouseMove={handleTilt}
         onMouseLeave={resetTilt}
         style={

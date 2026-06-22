@@ -5,6 +5,8 @@ declare const Deno: {
   serve(handler: (req: Request) => Response | Promise<Response>): void;
 };
 
+export {};
+
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 const SERVICE_ROLE_KEYS = [
   Deno.env.get('PROJECTFIT_SERVICE_ROLE_KEY'),

@@ -697,6 +697,7 @@ export default function ChefDashboard() {
       order?: ApiOrder;
       error?: string;
       whatsappWarning?: string | null;
+      emailWarning?: string | null;
     };
 
     if (!response.ok) {
@@ -722,7 +723,8 @@ export default function ChefDashboard() {
               ? 'Half-payment plan closed and moved to completed orders.'
               : 'Order updated.';
 
-    setStatus(result.whatsappWarning ? `${successMessage} ${result.whatsappWarning}` : successMessage);
+    const warnings = [result.whatsappWarning, result.emailWarning].filter(Boolean).join(' ');
+    setStatus(warnings ? `${successMessage} ${warnings}` : successMessage);
   }
 
   async function sendChatReply(event: FormEvent<HTMLFormElement>) {

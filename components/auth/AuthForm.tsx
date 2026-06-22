@@ -18,12 +18,15 @@ interface AuthFormProps {
   initialMode?: AuthMode;
   variant?: AuthFormVariant;
   onSuccess?: () => void;
+  /** Overrides the `?next=` URL param (used when opened from the popup). */
+  nextPath?: string;
 }
 
 export default function AuthForm({
   initialMode = 'login',
   variant = 'modal',
   onSuccess,
+  nextPath: nextPathOverride,
 }: AuthFormProps) {
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [error, setError] = useState('');
@@ -33,7 +36,7 @@ export default function AuthForm({
   const isLeaf = variant === 'leaf' || variant === 'modal';
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = getSafeNextPath(searchParams.get('next'));
+  const nextPath = nextPathOverride ?? getSafeNextPath(searchParams.get('next'));
 
   const handleGoogleSignIn = () => {
     const googleUrl = new URL('/api/auth/google', window.location.origin);

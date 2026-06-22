@@ -8,6 +8,7 @@ import Cart from '@/components/Cart';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/Navbar';
 import NotificationsButton from '@/components/NotificationsButton';
+import LeafAuthModal from '@/components/auth/LeafAuthModal';
 import TextCursor from '@/components/ui/TextCursor';
 
 interface AppChromeProps {
@@ -36,6 +37,7 @@ export default function AppChrome({ children }: AppChromeProps) {
       <Footer />
       <Cart />
       <NotificationsButton />
+      <LeafAuthModal />
       <TextCursor
         text="🥦"
         spacing={80}

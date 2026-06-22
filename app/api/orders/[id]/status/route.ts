@@ -11,6 +11,7 @@ import {
   sendRemainingPaymentConfirmedMessage,
 } from '@/lib/whatsapp';
 import { addServiceDaysToIsoStartDate, inferPlanServiceDaysFromItems } from '@/lib/plan-duration';
+import { sendPaidOrderConfirmationAndInvoice } from '@/lib/order-emails';
 
 const statuses: ApiOrderStatus[] = ['new', 'confirmed', 'preparing', 'ready', 'completed', 'cancelled'];
 const paymentStatuses: PaymentStatus[] = ['pending', 'paid', 'failed'];
@@ -292,8 +293,19 @@ export async function PATCH(
             : sendPlanActivatedMessage(updatedOrder)
         )
       : null;
+    const emailResult = updatedOrder
+      ? await sendPaidOrderConfirmationAndInvoice(updatedOrder)
+      : null;
+    const emailWarning = emailResult?.warning ?? null;
 
-    return NextResponse.json({ order: updatedOrder, whatsappWarning });
+    return NextResponse.json({
+      order: updatedOrder,
+      whatsappWarning,
+      emailWarning,
+      invoice: emailResult?.invoice ?? null,
+      confirmationEmailSent: emailResult?.confirmationSent ?? false,
+      invoiceEmailSent: emailResult?.invoiceSent ?? false,
+    });
   }
 
   if (body.status && !statuses.includes(body.status)) {

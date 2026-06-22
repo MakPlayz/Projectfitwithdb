@@ -197,6 +197,30 @@ export interface PlanPauseRequest {
   created_at: string;
 }
 
+export interface OrderInvoice {
+  id: string;
+  order_id: string;
+  user_id: string | null;
+  invoice_number: string;
+  customer_email: string;
+  customer_name: string | null;
+  subtotal: number;
+  tax: number;
+  total: number;
+  amount_paid: number;
+  balance_due: number;
+  payment_option: PaymentOption;
+  payment_stage: PaymentStage;
+  status: 'issued' | 'void';
+  issued_at: string;
+  email_sent_at: string | null;
+  provider_message_id: string | null;
+  pdf_filename: string | null;
+  payload: unknown;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface DeliveryAddress {
   addressLine1: string;
   addressLine2?: string;
