@@ -9,7 +9,6 @@ import { useCartStore } from '@/store/cartStore';
 import { dietCategories } from '@/data/diets';
 import { clearSession, ensureSession } from '@/lib/auth-client';
 import { buildAuthRedirect } from '@/lib/protected-routes';
-import { useOpenAuthModal } from '@/lib/auth-modal';
 import styles from './Navbar.module.css';
 
 export default function Navbar() {
@@ -19,7 +18,6 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const router = useRouter();
-  const openAuth = useOpenAuthModal();
   const { toggleCart, getCount } = useCartStore();
   const count = useCartStore(getCount);
 
@@ -102,16 +100,7 @@ export default function Navbar() {
             {programsOpen && (
               <div className={styles.dropdownMenu}>
                 {dietCategories.map((d) => (
-                  <Link
-                    key={d.slug}
-                    href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}
-                    onClick={(e) => {
-                      if (!isAuthenticated) {
-                        e.preventDefault();
-                        openAuth(e, { mode: 'signup', nextPath: d.href });
-                      }
-                    }}
-                  >
+                  <Link key={d.slug} href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}>
                     <span style={{ color: d.accent }}>●</span>
                     {d.shortTitle}
                   </Link>
@@ -168,20 +157,12 @@ export default function Navbar() {
             </>
           ) : (
             <div className={styles.authActions}>
-              <button
-                type="button"
-                className={styles.signInBtn}
-                onClick={(e) => openAuth(e, { mode: 'login' })}
-              >
+              <Link href="/login" className={styles.signInBtn}>
                 Sign in
-              </button>
-              <button
-                type="button"
-                className={styles.signUpBtn}
-                onClick={(e) => openAuth(e, { mode: 'signup' })}
-              >
+              </Link>
+              <Link href="/signup" className={styles.signUpBtn}>
                 Sign up
-              </button>
+              </Link>
             </div>
           )}
           <button
@@ -202,13 +183,7 @@ export default function Navbar() {
             <Link
               key={d.slug}
               href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}
-              onClick={(e) => {
-                setMenuOpen(false);
-                if (!isAuthenticated) {
-                  e.preventDefault();
-                  openAuth(e, { mode: 'signup', nextPath: d.href });
-                }
-              }}
+              onClick={() => setMenuOpen(false)}
             >
               {d.title}
             </Link>
@@ -237,26 +212,12 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <button
-                type="button"
-                className={styles.mobileAction}
-                onClick={(e) => {
-                  setMenuOpen(false);
-                  openAuth(e, { mode: 'login' });
-                }}
-              >
+              <Link href="/login" onClick={() => setMenuOpen(false)}>
                 Sign in
-              </button>
-              <button
-                type="button"
-                className={styles.mobileAction}
-                onClick={(e) => {
-                  setMenuOpen(false);
-                  openAuth(e, { mode: 'signup' });
-                }}
-              >
+              </Link>
+              <Link href="/signup" onClick={() => setMenuOpen(false)}>
                 Sign up
-              </button>
+              </Link>
             </>
           )}
         </div>

@@ -31,10 +31,10 @@ export const LEAF_CLIP_SCALE_X = 1 / 5333.3335;
 export const LEAF_CLIP_SCALE_Y = 1 / 5333.3335;
 
 export const LEAF_SAFE_AREA = {
-  top: '13%',
-  right: '20%',
-  bottom: '34%',
-  left: '22%',
+  top: '15%',
+  right: '21%',
+  bottom: '36%',
+  left: '24%',
 } as const;
 
 export const LEAF_SHELL = {

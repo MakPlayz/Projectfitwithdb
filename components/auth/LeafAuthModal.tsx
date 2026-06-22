@@ -11,7 +11,7 @@ import LeafAuthShell from './LeafAuthShell';
 import styles from './LeafAuthModal.module.css';
 
 export default function LeafAuthModal() {
-  const { isOpen, origin, close, mode, nextPath } = useAuthModalStore();
+  const { isOpen, origin, close } = useAuthModalStore();
   const [mounted, setMounted] = useState(false);
 
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -199,12 +199,7 @@ export default function LeafAuthModal() {
 
         <LeafAuthShell tilted={false}>
           <div ref={contentRef} className={styles.formLayer}>
-            <AuthForm
-              initialMode={mode}
-              nextPath={nextPath ?? undefined}
-              variant="leaf"
-              onSuccess={runCloseAnimation}
-            />
+            <AuthForm initialMode="signup" variant="leaf" onSuccess={runCloseAnimation} />
           </div>
         </LeafAuthShell>
       </div>
