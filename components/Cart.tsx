@@ -272,7 +272,7 @@ export default function Cart() {
                       <span className={styles.itemEyebrow}>{item.itemType === 'free_sample' ? 'Free sample' : 'Selected plan'}</span>
                       <h4>{item.name}</h4>
                       {getMealSlotsLabel(item) && <small>{getMealSlotsLabel(item)}</small>}
-                      <p>Ã¢â€šÂ¹{item.totalPrice.toLocaleString('en-IN')}</p>
+                      <p>Rs {item.totalPrice.toLocaleString('en-IN')}</p>
                     </div>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
                       <Trash2 size={16} />

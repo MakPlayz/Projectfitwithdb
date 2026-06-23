@@ -41,11 +41,11 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
     }
 
     const mealsPerDay = getPlanMealCount(plan);
-    const mealSlots = mealsPerDay >= 3
+    const mealSlots = !plan.customPrices || mealsPerDay >= 3
       ? getDefaultMealSlots(mealsPerDay)
       : selectedMealSlots[plan.id] ?? [];
 
-    if (mealSlots.length !== mealsPerDay) {
+    if (plan.customPrices && mealSlots.length !== mealsPerDay) {
       setCartNotice(`Select exactly ${mealsPerDay} meal ${mealsPerDay === 1 ? 'slot' : 'slots'} for ${plan.name}.`);
       return;
     }
@@ -136,7 +136,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
       : plan.price;
     const displayMeals = hasCustomOption ? customMealsVal : plan.mealsPerDay;
     const requiredSlots = getPlanMealCount(plan);
-    const selectedSlots = requiredSlots >= 3
+    const selectedSlots = !hasCustomOption || requiredSlots >= 3
       ? getDefaultMealSlots(requiredSlots)
       : selectedMealSlots[plan.id] ?? [];
 
@@ -192,34 +192,33 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
             </div>
           )}
 
-          <div className={styles.mealSlotSelector}>
-            <span className={styles.customSelectorLabel}>
-              {requiredSlots >= 3
-                ? 'Included meal timings'
-                : `Choose ${requiredSlots} meal ${requiredSlots === 1 ? 'time' : 'times'}`}
-            </span>
-            <div className={styles.mealSlotGrid}>
-              {mealSlotOptions.map((slot) => {
-                const isSelected = selectedSlots.includes(slot.id);
-                return (
-                  <button
-                    key={slot.id}
-                    type="button"
-                    className={`${styles.mealSlotBtn} ${isSelected ? styles.mealSlotBtnActive : ''}`}
-                    onClick={() => handleToggleMealSlot(plan.id, slot.id, requiredSlots)}
-                    disabled={requiredSlots >= 3}
-                  >
-                    {slot.label}
-                  </button>
-                );
-              })}
+          {hasCustomOption && (
+            <div className={styles.mealSlotSelector}>
+              <span className={styles.customSelectorLabel}>
+                Choose {requiredSlots} meal {requiredSlots === 1 ? 'time' : 'times'}
+              </span>
+              <div className={styles.mealSlotGrid}>
+                {mealSlotOptions.map((slot) => {
+                  const isSelected = selectedSlots.includes(slot.id);
+                  return (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      className={`${styles.mealSlotBtn} ${isSelected ? styles.mealSlotBtnActive : ''}`}
+                      onClick={() => handleToggleMealSlot(plan.id, slot.id, requiredSlots)}
+                    >
+                      {slot.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedSlots.length > 0 && (
+                <small className={styles.mealSlotSummary}>
+                  {formatMealSlots(selectedSlots)}
+                </small>
+              )}
             </div>
-            {selectedSlots.length > 0 && (
-              <small className={styles.mealSlotSummary}>
-                {formatMealSlots(selectedSlots)}
-              </small>
-            )}
-          </div>
+          )}
         </div>
 
         <div className={styles.planAction}>
@@ -324,7 +323,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           <p className="section-label">Plans</p>
           <h2 className="section-title">Choose your plan</h2>
           <p className="section-subtitle">
-            {diet.calorieTarget} Ã¢â‚¬â€ structured nutrition options tailored to your schedule.
+            {diet.calorieTarget} - structured nutrition options tailored to your schedule.
           </p>
 
           {cartNotice && <p className={styles.cartNotice}>{cartNotice}</p>}
@@ -332,7 +331,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           {dayPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
-                <h3>Ã¢Å¡Â¡ Day Plan</h3>
+                <h3>Day Plan</h3>
                 <p>A standard single-day plan. Ideal for flexible daily ordering whenever you need healthy meals.</p>
               </div>
               <div className={styles.plansGrid}>
@@ -344,7 +343,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           {weekPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
-                <h3>Ã°Å¸â€œâ€¦ Week Plan (6-Day)</h3>
+                <h3>Week Plan (6-Day)</h3>
                 <p>Delivered Monday to Saturday (Sundays off). Perfect for staying clean during the workweek.</p>
               </div>
               <div className={styles.plansGrid}>
@@ -356,7 +355,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           {monthPlans.length > 0 && (
             <div className={styles.planGroup}>
               <div className={styles.groupHeader}>
-                <h3>Ã°Å¸â€™Å½ Month Plan (30-Day)</h3>
+                <h3>Month Plan (30-Day)</h3>
                 <p>A 30-calendar-day subscription block with 26 service days. Sundays are off.</p>
               </div>
               <div className={styles.plansGrid}>

@@ -307,9 +307,9 @@ function getReplyWindowLabel(lastIncomingAt: string | null) {
 
 function getWhatsAppDeliveryLabel(message: WhatsAppMessageLog) {
   if (message.direction === 'incoming') return message.status === 'read' ? 'Seen' : 'Unread';
-  if (message.status === 'read') return 'âœ“âœ“ Read';
-  if (message.status === 'delivered') return 'âœ“âœ“ Delivered';
-  if (message.status === 'sent') return 'âœ“ Sent';
+  if (message.status === 'read') return 'Read';
+  if (message.status === 'delivered') return 'Delivered';
+  if (message.status === 'sent') return 'Sent';
   return message.status;
 }
 
