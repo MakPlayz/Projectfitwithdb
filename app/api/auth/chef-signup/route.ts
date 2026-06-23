@@ -6,6 +6,7 @@ import {
   supabaseAuthFetch,
   supabaseRestFetch,
 } from '@/lib/supabase-rest';
+import { getRequestIp, isRateLimited } from '@/lib/rate-limit';
 import type { AuthUser, ProjectFitUser } from '@/lib/backend-types';
 
 interface ChefSignupBody {
@@ -36,6 +37,13 @@ function normalizePhone(phone: string | undefined) {
 
 export async function POST(request: Request) {
   try {
+    if (isRateLimited(`chef-signup:${getRequestIp(request)}`, 8, 60_000)) {
+      return NextResponse.json(
+        { error: 'Too many chef signup attempts. Please try again shortly.' },
+        { status: 429 }
+      );
+    }
+
     const body = (await request.json()) as ChefSignupBody;
     const email = body.email?.trim().toLowerCase() ?? '';
     const name = body.name?.trim() ?? '';
