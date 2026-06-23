@@ -365,7 +365,7 @@ export default function AuthForm({
       <div className={styles.splitCard}>
         <div className={styles.collageSide}>
           <Image
-            src="/images/projectfit-auth/projectfit-promo-panel.png"
+            src="/images/projectfit-auth/projectfit-food-promo-panel.png"
             alt="ProjectFit nutrition and fitness collage"
             fill
             sizes="(min-width: 980px) 624px, 100vw"

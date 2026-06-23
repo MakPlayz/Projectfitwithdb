@@ -9,11 +9,16 @@ import HomepageAdsBoard from '@/components/home/HomepageAdsBoard';
 import styles from './HeroSection.module.css';
 
 const heroImages = [
-  '/images/preg-breakfast/breakfast-1.png',
-  '/images/preg-breakfast/breakfast-2.png',
-  '/images/preg-breakfast/breakfast-3.png',
-  '/images/preg-breakfast/breakfast-4.png',
-  '/images/preg-breakfast/breakfast-5.png',
+  '/images/food-gallery/avocado-chicken-boiled-egg.jpg',
+  '/images/food-gallery/chia-pudding.jpg',
+  '/images/food-gallery/chocolate-oatmeal.jpg',
+  '/images/food-gallery/fish-bowl.jpg',
+  '/images/food-gallery/honey-mustard-chicken-bowl.jpg',
+  '/images/food-gallery/lemon-pepper-chicken-bowl.jpg',
+  '/images/food-gallery/paneer-bowl-with-quinoa.jpg',
+  '/images/food-gallery/paneer-mushroom-corn-sandwich.jpg',
+  '/images/food-gallery/paneer-spinach-mushroom-omelet.jpg',
+  '/images/food-gallery/poha.jpg',
 ];
 
 export default function HeroSection() {
