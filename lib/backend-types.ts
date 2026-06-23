@@ -221,6 +221,35 @@ export interface OrderInvoice {
   updated_at?: string;
 }
 
+export type HomepageAdMediaType = 'image' | 'video';
+
+export interface HomepageAdSettings {
+  id: boolean;
+  enabled: boolean;
+  updated_at: string;
+}
+
+export interface HomepageAd {
+  id: string;
+  caption: string;
+  media_type: HomepageAdMediaType;
+  media_url: string;
+  media_path: string;
+  mobile_media_type: HomepageAdMediaType | null;
+  mobile_media_url: string | null;
+  mobile_media_path: string | null;
+  poster_url: string | null;
+  poster_path: string | null;
+  cta_label: string | null;
+  cta_href: string | null;
+  priority: number;
+  start_date: string | null;
+  end_date: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface DeliveryAddress {
   addressLine1: string;
   addressLine2?: string;

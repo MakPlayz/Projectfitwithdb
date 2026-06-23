@@ -1,0 +1,143 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import type { HomepageAd } from '@/lib/backend-types';
+import styles from './HomepageAdsBoard.module.css';
+
+function useMobileMedia() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(max-width: 720px)');
+    const update = () => setIsMobile(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener('change', update);
+    return () => mediaQuery.removeEventListener('change', update);
+  }, []);
+
+  return isMobile;
+}
+
+function getAdMedia(ad: HomepageAd, isMobile: boolean) {
+  if (isMobile && ad.mobile_media_url && ad.mobile_media_type) {
+    return {
+      type: ad.mobile_media_type,
+      url: ad.mobile_media_url,
+    };
+  }
+
+  return {
+    type: ad.media_type,
+    url: ad.media_url,
+  };
+}
+
+export default function HomepageAdsBoard() {
+  const [ads, setAds] = useState<HomepageAd[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const isMobile = useMobileMedia();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAds() {
+      try {
+        const response = await fetch('/api/homepage-ads', { cache: 'no-store' });
+        const result = (await response.json()) as { enabled?: boolean; ads?: HomepageAd[] };
+        if (!cancelled) {
+          setAds(result.enabled ? result.ads ?? [] : []);
+        }
+      } catch {
+        if (!cancelled) setAds([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    }
+
+    void loadAds();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (ads.length <= 1) return;
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % ads.length);
+    }, 7000);
+    return () => window.clearInterval(interval);
+  }, [ads.length]);
+
+  useEffect(() => {
+    if (activeIndex >= ads.length) setActiveIndex(0);
+  }, [activeIndex, ads.length]);
+
+  const activeAd = ads[activeIndex] ?? null;
+  const media = useMemo(
+    () => (activeAd ? getAdMedia(activeAd, isMobile) : null),
+    [activeAd, isMobile]
+  );
+
+  if (isLoading || !activeAd || !media) return null;
+
+  function move(direction: -1 | 1) {
+    setActiveIndex((current) => (current + direction + ads.length) % ads.length);
+  }
+
+  return (
+    <section className={styles.section} aria-label="Project Fit announcements">
+      <div className={styles.board}>
+        <div className={styles.mediaWrap}>
+          {media.type === 'video' ? (
+            <video
+              key={media.url}
+              className={styles.media}
+              src={media.url}
+              poster={activeAd.poster_url ?? undefined}
+              autoPlay
+              muted
+              loop
+              playsInline
+              controls
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className={styles.media} src={media.url} alt={activeAd.caption} />
+          )}
+          <div className={styles.overlay}>
+            <span>Now at Project Fit</span>
+            <p>{activeAd.caption}</p>
+            {activeAd.cta_href && activeAd.cta_label && (
+              <a href={activeAd.cta_href}>{activeAd.cta_label}</a>
+            )}
+          </div>
+        </div>
+
+        {ads.length > 1 && (
+          <>
+            <button type="button" className={styles.prev} onClick={() => move(-1)} aria-label="Previous ad">
+              <ChevronLeft size={20} />
+            </button>
+            <button type="button" className={styles.next} onClick={() => move(1)} aria-label="Next ad">
+              <ChevronRight size={20} />
+            </button>
+            <div className={styles.dots} aria-label="Ad slides">
+              {ads.map((ad, index) => (
+                <button
+                  key={ad.id}
+                  type="button"
+                  className={index === activeIndex ? styles.dotActive : styles.dot}
+                  onClick={() => setActiveIndex(index)}
+                  aria-label={`Show ad ${index + 1}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+}

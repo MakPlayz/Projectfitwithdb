@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Image as ImageIcon,
   LogOut,
   MessageSquareText,
   Pencil,
@@ -20,7 +21,7 @@ import {
   WalletCards,
 } from 'lucide-react';
 import { dietCategories } from '@/data/diets';
-import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PaymentStatus, PlanPauseRequest, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
+import type { ApiOrder, ApiOrderStatus, CustomerFeedback, CustomerProfile, HomepageAd, HomepageAdSettings, MealPlan, MenuItem, PaymentStatus, PlanPauseRequest, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
 import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
@@ -37,6 +38,8 @@ type AdminOverview = {
   programOverrides: ProgramPlanOverride[];
   whatsappMessages: WhatsAppMessageLog[];
   planPauseRequests: PlanPauseRequest[];
+  homepageAds: HomepageAd[];
+  homepageAdSettings: Pick<HomepageAdSettings, 'enabled'>;
   warnings?: string[];
 };
 
@@ -53,6 +56,7 @@ type Tab =
   | 'plan-history'
   | 'users'
   | 'feedback'
+  | 'ads'
   | 'menu'
   | 'pricing';
 
@@ -66,6 +70,8 @@ const emptyOverview: AdminOverview = {
   programOverrides: [],
   whatsappMessages: [],
   planPauseRequests: [],
+  homepageAds: [],
+  homepageAdSettings: { enabled: false },
   warnings: [],
 };
 
@@ -82,6 +88,7 @@ const tabs: { id: Tab; label: string; icon: typeof ClipboardList }[] = [
   { id: 'plan-history', label: 'Plan history', icon: ClipboardList },
   { id: 'users', label: 'Users', icon: UsersRound },
   { id: 'feedback', label: 'Feedback', icon: MessageSquareText },
+  { id: 'ads', label: 'Ads', icon: ImageIcon },
   { id: 'menu', label: 'Menus', icon: Soup },
   { id: 'pricing', label: 'Pricing', icon: WalletCards },
 ];
@@ -831,6 +838,72 @@ export default function ChefDashboard() {
     await loadOverview();
   }
 
+  async function submitAdForm(event: FormEvent<HTMLFormElement>, id?: string) {
+    event.preventDefault();
+    setStatus('');
+    setError('');
+
+    const form = new FormData(event.currentTarget);
+    if (id) form.set('id', id);
+    form.set('active', form.get('active') === 'on' ? 'on' : 'false');
+
+    const response = await fetch('/api/admin/homepage-ads', {
+      method: id ? 'PATCH' : 'POST',
+      headers: await getChefAuthHeaders(),
+      body: form,
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setError(result.error ?? 'Could not save homepage ad.');
+      return;
+    }
+
+    setStatus(id ? 'Homepage ad updated.' : 'Homepage ad uploaded.');
+    event.currentTarget.reset();
+    await loadOverview();
+  }
+
+  async function deleteHomepageAd(id: string) {
+    setStatus('');
+    setError('');
+    const response = await fetch(`/api/admin/homepage-ads?id=${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: await getChefAuthHeaders(),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setError(result.error ?? 'Could not delete homepage ad.');
+      return;
+    }
+
+    setStatus('Homepage ad deleted and media files removed.');
+    await loadOverview();
+  }
+
+  async function setHomepageAdsEnabled(enabled: boolean) {
+    setStatus('');
+    setError('');
+    const response = await fetch('/api/admin/homepage-ad-settings', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await getChefAuthHeaders()),
+      },
+      body: JSON.stringify({ enabled }),
+    });
+    const result = await response.json();
+
+    if (!response.ok) {
+      setError(result.error ?? 'Could not update homepage ads setting.');
+      return;
+    }
+
+    setStatus(enabled ? 'Homepage ads enabled.' : 'Homepage ads hidden.');
+    await loadOverview();
+  }
+
   function handleMenuSubmit(event: FormEvent<HTMLFormElement>, id?: string) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
@@ -1408,6 +1481,40 @@ export default function ChefDashboard() {
                 </section>
               )}
 
+              {activeTab === 'ads' && (
+                <section className={styles.adsStudio}>
+                  <div className={styles.sectionHead}>
+                    <div>
+                      <h2>Homepage ads</h2>
+                      <p>Upload image or video promotions for the homepage board. Active ads show by priority inside their date range.</p>
+                    </div>
+                    <button
+                      type="button"
+                      className={data.homepageAdSettings.enabled ? styles.switchActive : styles.switchButton}
+                      onClick={() => setHomepageAdsEnabled(!data.homepageAdSettings.enabled)}
+                    >
+                      {data.homepageAdSettings.enabled ? 'Homepage ads visible' : 'Homepage ads hidden'}
+                    </button>
+                  </div>
+
+                  <section className={styles.editorGrid}>
+                    <HomepageAdEditor
+                      title="Upload new ad"
+                      onSubmit={submitAdForm}
+                    />
+                    {data.homepageAds.map((ad) => (
+                      <HomepageAdEditor
+                        key={ad.id}
+                        title={`Priority ${ad.priority}: ${ad.caption}`}
+                        ad={ad}
+                        onSubmit={(event) => submitAdForm(event, ad.id)}
+                        onDelete={() => deleteHomepageAd(ad.id)}
+                      />
+                    ))}
+                  </section>
+                </section>
+              )}
+
               {activeTab === 'menu' && (
                 <section className={styles.menuStudio}>
                   <div className={styles.sectionHead}>
@@ -1950,6 +2057,165 @@ function UserDetail({
         )}
       </div>
     </aside>
+  );
+}
+
+function HomepageAdEditor({
+  title,
+  ad,
+  onSubmit,
+  onDelete,
+}: {
+  title: string;
+  ad?: HomepageAd;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onDelete?: () => void;
+}) {
+  const [desktopPreview, setDesktopPreview] = useState(ad?.media_url ?? '');
+  const [desktopPreviewType, setDesktopPreviewType] = useState(ad?.media_type ?? 'image');
+  const [mobilePreview, setMobilePreview] = useState(ad?.mobile_media_url ?? '');
+  const [mobilePreviewType, setMobilePreviewType] = useState(ad?.mobile_media_type ?? 'image');
+  const [posterPreview, setPosterPreview] = useState(ad?.poster_url ?? '');
+  const [removeMobile, setRemoveMobile] = useState(false);
+  const [removePoster, setRemovePoster] = useState(false);
+  const [mediaError, setMediaError] = useState('');
+
+  function setPreviewFromFile(
+    event: ChangeEvent<HTMLInputElement>,
+    setPreview: (value: string) => void,
+    setType?: (value: 'image' | 'video') => void,
+    imagesOnly = false
+  ) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (imagesOnly && !file.type.startsWith('image/')) {
+      setMediaError('Poster must be an image.');
+      event.target.value = '';
+      return;
+    }
+
+    if (!imagesOnly && !file.type.startsWith('image/') && !file.type.startsWith('video/')) {
+      setMediaError('Upload an image or video file.');
+      event.target.value = '';
+      return;
+    }
+
+    setMediaError('');
+    setPreview(URL.createObjectURL(file));
+    if (setType) setType(file.type.startsWith('video/') ? 'video' : 'image');
+  }
+
+  function renderPreview(src: string, type: 'image' | 'video' | null | undefined, label: string) {
+    if (!src) return null;
+    return (
+      <div className={styles.adPreview}>
+        <span>{label}</span>
+        {type === 'video' ? (
+          <video src={src} muted controls playsInline />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={`${title} ${label}`} />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <form className={styles.editorCard} onSubmit={onSubmit}>
+      <div className={styles.editorTitle}>
+        <ImageIcon size={16} />
+        <h3>{title}</h3>
+      </div>
+
+      {ad?.id && <input type="hidden" name="id" value={ad.id} />}
+      <input type="hidden" name="remove_mobile_media" value={removeMobile ? 'true' : 'false'} />
+      <input type="hidden" name="remove_poster" value={removePoster ? 'true' : 'false'} />
+
+      {renderPreview(desktopPreview, desktopPreviewType, 'Desktop media')}
+      <label>
+        <span>Desktop image or video</span>
+        <input
+          name="media"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          required={!ad}
+          onChange={(event) => setPreviewFromFile(event, setDesktopPreview, setDesktopPreviewType)}
+        />
+      </label>
+
+      {renderPreview(!removeMobile ? mobilePreview : '', mobilePreviewType, 'Mobile media')}
+      <label>
+        <span>Mobile image or video</span>
+        <input
+          name="mobile_media"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          onChange={(event) => {
+            setRemoveMobile(false);
+            setPreviewFromFile(event, setMobilePreview, setMobilePreviewType);
+          }}
+        />
+      </label>
+      {ad?.mobile_media_url && (
+        <label className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={removeMobile}
+            onChange={(event) => setRemoveMobile(event.target.checked)}
+          />
+          Remove mobile media
+        </label>
+      )}
+
+      {renderPreview(!removePoster ? posterPreview : '', 'image', 'Video poster')}
+      <label>
+        <span>Video poster image</span>
+        <input
+          name="poster"
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          onChange={(event) => {
+            setRemovePoster(false);
+            setPreviewFromFile(event, setPosterPreview, undefined, true);
+          }}
+        />
+      </label>
+      {ad?.poster_url && (
+        <label className={styles.checkRow}>
+          <input
+            type="checkbox"
+            checked={removePoster}
+            onChange={(event) => setRemovePoster(event.target.checked)}
+          />
+          Remove poster
+        </label>
+      )}
+
+      {mediaError && <p className={styles.formError}>{mediaError}</p>}
+      <label>
+        <span>Short caption</span>
+        <textarea name="caption" rows={3} defaultValue={ad?.caption ?? ''} required />
+      </label>
+      <Field name="priority" label="Priority order" type="number" defaultValue={ad?.priority ?? 0} required />
+      <Field name="start_date" label="Start date" type="date" defaultValue={ad?.start_date ?? ''} />
+      <Field name="end_date" label="End date" type="date" defaultValue={ad?.end_date ?? ''} />
+      <Field name="cta_label" label="CTA label" defaultValue={ad?.cta_label ?? ''} />
+      <Field name="cta_href" label="CTA link" type="url" defaultValue={ad?.cta_href ?? ''} />
+      <label className={styles.checkRow}>
+        <input name="active" type="checkbox" defaultChecked={ad?.active !== false} />
+        Active
+      </label>
+      <div className={styles.formActions}>
+        <button type="submit">Save ad</button>
+        {onDelete && (
+          <button type="button" className={styles.deleteBtn} onClick={onDelete}>
+            <Trash2 size={15} />
+            Delete ad
+          </button>
+        )}
+      </div>
+    </form>
   );
 }
 

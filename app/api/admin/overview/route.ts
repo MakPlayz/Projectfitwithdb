@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { getProgramPlanOverrides } from '@/lib/program-plan-overrides';
 import { supabaseAuthAdminFetch, supabaseRestFetch } from '@/lib/supabase-rest';
-import type { ApiOrder, CustomerFeedback, CustomerProfile, MealPlan, MenuItem, PlanPauseRequest, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
+import type { ApiOrder, CustomerFeedback, CustomerProfile, HomepageAd, HomepageAdSettings, MealPlan, MenuItem, PlanPauseRequest, ProjectFitUser, WhatsAppMessageLog } from '@/lib/backend-types';
 
 type AuthAdminUser = {
   id: string;
@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: admin.error }, { status: admin.status });
   }
 
-  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult, planPausesResult, programOverrides] =
+  const [usersResult, authUsersResult, profilesResult, ordersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult, planPausesResult, homepageAdsResult, homepageAdSettingsResult, programOverrides] =
     await Promise.all([
       supabaseRestFetch<ProjectFitUser[]>('/users?select=*&order=created_at.desc'),
       supabaseAuthAdminFetch<AuthUsersResponse>('/admin/users?per_page=1000'),
@@ -66,6 +66,8 @@ export async function GET(request: Request) {
       supabaseRestFetch<CustomerFeedback[]>('/customer_feedback?select=*&order=created_at.desc'),
       supabaseRestFetch<WhatsAppMessageLog[]>('/whatsapp_message_logs?select=*&order=created_at.desc&limit=400'),
       supabaseRestFetch<PlanPauseRequest[]>('/plan_pause_requests?select=*&order=created_at.desc'),
+      supabaseRestFetch<HomepageAd[]>('/homepage_ads?select=*&order=priority.asc,created_at.desc'),
+      supabaseRestFetch<HomepageAdSettings[]>('/homepage_ad_settings?id=eq.true&select=*&limit=1'),
       getProgramPlanOverrides(),
     ]);
 
@@ -75,7 +77,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: failed.error }, { status: failed.status });
   }
 
-  const warnings = [authUsersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult, planPausesResult]
+  const warnings = [authUsersResult, menuResult, mealPlansResult, feedbackResult, whatsappResult, planPausesResult, homepageAdsResult, homepageAdSettingsResult]
     .filter((result) => result.error)
     .map((result) => result.error as string);
   const users = mergeUsers(usersResult.data ?? [], authUsersResult.data?.users ?? []);
@@ -98,6 +100,8 @@ export async function GET(request: Request) {
     feedback,
     whatsappMessages: whatsappResult.error ? [] : whatsappResult.data ?? [],
     planPauseRequests: planPausesResult.error ? [] : planPausesResult.data ?? [],
+    homepageAds: homepageAdsResult.error ? [] : homepageAdsResult.data ?? [],
+    homepageAdSettings: homepageAdSettingsResult.error ? { enabled: false } : homepageAdSettingsResult.data?.[0] ?? { enabled: false },
     programOverrides,
     warnings,
   });

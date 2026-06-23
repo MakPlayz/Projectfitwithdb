@@ -1130,11 +1130,37 @@
   overflow-wrap: anywhere;
 }
 
+.adsStudio,
 .menuStudio,
 .pricingGrid,
 .legacyPlans {
   display: grid;
   gap: 14px;
+}
+
+.adPreview {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.adPreview span {
+  color: #c9f24d;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.adPreview img,
+.adPreview video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  border: 1px solid rgba(205, 221, 210, 0.16);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .programSwitch {
