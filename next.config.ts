@@ -40,6 +40,10 @@ const csp = [
     "https://maps.googleapis.com",
     supabaseOrigin ?? "https://*.supabase.co",
   ].join(" "),
+  [
+    "media-src 'self' blob:",
+    supabaseOrigin ?? "https://*.supabase.co",
+  ].join(" "),
   "frame-src 'self'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

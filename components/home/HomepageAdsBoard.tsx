@@ -24,18 +24,31 @@ function getAdMedia(ad: HomepageAd, isMobile: boolean) {
     return {
       type: ad.mobile_media_type,
       url: ad.mobile_media_url,
+      path: ad.mobile_media_path,
     };
   }
 
   return {
     type: ad.media_type,
     url: ad.media_url,
+    path: ad.media_path,
   };
 }
 
-function isUnsupportedVideoUrl(url: string) {
-  const cleanUrl = url.split('?')[0]?.toLowerCase() ?? '';
+function isUnsupportedVideoUrl(url: string, path?: string | null) {
+  const source = path || url;
+  const cleanUrl = source.split('?')[0]?.toLowerCase() ?? '';
   return cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.qt');
+}
+
+function getPlayableVideoUrl(url: string, path?: string | null) {
+  if (!path) return url;
+  return `/api/homepage-ads/media?path=${encodeURIComponent(path)}`;
+}
+
+function getVideoType(url: string, path?: string | null) {
+  const source = (path || url).split('?')[0]?.toLowerCase() ?? '';
+  return source.endsWith('.webm') ? 'video/webm' : 'video/mp4';
 }
 
 export default function HomepageAdsBoard() {
@@ -101,11 +114,10 @@ export default function HomepageAdsBoard() {
     <section className={styles.section} aria-label="Project Fit announcements">
       <div className={styles.board}>
         <div className={styles.mediaWrap}>
-          {media.type === 'video' && !videoError && !isUnsupportedVideoUrl(media.url) ? (
+          {media.type === 'video' && !videoError && !isUnsupportedVideoUrl(media.url, media.path) ? (
             <video
               key={media.url}
               className={styles.media}
-              src={media.url}
               poster={activeAd.poster_url ?? undefined}
               autoPlay
               muted
@@ -114,7 +126,9 @@ export default function HomepageAdsBoard() {
               controls
               preload="metadata"
               onError={() => setVideoError(true)}
-            />
+            >
+              <source src={getPlayableVideoUrl(media.url, media.path)} type={getVideoType(media.url, media.path)} />
+            </video>
           ) : media.type === 'video' ? (
             <div className={styles.videoFallback}>
               <strong>Video unavailable</strong>

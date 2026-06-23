@@ -2097,9 +2097,20 @@ function HomepageAdEditor({
   const [removePoster, setRemovePoster] = useState(false);
   const [mediaError, setMediaError] = useState('');
 
-  function isUnsupportedVideoPreview(src: string) {
-    const cleanSrc = src.split('?')[0]?.toLowerCase() ?? '';
+  function isUnsupportedVideoPreview(src: string, path?: string | null) {
+    const source = path || src;
+    const cleanSrc = source.split('?')[0]?.toLowerCase() ?? '';
     return cleanSrc.endsWith('.mov') || cleanSrc.endsWith('.qt');
+  }
+
+  function getPlayableVideoPreview(src: string, path?: string | null) {
+    if (!path) return src;
+    return `/api/homepage-ads/media?path=${encodeURIComponent(path)}`;
+  }
+
+  function getPreviewVideoType(src: string, path?: string | null) {
+    const source = (path || src).split('?')[0]?.toLowerCase() ?? '';
+    return source.endsWith('.webm') ? 'video/webm' : 'video/mp4';
   }
 
   function setPreviewFromFile(
@@ -2134,13 +2145,15 @@ function HomepageAdEditor({
     if (setType) setType(file.type.startsWith('video/') ? 'video' : 'image');
   }
 
-  function renderPreview(src: string, type: 'image' | 'video' | null | undefined, label: string) {
+  function renderPreview(src: string, type: 'image' | 'video' | null | undefined, label: string, path?: string | null) {
     if (!src) return null;
     return (
       <div className={styles.adPreview}>
         <span>{label}</span>
-        {type === 'video' && !isUnsupportedVideoPreview(src) ? (
-          <video src={src} muted controls playsInline preload="metadata" />
+        {type === 'video' && !isUnsupportedVideoPreview(src, path) ? (
+          <video muted controls playsInline preload="metadata">
+            <source src={getPlayableVideoPreview(src, path)} type={getPreviewVideoType(src, path)} />
+          </video>
         ) : type === 'video' ? (
           <div className={styles.adVideoFallback}>
             Convert this video to MP4 or WebM and upload it again.
@@ -2164,7 +2177,12 @@ function HomepageAdEditor({
       <input type="hidden" name="remove_mobile_media" value={removeMobile ? 'true' : 'false'} />
       <input type="hidden" name="remove_poster" value={removePoster ? 'true' : 'false'} />
 
-      {renderPreview(desktopPreview, desktopPreviewType, 'Desktop media')}
+      {renderPreview(
+        desktopPreview,
+        desktopPreviewType,
+        'Desktop media',
+        desktopPreview === ad?.media_url ? ad?.media_path : null
+      )}
       <label>
         <span>Desktop image or video</span>
         <input
@@ -2176,7 +2194,12 @@ function HomepageAdEditor({
         />
       </label>
 
-      {renderPreview(!removeMobile ? mobilePreview : '', mobilePreviewType, 'Mobile media')}
+      {renderPreview(
+        !removeMobile ? mobilePreview : '',
+        mobilePreviewType,
+        'Mobile media',
+        mobilePreview === ad?.mobile_media_url ? ad?.mobile_media_path : null
+      )}
       <label>
         <span>Mobile image or video</span>
         <input
