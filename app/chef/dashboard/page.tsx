@@ -2103,9 +2103,8 @@ function HomepageAdEditor({
     return cleanSrc.endsWith('.mov') || cleanSrc.endsWith('.qt');
   }
 
-  function getPlayableVideoPreview(src: string, path?: string | null) {
-    if (!path) return src;
-    return `/api/homepage-ads/media?path=${encodeURIComponent(path)}`;
+  function getPlayableVideoPreview(src: string) {
+    return src;
   }
 
   function getPreviewVideoType(src: string, path?: string | null) {
@@ -2152,7 +2151,7 @@ function HomepageAdEditor({
         <span>{label}</span>
         {type === 'video' && !isUnsupportedVideoPreview(src, path) ? (
           <video muted controls playsInline preload="metadata">
-            <source src={getPlayableVideoPreview(src, path)} type={getPreviewVideoType(src, path)} />
+            <source src={getPlayableVideoPreview(src)} type={getPreviewVideoType(src, path)} />
           </video>
         ) : type === 'video' ? (
           <div className={styles.adVideoFallback}>

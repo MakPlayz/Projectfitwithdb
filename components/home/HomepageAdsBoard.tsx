@@ -41,9 +41,8 @@ function isUnsupportedVideoUrl(url: string, path?: string | null) {
   return cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.qt');
 }
 
-function getPlayableVideoUrl(url: string, path?: string | null) {
-  if (!path) return url;
-  return `/api/homepage-ads/media?path=${encodeURIComponent(path)}`;
+function getPlayableVideoUrl(url: string) {
+  return url;
 }
 
 function getVideoType(url: string, path?: string | null) {
@@ -83,14 +82,6 @@ export default function HomepageAdsBoard() {
   }, []);
 
   useEffect(() => {
-    if (ads.length <= 1) return;
-    const interval = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % ads.length);
-    }, 7000);
-    return () => window.clearInterval(interval);
-  }, [ads.length]);
-
-  useEffect(() => {
     if (activeIndex >= ads.length) setActiveIndex(0);
   }, [activeIndex, ads.length]);
 
@@ -103,6 +94,14 @@ export default function HomepageAdsBoard() {
   useEffect(() => {
     setVideoError(false);
   }, [media?.url]);
+
+  useEffect(() => {
+    if (ads.length <= 1 || media?.type === 'video') return;
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % ads.length);
+    }, 7000);
+    return () => window.clearInterval(interval);
+  }, [ads.length, media?.type]);
 
   if (isLoading || !activeAd || !media) return null;
 
@@ -121,13 +120,16 @@ export default function HomepageAdsBoard() {
               poster={activeAd.poster_url ?? undefined}
               autoPlay
               muted
-              loop
+              loop={ads.length <= 1}
               playsInline
               controls
-              preload="metadata"
+              preload="auto"
+              onEnded={() => {
+                if (ads.length > 1) move(1);
+              }}
               onError={() => setVideoError(true)}
             >
-              <source src={getPlayableVideoUrl(media.url, media.path)} type={getVideoType(media.url, media.path)} />
+              <source src={getPlayableVideoUrl(media.url)} type={getVideoType(media.url, media.path)} />
             </video>
           ) : media.type === 'video' ? (
             <div className={styles.videoFallback}>
