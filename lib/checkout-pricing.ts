@@ -1,6 +1,7 @@
 import type { CartItem } from '@/store/cartStore';
 import { getDietWithPlanOverrides } from '@/lib/program-plan-overrides';
 import type { DietMeal, DietPlan, DietSlug } from '@/data/diets';
+import { getDefaultMealSlots, normalizeMealSlots } from '@/lib/meal-slots';
 
 type TrustedCheckoutPricing =
   | {
@@ -52,6 +53,11 @@ function getCustomMealCount(item: CartItem) {
   return count === 2 ? 2 : 1;
 }
 
+function getRequiredMealSlots(plan: DietPlan, item: CartItem) {
+  if (plan.customPrices) return getCustomMealCount(item);
+  return Math.min(3, Math.max(1, plan.mealsPerDay || 1));
+}
+
 function getTrustedPlanPrice(plan: DietPlan, item: CartItem) {
   if (!plan.customPrices) return plan.price;
   const mealCount = getCustomMealCount(item);
@@ -67,10 +73,12 @@ function findSampleForCartItem(samples: DietMeal[], item: CartItem) {
   });
 }
 
-function normalizeTrustedItem(item: CartItem, price: number, name?: string): CartItem {
+function normalizeTrustedItem(item: CartItem, price: number, name?: string, mealSlots?: CartItem['mealSlots'], mealsPerDay?: number): CartItem {
   return {
     ...item,
     name: name ?? item.name,
+    mealsPerDay,
+    mealSlots,
     basePrice: price,
     quantity: 1,
     addOns: [],
@@ -124,6 +132,18 @@ export async function getTrustedCheckoutPricing(items: CartItem[]): Promise<Trus
     return { ok: false, error: 'Selected meal plan price is invalid.' };
   }
 
+  const requiredMealSlots = getRequiredMealSlots(plan, item);
+  const mealSlots = requiredMealSlots >= 3
+    ? getDefaultMealSlots(requiredMealSlots)
+    : normalizeMealSlots(item.mealSlots);
+
+  if (mealSlots.length !== requiredMealSlots) {
+    return {
+      ok: false,
+      error: `Select exactly ${requiredMealSlots} meal ${requiredMealSlots === 1 ? 'slot' : 'slots'} before checkout.`,
+    };
+  }
+
   const name = plan.customPrices
     ? `${diet.title} - ${plan.name} (${getCustomMealCount(item)} Meal${getCustomMealCount(item) > 1 ? 's' : ''}/Day)`
     : `${diet.title} - ${plan.name}`;
@@ -132,7 +152,7 @@ export async function getTrustedCheckoutPricing(items: CartItem[]): Promise<Trus
 
   return {
     ok: true,
-    items: [normalizeTrustedItem(item, subtotal, name)],
+    items: [normalizeTrustedItem(item, subtotal, name, mealSlots, requiredMealSlots)],
     subtotal,
     tax,
     total: subtotal + tax,

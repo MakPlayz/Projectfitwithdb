@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
+import { getMealSlotsLabel } from '@/lib/meal-slots';
 import type {
   ApiOrder,
   MealPlan,
@@ -521,6 +522,11 @@ function getPrimaryOrderItem(order: ApiOrder) {
   return order.items[0]?.name ?? 'Project Fit plan';
 }
 
+function getOrderMealSlotLine(order: ApiOrder) {
+  const slots = order.items.map((item) => getMealSlotsLabel(item)).filter(Boolean).join(' | ');
+  return slots ? `Meal timings: ${slots.replace(/^Meal slots:\s*/i, '')}` : null;
+}
+
 export async function sendProgramPaymentInstructions(order: ApiOrder) {
   const phone = order.delivery_address.phone;
   const amountDue = order.payment_option === 'half' ? order.initial_payment_amount : order.total;
@@ -544,7 +550,7 @@ export async function sendProgramPaymentInstructions(order: ApiOrder) {
       `Manager phone: ${projectFitManagerPhone}`,
       '',
       'Please use the QR scanner for payment. After paying, reply here with your name, transaction ID, and payment screenshot.',
-    ].join('\n'),
+    ].join('\\n'),
     order.user_id
   );
 
@@ -569,7 +575,7 @@ export async function sendFreeSampleContactInstructions(order: ApiOrder) {
       `Phone: ${projectFitManagerPhone}`,
       '',
       'The chef team will review the request and update you here.',
-    ].join('\n'),
+    ].join('\\n'),
     order.user_id
   );
 }
@@ -587,9 +593,10 @@ export async function sendPlanActivatedMessage(order: ApiOrder) {
       '',
       `Order ID: ${order.id}`,
       `Plan: ${getPrimaryOrderItem(order)}`,
+      ...(getOrderMealSlotLine(order) ? [getOrderMealSlotLine(order) as string] : []),
       `Start date: ${formatOrderDate(order.plan_activated_at ?? order.requested_start_date)}`,
       paymentLine,
-    ].join('\n'),
+    ].join('\\n'),
     order.user_id
   );
 }
@@ -602,8 +609,9 @@ export async function sendRemainingPaymentConfirmedMessage(order: ApiOrder) {
       '',
       `Order ID: ${order.id}`,
       `Plan: ${getPrimaryOrderItem(order)}`,
+      ...(getOrderMealSlotLine(order) ? [getOrderMealSlotLine(order) as string] : []),
       'Your monthly plan is now fully paid.',
-    ].join('\n'),
+    ].join('\\n'),
     order.user_id
   );
 }
@@ -616,7 +624,7 @@ export async function sendPlanStoppedMidwayMessage(order: ApiOrder) {
       '',
       `Order ID: ${order.id}`,
       order.completion_reason || 'The plan was ended after the first half of service days.',
-    ].join('\n'),
+    ].join('\\n'),
     order.user_id
   );
 }
@@ -636,7 +644,7 @@ export async function sendOrderCancellationMessage(order: ApiOrder) {
 
   return sendWhatsAppText(
     order.delivery_address.phone,
-    message.filter(Boolean).join('\n\n'),
+    message.filter(Boolean).join('\\n\\n'),
     order.user_id
   );
 }
@@ -735,8 +743,9 @@ export async function buildMenuReply() {
 
   return [
     'ProjectFit Vizag Menu',
-    ...items.map((item) => `${item.name}${item.description ? `\n${item.description}` : ''}`),
-  ].join('\n\n');
+    ...items.map((item) => `${item.name}${item.description ? `
+${item.description}` : ''}`),
+  ].join('\\n\\n');
 }
 
 export async function buildSpecialsReply() {
@@ -751,8 +760,9 @@ export async function buildSpecialsReply() {
 
   return [
     'Today\'s Specials',
-    ...items.map((item) => `${item.name}${item.description ? `\n${item.description}` : ''}`),
-  ].join('\n\n');
+    ...items.map((item) => `${item.name}${item.description ? `
+${item.description}` : ''}`),
+  ].join('\\n\\n');
 }
 
 export async function buildMealPlansReply() {
@@ -767,8 +777,9 @@ export async function buildMealPlansReply() {
 
   return [
     'Available Meal Plans',
-    ...plans.map((plan) => `${plan.name} (${plan.duration})${plan.description ? `\n${plan.description}` : ''}`),
-  ].join('\n\n');
+    ...plans.map((plan) => `${plan.name} (${plan.duration})${plan.description ? `
+${plan.description}` : ''}`),
+  ].join('\\n\\n');
 }
 
 export function buildKitchenContactReply() {

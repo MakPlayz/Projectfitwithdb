@@ -9,6 +9,7 @@ import { getTrustedCheckoutPricing } from '@/lib/checkout-pricing';
 import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { requireAdminUser } from '@/lib/admin-auth';
 import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
+import { getMealSlotsLabel } from '@/lib/meal-slots';
 
 interface CreateOrderBody {
   items?: CartItem[];
@@ -45,7 +46,10 @@ function buildManualPaymentMessage({
   deliveryAddress: DeliveryAddress;
 }) {
   const items = order.items
-    .map((item) => `${item.quantity}x ${item.name}`)
+    .map((item) => {
+      const slots = getMealSlotsLabel(item);
+      return `${item.quantity}x ${item.name}${slots ? `\n${slots}` : ''}`;
+    })
     .join('\n');
   const deliveryNote = isIncludedDeliveryPincode(deliveryAddress.pincode)
     ? 'Delivery included in selected plan area'
@@ -67,7 +71,7 @@ function buildManualPaymentMessage({
     items,
     '',
     'Please send the QR payment scanner. I will share the payment screenshot after payment.',
-  ].join('\n');
+  ].join('\\n');
 }
 
 function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {

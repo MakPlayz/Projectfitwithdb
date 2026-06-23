@@ -26,6 +26,7 @@ import type { ProgramPlanOverride } from '@/lib/program-plan-overrides';
 import { clearChefSession, getChefAuthHeaders, getChefSession } from '@/lib/auth-client';
 import { getOrderServiceDaysRemaining } from '@/lib/plan-duration';
 import { addCalendarDays, formatDateKey, getPlanCategoryLabel, isSundayDateKey } from '@/lib/plan-pauses';
+import { getMealSlotsLabel } from '@/lib/meal-slots';
 import styles from './page.module.css';
 
 type AdminOverview = {
@@ -165,6 +166,13 @@ function getPrimaryPlan(order: ApiOrder) {
   return order.items[0]?.name ?? 'Meal plan';
 }
 
+function getOrderMealSlotsText(order: ApiOrder) {
+  return order.items
+    .map((item) => getMealSlotsLabel(item))
+    .filter(Boolean)
+    .join(' | ');
+}
+
 function getFreeSampleStatusText(order: ApiOrder) {
   if (order.status === 'new') return 'Pending chef approval';
   if (order.status === 'cancelled') {
@@ -299,9 +307,9 @@ function getReplyWindowLabel(lastIncomingAt: string | null) {
 
 function getWhatsAppDeliveryLabel(message: WhatsAppMessageLog) {
   if (message.direction === 'incoming') return message.status === 'read' ? 'Seen' : 'Unread';
-  if (message.status === 'read') return '✓✓ Read';
-  if (message.status === 'delivered') return '✓✓ Delivered';
-  if (message.status === 'sent') return '✓ Sent';
+  if (message.status === 'read') return 'âœ“âœ“ Read';
+  if (message.status === 'delivered') return 'âœ“âœ“ Delivered';
+  if (message.status === 'sent') return 'âœ“ Sent';
   return message.status;
 }
 
@@ -1293,6 +1301,7 @@ export default function ChefDashboard() {
                                       <div key={order.id} className={styles.deliveryOrder}>
                                         <strong>{order.customer_name || user?.name || 'Customer'}</strong>
                                         <span>{order.items.map((item) => item.name).join(', ')}</span>
+                                        {getOrderMealSlotsText(order) && <small>{getOrderMealSlotsText(order)}</small>}
                                         <small>
                                           {order.id} | {order.delivery_address.phone}
                                         </small>
@@ -1817,6 +1826,11 @@ function OrderCard({
         <strong>{getPrimaryPlan(order)}</strong>
         <span>Rs {order.total.toLocaleString('en-IN')}</span>
       </div>
+      {getOrderMealSlotsText(order) && (
+        <div className={styles.detailBlock}>
+          <p>{getOrderMealSlotsText(order)}</p>
+        </div>
+      )}
       <div className={styles.detailBlock}>
         <p>{order.delivery_address.phone} | {order.delivery_address.city} | {order.delivery_address.pincode}</p>
         <p>{order.delivery_address.addressLine1}{order.delivery_address.addressLine2 ? `, ${order.delivery_address.addressLine2}` : ''}</p>
@@ -1858,7 +1872,10 @@ function OrderCard({
       </div>
       <div className={styles.items}>
         {order.items.map((item) => (
-          <p key={`${order.id}-${item.id}`}>{item.quantity}x {item.name} | Rs {item.totalPrice.toLocaleString('en-IN')}</p>
+          <p key={`${order.id}-${item.id}`}>
+            {item.quantity}x {item.name} | Rs {item.totalPrice.toLocaleString('en-IN')}
+            {getMealSlotsLabel(item) ? ` | ${getMealSlotsLabel(item)}` : ''}
+          </p>
         ))}
       </div>
       {order.status === 'new' && order.order_type !== 'free_sample' && (

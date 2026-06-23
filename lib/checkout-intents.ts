@@ -2,6 +2,7 @@ import type { ApiOrder, CheckoutIntent, CustomerProfile, DeliveryAddress, FreeSa
 import { isIncludedDeliveryPincode } from '@/lib/serviceable-pincodes';
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { CartItem } from '@/store/cartStore';
+import { getMealSlotsLabel } from '@/lib/meal-slots';
 
 const intentCodePattern = /\bPFI-[A-Z0-9]{6}\b/i;
 
@@ -78,7 +79,10 @@ export function isBlockingOrder(order: ApiOrder) {
 }
 
 export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
-  const itemList = intent.items.map((item) => `${item.quantity}x ${item.name}`).join('\n');
+  const itemList = intent.items.map((item) => {
+    const slots = getMealSlotsLabel(item);
+    return `${item.quantity}x ${item.name}${slots ? `\n${slots}` : ''}`;
+  }).join('\n');
   const deliveryNote = isIncludedDeliveryPincode(intent.delivery_address.pincode)
     ? 'Delivery included in selected plan area'
     : 'Rapido parcel fare applies separately';

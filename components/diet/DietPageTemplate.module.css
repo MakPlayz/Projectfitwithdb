@@ -508,6 +508,52 @@
   color: var(--diet-accent);
 }
 
+.mealSlotSelector {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.mealSlotGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mealSlotBtn {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--white);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.mealSlotBtn:hover {
+  border-color: color-mix(in srgb, var(--diet-accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--diet-accent) 7%, var(--white));
+}
+
+.mealSlotBtn:disabled {
+  cursor: default;
+}
+
+.mealSlotBtnActive,
+.mealSlotBtnActive:disabled {
+  border-color: var(--diet-accent);
+  background: var(--diet-accent-light);
+  color: var(--diet-accent);
+}
+
+.mealSlotSummary {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .planGroup {
   margin-top: 40px;
   border: 1.5px solid rgba(22, 163, 74, 0.22);

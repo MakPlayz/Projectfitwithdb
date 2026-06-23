@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+export type MealSlot = 'breakfast' | 'lunch' | 'dinner';
+
 export interface CartItem {
   id: string;
   name: string;
@@ -8,6 +10,8 @@ export interface CartItem {
   image: string;
   itemType?: 'plan' | 'free_sample';
   programSlug?: string;
+  mealsPerDay?: number;
+  mealSlots?: MealSlot[];
   removedIngredients: string[];
   addOns: { name: string; price: number }[];
   totalPrice: number;

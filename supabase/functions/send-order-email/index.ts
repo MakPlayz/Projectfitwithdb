@@ -14,6 +14,7 @@ type CartItem = {
   quantity?: number;
   planId?: string;
   programSlug?: string;
+  mealSlots?: string[];
 };
 
 type DeliveryAddress = {
@@ -103,7 +104,10 @@ function getPlainItems(items: CartItem[]) {
   return items.map((item) => {
     const quantity = Number(item.quantity ?? 1);
     const price = Number(item.price ?? 0);
-    return `${item.name || 'Meal plan'} x ${quantity} - ${formatRupees(price * quantity)}`;
+    const slots = Array.isArray(item.mealSlots) && item.mealSlots.length > 0
+      ? ` (${item.mealSlots.join(', ')})`
+      : '';
+    return `${item.name || 'Meal plan'}${slots} x ${quantity} - ${formatRupees(price * quantity)}`;
   });
 }
 

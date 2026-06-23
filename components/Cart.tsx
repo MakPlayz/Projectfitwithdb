@@ -10,6 +10,7 @@ import { isDeliverablePincode, isIncludedDeliveryPincode } from '@/lib/serviceab
 import { usePublicConfig } from '@/lib/use-public-config';
 import { mergeStoredProfile, normalizeDeliveryAddress, readStoredProfile } from '@/lib/profile-storage';
 import { getFreeSampleDeviceId } from '@/lib/free-sample-device';
+import { getMealSlotsLabel } from '@/lib/meal-slots';
 import DeliveryAreaNotice from './DeliveryAreaNotice';
 import LocationPickerModal from './LocationPickerModal';
 import styles from './Cart.module.css';
@@ -270,7 +271,8 @@ export default function Cart() {
                     <div className={styles.itemTitle}>
                       <span className={styles.itemEyebrow}>{item.itemType === 'free_sample' ? 'Free sample' : 'Selected plan'}</span>
                       <h4>{item.name}</h4>
-                      <p>₹{item.totalPrice.toLocaleString('en-IN')}</p>
+                      {getMealSlotsLabel(item) && <small>{getMealSlotsLabel(item)}</small>}
+                      <p>Ã¢â€šÂ¹{item.totalPrice.toLocaleString('en-IN')}</p>
                     </div>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
                       <Trash2 size={16} />
