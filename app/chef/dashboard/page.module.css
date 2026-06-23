@@ -1163,6 +1163,22 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.adVideoFallback {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.1);
+  color: #fde68a;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.4;
+  text-align: center;
+}
+
 .programSwitch {
   margin-bottom: 2px;
 }

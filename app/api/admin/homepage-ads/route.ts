@@ -8,7 +8,7 @@ const bucket = 'homepage-ads';
 const maxImageSize = 6 * 1024 * 1024;
 const maxVideoSize = 50 * 1024 * 1024;
 const allowedImageTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const allowedVideoTypes = new Set(['video/mp4', 'video/webm', 'video/quicktime']);
+const allowedVideoTypes = new Set(['video/mp4', 'video/webm']);
 
 function getMediaType(file: File): HomepageAdMediaType | null {
   if (allowedImageTypes.has(file.type)) return 'image';
@@ -24,14 +24,13 @@ function getExtension(file: File) {
   if (file.type === 'image/webp') return 'webp';
   if (file.type === 'image/gif') return 'gif';
   if (file.type === 'video/webm') return 'webm';
-  if (file.type === 'video/quicktime') return 'mov';
   return 'mp4';
 }
 
 function validateMedia(file: File, label: string) {
   const mediaType = getMediaType(file);
   if (!mediaType) {
-    throw new Error(`${label} must be JPG, PNG, WebP, GIF, MP4, WebM, or MOV.`);
+    throw new Error(`${label} must be JPG, PNG, WebP, GIF, MP4, or WebM. Convert MOV videos to MP4 before uploading.`);
   }
 
   const limit = mediaType === 'image' ? maxImageSize : maxVideoSize;

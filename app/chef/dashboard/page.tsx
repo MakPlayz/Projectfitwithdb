@@ -2097,6 +2097,11 @@ function HomepageAdEditor({
   const [removePoster, setRemovePoster] = useState(false);
   const [mediaError, setMediaError] = useState('');
 
+  function isUnsupportedVideoPreview(src: string) {
+    const cleanSrc = src.split('?')[0]?.toLowerCase() ?? '';
+    return cleanSrc.endsWith('.mov') || cleanSrc.endsWith('.qt');
+  }
+
   function setPreviewFromFile(
     event: ChangeEvent<HTMLInputElement>,
     setPreview: (value: string) => void,
@@ -2113,7 +2118,13 @@ function HomepageAdEditor({
     }
 
     if (!imagesOnly && !file.type.startsWith('image/') && !file.type.startsWith('video/')) {
-      setMediaError('Upload an image or video file.');
+      setMediaError('Upload an image, MP4 video, or WebM video file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (!imagesOnly && file.type.startsWith('video/') && !['video/mp4', 'video/webm'].includes(file.type)) {
+      setMediaError('This video format will not play in browsers. Convert it to MP4 or WebM before uploading.');
       event.target.value = '';
       return;
     }
@@ -2128,8 +2139,12 @@ function HomepageAdEditor({
     return (
       <div className={styles.adPreview}>
         <span>{label}</span>
-        {type === 'video' ? (
-          <video src={src} muted controls playsInline />
+        {type === 'video' && !isUnsupportedVideoPreview(src) ? (
+          <video src={src} muted controls playsInline preload="metadata" />
+        ) : type === 'video' ? (
+          <div className={styles.adVideoFallback}>
+            Convert this video to MP4 or WebM and upload it again.
+          </div>
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt={`${title} ${label}`} />
@@ -2155,7 +2170,7 @@ function HomepageAdEditor({
         <input
           name="media"
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
           required={!ad}
           onChange={(event) => setPreviewFromFile(event, setDesktopPreview, setDesktopPreviewType)}
         />
@@ -2167,7 +2182,7 @@ function HomepageAdEditor({
         <input
           name="mobile_media"
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+          accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm"
           onChange={(event) => {
             setRemoveMobile(false);
             setPreviewFromFile(event, setMobilePreview, setMobilePreviewType);

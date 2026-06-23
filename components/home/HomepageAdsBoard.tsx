@@ -33,10 +33,16 @@ function getAdMedia(ad: HomepageAd, isMobile: boolean) {
   };
 }
 
+function isUnsupportedVideoUrl(url: string) {
+  const cleanUrl = url.split('?')[0]?.toLowerCase() ?? '';
+  return cleanUrl.endsWith('.mov') || cleanUrl.endsWith('.qt');
+}
+
 export default function HomepageAdsBoard() {
   const [ads, setAds] = useState<HomepageAd[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [videoError, setVideoError] = useState(false);
   const isMobile = useMobileMedia();
 
   useEffect(() => {
@@ -81,6 +87,10 @@ export default function HomepageAdsBoard() {
     [activeAd, isMobile]
   );
 
+  useEffect(() => {
+    setVideoError(false);
+  }, [media?.url]);
+
   if (isLoading || !activeAd || !media) return null;
 
   function move(direction: -1 | 1) {
@@ -91,7 +101,7 @@ export default function HomepageAdsBoard() {
     <section className={styles.section} aria-label="Project Fit announcements">
       <div className={styles.board}>
         <div className={styles.mediaWrap}>
-          {media.type === 'video' ? (
+          {media.type === 'video' && !videoError && !isUnsupportedVideoUrl(media.url) ? (
             <video
               key={media.url}
               className={styles.media}
@@ -102,7 +112,14 @@ export default function HomepageAdsBoard() {
               loop
               playsInline
               controls
+              preload="metadata"
+              onError={() => setVideoError(true)}
             />
+          ) : media.type === 'video' ? (
+            <div className={styles.videoFallback}>
+              <strong>Video unavailable</strong>
+              <span>Please upload this ad video as MP4 or WebM.</span>
+            </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img className={styles.media} src={media.url} alt={activeAd.caption} />
