@@ -65,9 +65,6 @@ export default function HeroSection() {
           >
             <p className="section-label">Specialized Programs</p>
             <h2 className={styles.cardsTitle}>Your nutrition, precisely designed</h2>
-            <p className={styles.deliveryNote}>
-              Note: Plans begin the next day, so your first meal is delivered tomorrow.
-            </p>
           </motion.div>
 
           <div className={styles.cardsGrid}>
@@ -75,6 +72,10 @@ export default function HeroSection() {
               <DietCategoryCard key={diet.slug} diet={diet} index={i} />
             ))}
           </div>
+
+          <p className={styles.deliveryNote}>
+            <span>NOTE:</span> Plans begin the next day, so your first meal is delivered tomorrow.
+          </p>
         </div>
       </div>
 
