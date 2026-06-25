@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { Sparkles } from 'lucide-react';
 import { AnimatedMarqueeHero } from '@/components/ui/hero-3';
 import { dietCategories } from '@/data/diets';
@@ -31,7 +32,19 @@ export default function HeroSection() {
             Fresh daily, weekly, and monthly plans
           </>
         }
-        title="Project Fit"
+        title={
+          <span className={styles.brandWordmarkShell}>
+            <Image
+              src="/images/heroes/project-fit-wordmark-clean.png"
+              alt="Project Fit"
+              width={1457}
+              height={282}
+              className={styles.brandWordmark}
+              priority
+            />
+            <span className={styles.brandQuote}>Your health, our priority</span>
+          </span>
+        }
         description="Fresh diet programs for real routines. Choose your path from weight loss to diabetes-friendly nutrition, then let the kitchen handle the daily work."
         ctaText="Explore Programs"
         ctaHref="#programs"
@@ -52,6 +65,9 @@ export default function HeroSection() {
           >
             <p className="section-label">Specialized Programs</p>
             <h2 className={styles.cardsTitle}>Your nutrition, precisely designed</h2>
+            <p className={styles.deliveryNote}>
+              Note: Plans begin the next day, so your first meal is delivered tomorrow.
+            </p>
           </motion.div>
 
           <div className={styles.cardsGrid}>
