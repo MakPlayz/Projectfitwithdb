@@ -40,6 +40,8 @@ WHATSAPP_GRAPH_API_VERSION=v21.0
 WHATSAPP_KITCHEN_CONTACT_MESSAGE=Contact ProjectFit Vizag Kitchen:\nPhone: +91 90000 00000\nHours: 8 AM - 9 PM
 PROJECTFIT_INTERNAL_API_SECRET=choose-a-long-random-internal-secret
 WHATSAPP_ADMIN_TOKEN=choose-a-long-random-admin-token
+ADMIN_EMAILS=chef@example.com,owner@example.com
+ADMIN_SESSION_SECRET=choose-a-long-random-admin-session-secret
 ```
 
 The app accepts either naming style:
@@ -81,6 +83,10 @@ https://projectfitvizag.com/api/webhooks/whatsapp
 4. Use your `WHATSAPP_VERIFY_TOKEN` as the Meta webhook verify token.
 5. Subscribe to WhatsApp message and message status webhook fields.
 
-## Current limitations
+## Security notes
 
-The chef dashboard is connected to real orders, but it is not protected by an admin login yet. Before using this for a real business, add a chef/admin role check so only staff can see and update all orders.
+- Chef dashboard pages are guarded by a signed HTTP-only admin session cookie.
+- Chef/admin APIs still require a Supabase bearer token and validate the email against `ADMIN_EMAILS`.
+- Set `ADMIN_EMAILS` and a strong `ADMIN_SESSION_SECRET` in Vercel before using the chef portal.
+- Forgot-password emails are sent through Supabase Auth and return users to `/reset-password`.
+- Payment verification remains a staff-reviewed WhatsApp workflow; staff must verify screenshots and transaction IDs carefully.

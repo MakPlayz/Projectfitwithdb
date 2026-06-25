@@ -1753,9 +1753,9 @@ These are not necessarily bugs, but important current-state notes:
 
 - Custom monthly plan `customPrices` are static in `data/diets.ts`. Admin price override changes base plan price, not per-meal custom price map.
 - Plans showing "Updating soon" can still be added to cart if their price is zero, because this behavior was intentionally left unchanged per request.
-- Legal pages are basic placeholders and should be replaced with final business-approved legal text.
+- Legal pages now contain practical customer-facing terms and privacy policy copy; they should still be reviewed by the business or legal advisor before public reliance.
 - Menu item calories/carbs/fat are not fully data-backed yet; protein is supported.
-- Forgot password is not implemented as a reset-email flow yet.
+- Forgot password uses Supabase Auth recovery email and `/reset-password` to set a new password.
 - WhatsApp manual payment workflow depends on staff verifying screenshots and transaction IDs.
 
 ## 29. End-To-End User Journey

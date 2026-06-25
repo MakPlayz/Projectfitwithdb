@@ -957,7 +957,8 @@ export default function ChefDashboard() {
     });
   }
 
-  function handleLogout() {
+  async function handleLogout() {
+    await fetch('/api/admin/session', { method: 'DELETE' }).catch(() => undefined);
     clearChefSession();
     router.push('/chef');
   }

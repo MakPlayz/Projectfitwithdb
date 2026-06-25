@@ -7,6 +7,19 @@ import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { clearChefSession, getAccessTokenExpiry, getChefAuthHeaders, saveChefSession } from '@/lib/auth-client';
 import styles from '../page.module.css';
 
+async function establishChefServerSession() {
+  const response = await fetch('/api/admin/session', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: await getChefAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error ?? 'Could not secure chef session.');
+  }
+}
+
 export default function ChefSignup() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -53,6 +66,7 @@ export default function ChefSignup() {
           throw new Error('Chef account was created, but admin access is not enabled for this email.');
         }
 
+        await establishChefServerSession();
         router.push('/chef/dashboard');
         return;
       }

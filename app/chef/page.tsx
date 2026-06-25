@@ -7,6 +7,19 @@ import { AlertCircle, ArrowRight, LockKeyhole, ShieldCheck } from 'lucide-react'
 import { clearChefSession, getAccessTokenExpiry, getChefAuthHeaders, getChefSession, saveChefSession } from '@/lib/auth-client';
 import styles from './page.module.css';
 
+async function establishChefServerSession() {
+  const response = await fetch('/api/admin/session', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: await getChefAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error ?? 'Could not secure chef session.');
+  }
+}
+
 function ChefLoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,6 +42,7 @@ function ChefLoginContent() {
       if (cancelled) return;
 
       if (response.ok) {
+        await establishChefServerSession();
         router.replace('/chef/dashboard');
       }
     }
@@ -79,6 +93,7 @@ function ChefLoginContent() {
         throw new Error(adminData.error ?? 'This account is not allowed to access the chef portal.');
       }
 
+      await establishChefServerSession();
       router.push('/chef/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed.');

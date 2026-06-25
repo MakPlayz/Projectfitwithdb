@@ -12,6 +12,7 @@ import { mergeStoredProfile } from '@/lib/profile-storage';
 import styles from './AuthForm.module.css';
 
 export type AuthMode = 'login' | 'signup';
+type FormMode = AuthMode | 'reset';
 export type AuthFormVariant = 'modal' | 'page' | 'leaf';
 
 interface AuthFormProps {
@@ -25,7 +26,7 @@ export default function AuthForm({
   variant = 'modal',
   onSuccess,
 }: AuthFormProps) {
-  const [mode, setMode] = useState<AuthMode>(initialMode);
+  const [mode, setMode] = useState<FormMode>(initialMode);
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,6 +49,37 @@ export default function AuthForm({
     setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    if (mode === 'reset') {
+      const email = String(formData.get('email') ?? '').trim();
+      if (!email) {
+        setError('Enter your email address.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+        const data = await readJsonResponse(response);
+
+        if (!response.ok) {
+          throw new Error(data.error ?? 'Could not send reset email.');
+        }
+
+        setStatus('If this email is registered, a password reset link has been sent.');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not send reset email.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     const height = parseHeightToCm(formData.get('height'), heightUnit);
     if (mode === 'signup' && !isValidHeightCm(height)) {
       setError('Enter a valid height in centimeters or feet/inches.');
@@ -140,56 +172,62 @@ export default function AuthForm({
       </div>
 
       <h1 className={styles.title}>
-        {mode === 'login' ? 'Welcome back' : 'Create account'}
+        {mode === 'login' ? 'Welcome back' : mode === 'reset' ? 'Reset password' : 'Create account'}
       </h1>
       <p className={styles.subtitle}>
         {mode === 'login'
           ? 'Sign in to track meals & plans'
+          : mode === 'reset'
+          ? 'Get a secure reset link by email'
           : 'Start tracking meals & plans'}
       </p>
 
-      <div className={styles.tabs}>
-        <button
-          type="button"
-          className={mode === 'login' ? styles.tabActive : styles.tab}
-          onClick={() => setMode('login')}
-        >
-          Sign in
-        </button>
-        <button
-          type="button"
-          className={mode === 'signup' ? styles.tabActive : styles.tab}
-          onClick={() => setMode('signup')}
-        >
-          Sign up
-        </button>
-      </div>
+      {mode !== 'reset' && (
+        <>
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              className={mode === 'login' ? styles.tabActive : styles.tab}
+              onClick={() => setMode('login')}
+            >
+              Sign in
+            </button>
+            <button
+              type="button"
+              className={mode === 'signup' ? styles.tabActive : styles.tab}
+              onClick={() => setMode('signup')}
+            >
+              Sign up
+            </button>
+          </div>
 
-      <button type="button" className={styles.googleBtn} onClick={handleGoogleSignIn}>
-        <svg className={styles.googleMark} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <path
-            fill="#4285F4"
-            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-          />
-          <path
-            fill="#34A853"
-            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
-          />
-          <path
-            fill="#EA4335"
-            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"
-          />
-        </svg>
-        Continue with Google
-      </button>
+          <button type="button" className={styles.googleBtn} onClick={handleGoogleSignIn}>
+            <svg className={styles.googleMark} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.1c-.22-.66-.35-1.36-.35-2.1s.13-1.44.35-2.1V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l3.66-2.84z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06L5.84 9.9C6.71 7.3 9.14 5.38 12 5.38z"
+              />
+            </svg>
+            Continue with Google
+          </button>
 
-      <div className={styles.divider}>
-        <span>or</span>
-      </div>
+          <div className={styles.divider}>
+            <span>or</span>
+          </div>
+        </>
+      )}
 
       <form className={styles.form} onSubmit={handleSubmit}>
         {mode === 'signup' && (
@@ -291,17 +329,19 @@ export default function AuthForm({
           <Mail size={16} />
           <input type="email" name="email" placeholder="Email address" autoComplete="email" required />
         </label>
-        <label className={styles.field}>
-          <Lock size={16} />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            required
-            minLength={6}
-          />
-        </label>
+        {mode !== 'reset' && (
+          <label className={styles.field}>
+            <Lock size={16} />
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              required
+              minLength={6}
+            />
+          </label>
+        )}
 
         {mode === 'signup' && (
           <div className={styles.consentGroup}>
@@ -328,7 +368,13 @@ export default function AuthForm({
 
         {mode === 'login' && (
           <div className={styles.forgot}>
-            <span>Forgot password? Contact Project Fit support to reset it.</span>
+            <button type="button" onClick={() => {
+              setError('');
+              setStatus('');
+              setMode('reset');
+            }}>
+              Forgot password?
+            </button>
           </div>
         )}
 
@@ -336,12 +382,19 @@ export default function AuthForm({
         {status && <p className={styles.success}>{status}</p>}
 
         <button type="submit" className={`btn-primary ${styles.submitBtn}`}>
-          {isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign in' : 'Create account'}
+          {isSubmitting ? 'Please wait...' : mode === 'login' ? 'Sign in' : mode === 'reset' ? 'Send reset link' : 'Create account'}
         </button>
       </form>
 
       <p className={styles.footerNote}>
-        {mode === 'login' ? (
+        {mode === 'reset' ? (
+          <>
+            Remembered it?{' '}
+            <button type="button" onClick={() => setMode('login')}>
+              Sign in
+            </button>
+          </>
+        ) : mode === 'login' ? (
           <>
             New here?{' '}
             <button type="button" onClick={() => setMode('signup')}>
