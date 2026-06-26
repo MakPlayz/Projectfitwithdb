@@ -8,7 +8,6 @@ import Cart from '@/components/Cart';
 import Footer from '@/components/layout/Footer';
 import Navbar from '@/components/Navbar';
 import NotificationsButton from '@/components/NotificationsButton';
-import TextCursor from '@/components/ui/TextCursor';
 
 interface AppChromeProps {
   children: React.ReactNode;
@@ -36,15 +35,6 @@ export default function AppChrome({ children }: AppChromeProps) {
       <Footer />
       <Cart />
       <NotificationsButton />
-      <TextCursor
-        text="🥦"
-        spacing={80}
-        followMouseDirection
-        randomFloat
-        exitDuration={0.3}
-        removalInterval={20}
-        maxPoints={10}
-      />
     </>
   );
 }

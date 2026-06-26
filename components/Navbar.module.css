@@ -138,6 +138,16 @@
   position: relative;
 }
 
+.dropdown::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 220px;
+  height: 12px;
+  transform: translateX(-50%);
+}
+
 .dropdownMenu {
   position: absolute;
   top: calc(100% + 12px);
@@ -265,6 +275,15 @@
 
 .profileMenu {
   position: relative;
+}
+
+.profileMenu::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  right: 0;
+  width: 180px;
+  height: 12px;
 }
 
 .profileTrigger {

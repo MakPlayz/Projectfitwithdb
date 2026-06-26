@@ -60,6 +60,11 @@ export default function Navbar() {
     router.push('/');
   }, [router]);
 
+  const closeDesktopMenus = useCallback(() => {
+    setProgramsOpen(false);
+    setProfileOpen(false);
+  }, []);
+
   useEffect(() => {
     if (!menuOpen) return;
     document.body.style.overflow = 'hidden';
@@ -90,18 +95,35 @@ export default function Navbar() {
         <div className={styles.links}>
           <div
             className={styles.dropdown}
-            onMouseEnter={() => setProgramsOpen(true)}
+            onMouseEnter={() => {
+              setProgramsOpen(true);
+              setProfileOpen(false);
+            }}
             onMouseLeave={() => setProgramsOpen(false)}
           >
-            <button type="button" className={styles.dropdownTrigger}>
+            <button
+              type="button"
+              className={styles.dropdownTrigger}
+              onClick={() => {
+                setProgramsOpen((open) => !open);
+                setProfileOpen(false);
+              }}
+              aria-expanded={programsOpen}
+              aria-haspopup="menu"
+            >
               <span>Programs</span>
               <span className={`${styles.chevron} ${programsOpen ? styles.rotated : ''}`} aria-hidden />
             </button>
             {programsOpen && (
-              <div className={styles.dropdownMenu}>
+              <div className={styles.dropdownMenu} role="menu">
                 {dietCategories.map((d) => (
-                  <Link key={d.slug} href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}>
-                    <span style={{ color: d.accent }}>●</span>
+                  <Link
+                    key={d.slug}
+                    href={isAuthenticated ? d.href : buildAuthRedirect(d.href)}
+                    role="menuitem"
+                    onClick={closeDesktopMenus}
+                  >
+                    <span style={{ color: d.accent }}>{'\u25CF'}</span>
                     {d.shortTitle}
                   </Link>
                 ))}
@@ -125,13 +147,19 @@ export default function Navbar() {
               </button>
               <div
                 className={styles.profileMenu}
-                onMouseEnter={() => setProfileOpen(true)}
+                onMouseEnter={() => {
+                  setProfileOpen(true);
+                  setProgramsOpen(false);
+                }}
                 onMouseLeave={() => setProfileOpen(false)}
               >
                 <button
                   type="button"
                   className={styles.profileTrigger}
-                  onClick={() => setProfileOpen((open) => !open)}
+                  onClick={() => {
+                    setProfileOpen((open) => !open);
+                    setProgramsOpen(false);
+                  }}
                   aria-expanded={profileOpen}
                   aria-haspopup="menu"
                 >
@@ -141,10 +169,10 @@ export default function Navbar() {
                 </button>
                 {profileOpen && (
                   <div className={styles.profileDropdown} role="menu">
-                    <Link href="/profile" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    <Link href="/profile" role="menuitem" onClick={closeDesktopMenus}>
                       Profile
                     </Link>
-                    <Link href="/my-plan" role="menuitem" onClick={() => setProfileOpen(false)}>
+                    <Link href="/my-plan" role="menuitem" onClick={closeDesktopMenus}>
                       My Plan
                     </Link>
                     <button type="button" role="menuitem" onClick={handleLogout}>
