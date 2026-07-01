@@ -18,6 +18,13 @@ import {
 import { supabaseRestFetch } from '@/lib/supabase-rest';
 import type { WhatsAppMessageLog } from '@/lib/backend-types';
 
+const whatsappDivider = '------------------------------';
+
+function formatWebhookWhatsAppMessage(lines: Array<string | null | undefined | false>) {
+  return lines
+    .filter((line): line is string => line !== null && line !== undefined && line !== false)
+    .join('\n');
+}
 type WhatsAppWebhookPayload = {
   entry?: Array<{
     changes?: Array<{
@@ -144,7 +151,16 @@ export async function POST(request: Request) {
         if (buttonId.startsWith('FREE_SAMPLE_RECEIVED:') || buttonId.startsWith('FREE_SAMPLE_NOT_RECEIVED:')) {
           const [action, orderId] = buttonId.split(':');
           if (!orderId) {
-            await sendWhatsAppText(message.from, 'We could not read that free sample response. Please contact the kitchen.', user?.id);
+            await sendWhatsAppText(
+              message.from,
+              formatWebhookWhatsAppMessage([
+                '*Project Fit Free Sample*',
+                whatsappDivider,
+                'We could not read that free sample response.',
+                'Please contact the kitchen team and we will help you confirm the delivery.',
+              ]),
+              user?.id
+            );
             continue;
           }
 
@@ -157,9 +173,17 @@ export async function POST(request: Request) {
 
           await sendWhatsAppText(
             message.from,
-            deliveryStatus === 'received'
-              ? `Thank you for confirming. We marked free sample order ${order?.id ?? orderId} as received.`
-              : `We marked free sample order ${order?.id ?? orderId} as not received. The kitchen team will check it.`,
+            formatWebhookWhatsAppMessage([
+              '*Project Fit Free Sample*',
+              whatsappDivider,
+              deliveryStatus === 'received'
+                ? 'Thank you for confirming. We have marked your free sample as received.'
+                : 'We have marked your free sample as not received.',
+              `*Order ID:* ${order?.id ?? orderId}`,
+              deliveryStatus === 'received'
+                ? 'We hope you enjoy it.'
+                : 'The kitchen team will check this and follow up with you.',
+            ]),
             user?.id
           );
           continue;

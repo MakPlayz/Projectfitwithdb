@@ -5,6 +5,8 @@ import type { CartItem } from '@/store/cartStore';
 import { getMealSlotsLabel } from '@/lib/meal-slots';
 
 const intentCodePattern = /\bPFI-[A-Z0-9]{6}\b/i;
+const whatsappDivider = '------------------------------';
+
 
 function createCheckoutCode() {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -78,56 +80,74 @@ export function isBlockingOrder(order: ApiOrder) {
   return new Date(order.plan_expires_at) >= new Date();
 }
 
+function formatCheckoutMessage(lines: Array<string | null | undefined | false>) {
+  return lines
+    .filter((line): line is string => line !== null && line !== undefined && line !== false)
+    .join('\n');
+}
+
+function formatCheckoutItem(item: CartItem) {
+  const slots = getMealSlotsLabel(item);
+  return [
+    `- ${item.quantity}x ${item.name}`,
+    slots ? `  ${slots}` : null,
+  ]
+    .filter((line): line is string => Boolean(line))
+    .join('\n');
+}
+
 export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
-  const itemList = intent.items.map((item) => {
-    const slots = getMealSlotsLabel(item);
-    return `${item.quantity}x ${item.name}${slots ? `\n${slots}` : ''}`;
-  }).join('\n');
+  const itemList = intent.items.map(formatCheckoutItem).join('\n');
   const deliveryNote = isIncludedDeliveryPincode(intent.delivery_address.pincode)
     ? 'Delivery included in selected plan area'
     : 'Rapido parcel fare applies separately';
 
   if (intent.order_type === 'free_sample') {
-    return [
-      'Hi Project Fit, I want to confirm my free sample request.',
-      '(Please don\'t change or edit this message before sending.)',
+    return formatCheckoutMessage([
+      '*Project Fit Checkout*',
+      '_Free sample confirmation_',
       '',
-      `User ID: ${intent.user_id}`,
-      `Checkout code: ${intent.code}`,
-      `Name: ${intent.customer_name ?? 'Project Fit customer'}`,
-      `Phone: ${intent.delivery_address.phone}`,
-      `Pincode: ${intent.delivery_address.pincode}`,
-      '',
-      'Sample:',
+      'Please send this message as-is so we can securely create your request.',
+      whatsappDivider,
+      `*Checkout code:* ${intent.code}`,
+      `*User ID:* ${intent.user_id}`,
+      `*Name:* ${intent.customer_name ?? 'Project Fit customer'}`,
+      `*WhatsApp phone:* ${intent.delivery_address.phone}`,
+      `*Pincode:* ${intent.delivery_address.pincode}`,
+      whatsappDivider,
+      '*Sample*',
       itemList,
       '',
-      'Please create my free sample request for chef approval.',
-    ].join('\n');
+      'Kindly create my free sample request for chef approval.',
+    ]);
   }
 
-  return [
-    'Hi Project Fit, I want to confirm my meal plan order.',
-    '(Please don\'t change or edit this message before sending.)',
+  return formatCheckoutMessage([
+    '*Project Fit Checkout*',
+    '_Meal plan confirmation_',
     '',
-    `User ID: ${intent.user_id}`,
-    `Checkout code: ${intent.code}`,
-    `Name: ${intent.customer_name ?? 'Project Fit customer'}`,
-    `Phone: ${intent.delivery_address.phone}`,
-    `Pincode: ${intent.delivery_address.pincode}`,
-    `Plan amount: Rs ${intent.total.toLocaleString('en-IN')}`,
-    `Payment option: ${intent.payment_option === 'half' ? 'Half payment now, remaining payment later' : 'Full payment now'}`,
-    `Amount due now: Rs ${intent.payable_now.toLocaleString('en-IN')}`,
-    ...(intent.remaining_amount > 0 ? [`Remaining amount after plan starts: Rs ${intent.remaining_amount.toLocaleString('en-IN')}`] : []),
-    `Requested start date: ${intent.requested_start_date ?? 'Not selected'}`,
-    `Delivery: ${deliveryNote}`,
-    '',
-    'Plan/items:',
+    'Please send this message as-is so we can securely create your order.',
+    whatsappDivider,
+    `*Checkout code:* ${intent.code}`,
+    `*User ID:* ${intent.user_id}`,
+    `*Name:* ${intent.customer_name ?? 'Project Fit customer'}`,
+    `*WhatsApp phone:* ${intent.delivery_address.phone}`,
+    `*Pincode:* ${intent.delivery_address.pincode}`,
+    `*Plan amount:* Rs ${intent.total.toLocaleString('en-IN')}`,
+    `*Payment option:* ${intent.payment_option === 'half' ? 'Half payment now, remaining payment later' : 'Full payment now'}`,
+    `*Amount due now:* Rs ${intent.payable_now.toLocaleString('en-IN')}`,
+    intent.remaining_amount > 0
+      ? `*Remaining amount after plan starts:* Rs ${intent.remaining_amount.toLocaleString('en-IN')}`
+      : null,
+    `*Requested start date:* ${intent.requested_start_date ?? 'Not selected'}`,
+    `*Delivery:* ${deliveryNote}`,
+    whatsappDivider,
+    '*Plan/items*',
     itemList,
     '',
     'Please send the QR payment scanner for the amount due now. I will share the payment screenshot after payment.',
-  ].join('\n');
+  ]);
 }
-
 export async function createCheckoutIntent(payload: Omit<CheckoutIntent, 'id' | 'code' | 'status' | 'order_id' | 'whatsapp_from' | 'whatsapp_message_id' | 'expires_at' | 'created_at' | 'updated_at'>) {
   let lastError: string | null = null;
 
@@ -174,15 +194,39 @@ export async function convertCheckoutIntentFromWhatsApp({
 
   const intent = intentResult.data?.[0] ?? null;
   if (!intent) {
-    return { order: null, message: `We could not find checkout code ${code}. Please start checkout again from the website.` };
+    return {
+      order: null,
+      message: formatCheckoutMessage([
+        '*Project Fit Checkout*',
+        whatsappDivider,
+        `We could not find checkout code *${code}*.`,
+        'Please start checkout again from the website so we can generate a fresh secure code.',
+      ]),
+    };
   }
 
   if (intent.status === 'converted' && intent.order_id) {
-    return { order: null, message: `This checkout is already confirmed. Your order ID is ${intent.order_id}.` };
+    return {
+      order: null,
+      message: formatCheckoutMessage([
+        '*Project Fit Checkout*',
+        whatsappDivider,
+        'This checkout is already confirmed.',
+        `*Order ID:* ${intent.order_id}`,
+      ]),
+    };
   }
 
   if (intent.status !== 'pending') {
-    return { order: null, message: `Checkout code ${code} is no longer active. Please start checkout again from the website.` };
+    return {
+      order: null,
+      message: formatCheckoutMessage([
+        '*Project Fit Checkout*',
+        whatsappDivider,
+        `Checkout code *${code}* is no longer active.`,
+        'Please start checkout again from the website and send the new WhatsApp message.',
+      ]),
+    };
   }
 
   if (new Date(intent.expires_at).getTime() < Date.now()) {
@@ -190,13 +234,28 @@ export async function convertCheckoutIntentFromWhatsApp({
       method: 'PATCH',
       body: JSON.stringify({ status: 'expired' }),
     });
-    return { order: null, message: `Checkout code ${code} has expired. Please start checkout again from the website.` };
+    return {
+      order: null,
+      message: formatCheckoutMessage([
+        '*Project Fit Checkout*',
+        whatsappDivider,
+        `Checkout code *${code}* has expired.`,
+        'Please start checkout again from the website so we can prepare a fresh checkout message.',
+      ]),
+    };
   }
 
   if (!phoneMatchesCheckoutSender(whatsappFrom, intent)) {
     return {
       order: null,
-      message: 'This checkout code is linked to a different phone number. Please open checkout from your own account and send the WhatsApp message again.',
+      message: formatCheckoutMessage([
+        '*Project Fit Checkout*',
+        whatsappDivider,
+        'This checkout code is linked to a different WhatsApp number.',
+        'Please open checkout from your own account and send the new WhatsApp message again.',
+        '',
+        'This keeps your order details secure.',
+      ]),
     };
   }
 
@@ -223,7 +282,12 @@ export async function convertCheckoutIntentFromWhatsApp({
     if (duplicateClaim) {
       return {
         order: null,
-        message: 'A free sample is already linked to this account or device. Ask the chef to reset the limit if needed.',
+        message: formatCheckoutMessage([
+          '*Project Fit Free Sample*',
+          whatsappDivider,
+          'A free sample is already linked to this account or device.',
+          'If this needs to be reviewed, please ask the chef team to reset the limit.',
+        ]),
       };
     }
   } else {
@@ -245,8 +309,18 @@ export async function convertCheckoutIntentFromWhatsApp({
         order: null,
         message:
           duplicateOrder.status === 'new'
-            ? `You already have a pending order for this program: ${duplicateOrder.id}.`
-            : 'You already have an active order for this program. You can order it again after the current plan expires.',
+            ? formatCheckoutMessage([
+                '*Project Fit Order Update*',
+                whatsappDivider,
+                'You already have a pending order for this program.',
+                `*Order ID:* ${duplicateOrder.id}`,
+              ])
+            : formatCheckoutMessage([
+                '*Project Fit Order Update*',
+                whatsappDivider,
+                'You already have an active order for this program.',
+                'You can order it again after the current plan expires.',
+              ]),
       };
     }
   }
@@ -322,11 +396,22 @@ export async function convertCheckoutIntentFromWhatsApp({
     order,
     message:
       intent.order_type === 'free_sample'
-        ? `Your free sample request has been created. Order ID: ${order.id}. It is waiting for chef approval.`
-        : `Your meal plan order has been created. Order ID: ${order.id}. The chef team will verify payment details on WhatsApp.`,
+        ? formatCheckoutMessage([
+            '*Project Fit Free Sample*',
+            whatsappDivider,
+            'Your free sample request has been created.',
+            `*Order ID:* ${order.id}`,
+            'It is now waiting for chef approval. We will update you here.',
+          ])
+        : formatCheckoutMessage([
+            '*Project Fit Order Created*',
+            whatsappDivider,
+            'Your meal plan order has been created.',
+            `*Order ID:* ${order.id}`,
+            'The chef team will verify payment details here on WhatsApp.',
+          ]),
   };
 }
-
 export async function markFreeSampleDeliveryStatus({
   orderId,
   status,

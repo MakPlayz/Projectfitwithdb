@@ -19,6 +19,13 @@ interface CreateOrderBody {
   freeSampleDeviceId?: string;
 }
 
+const whatsappDivider = '------------------------------';
+
+function formatWhatsAppOrderMessage(lines: Array<string | null | undefined | false>) {
+  return lines
+    .filter((line): line is string => line !== null && line !== undefined && line !== false)
+    .join('\n');
+}
 function normalizeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
 }
@@ -48,32 +55,35 @@ function buildManualPaymentMessage({
   const items = order.items
     .map((item) => {
       const slots = getMealSlotsLabel(item);
-      return `${item.quantity}x ${item.name}${slots ? `\n${slots}` : ''}`;
+      return [`- ${item.quantity}x ${item.name}`, slots ? `  ${slots}` : null]
+        .filter(Boolean)
+        .join('\n');
     })
     .join('\n');
   const deliveryNote = isIncludedDeliveryPincode(deliveryAddress.pincode)
     ? 'Delivery included in selected plan area'
     : 'Rapido parcel fare applies separately';
 
-  return [
-    'Hi Project Fit, I want to confirm my order.',
+  return formatWhatsAppOrderMessage([
+    '*Project Fit Order Confirmation*',
     '',
-    `Order ID: ${order.id}`,
-    `User ID: ${userId}`,
-    `Name: ${customerName ?? 'Project Fit customer'}`,
-    `Phone: ${deliveryAddress.phone}`,
-    `Pincode: ${deliveryAddress.pincode}`,
-    `Amount: Rs ${order.total.toLocaleString('en-IN')}`,
-    `Requested start date: ${order.requested_start_date ?? 'Not selected'}`,
-    `Delivery: ${deliveryNote}`,
-    '',
-    'Plan/items:',
+    'Please send this message as-is so the kitchen team can verify your order.',
+    whatsappDivider,
+    `*Order ID:* ${order.id}`,
+    `*User ID:* ${userId}`,
+    `*Name:* ${customerName ?? 'Project Fit customer'}`,
+    `*WhatsApp phone:* ${deliveryAddress.phone}`,
+    `*Pincode:* ${deliveryAddress.pincode}`,
+    `*Amount:* Rs ${order.total.toLocaleString('en-IN')}`,
+    `*Requested start date:* ${order.requested_start_date ?? 'Not selected'}`,
+    `*Delivery:* ${deliveryNote}`,
+    whatsappDivider,
+    '*Plan/items*',
     items,
     '',
     'Please send the QR payment scanner. I will share the payment screenshot after payment.',
-  ].join('\\n');
+  ]);
 }
-
 function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
   const deliveryAddress: DeliveryAddress = {
     addressLine1: normalizeText(value?.addressLine1),

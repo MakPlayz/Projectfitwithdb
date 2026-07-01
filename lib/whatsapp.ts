@@ -17,6 +17,8 @@ const remainingPaymentReminderTemplateName = 'remaining_payment_reminder_project
 const projectFitManagerName = 'Lohit';
 const projectFitManagerPhone = '+91 77990 66991';
 const paymentQrPath = path.join(process.cwd(), 'public', 'payment-qr-scanner.jpeg');
+const whatsappDivider = '------------------------------';
+
 
 type WhatsAppMessageResponse = {
   messages?: Array<{ id: string }>;
@@ -439,13 +441,17 @@ export async function sendWhatsAppReadReceipt(messageId: string) {
 
 export async function sendFreeSampleApprovalButtons(phone: string, orderId: string, userId?: string | null) {
   const formattedPhone = formatWhatsAppPhone(phone) ?? phone;
-  const body = [
+  const body = formatWhatsAppMessage([
+    '*Project Fit Free Sample*',
+    whatsappDivider,
     'Your free sample delivery request has been accepted.',
     '',
-    'Please confirm after you receive the delivery.',
+    '*Next step*',
+    '- Please confirm after the sample reaches you.',
+    '- Tap one option below so our delivery record stays accurate.',
     '',
-    'Tap one option below once the sample reaches you.',
-  ].join('\n');
+    'We will be here if you need any help.',
+  ]);
   const payload = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
@@ -504,7 +510,11 @@ export async function sendFreeSampleApprovalButtons(phone: string, orderId: stri
     throw error;
   }
 }
-
+function formatWhatsAppMessage(lines: Array<string | null | undefined | false>) {
+  return lines
+    .filter((line): line is string => line !== null && line !== undefined && line !== false)
+    .join('\n');
+}
 function formatMoney(amount: number | null | undefined) {
   return `Rs ${(amount ?? 0).toLocaleString('en-IN')}`;
 }
@@ -533,24 +543,30 @@ export async function sendProgramPaymentInstructions(order: ApiOrder) {
   const paymentLines =
     order.payment_option === 'half'
       ? [
-          `Amount due now: ${formatMoney(amountDue)}`,
-          `Remaining payment after plan starts: ${formatMoney(order.remaining_payment_amount)}`,
+          `*Amount due now:* ${formatMoney(amountDue)}`,
+          `*Remaining payment after plan starts:* ${formatMoney(order.remaining_payment_amount)}`,
         ]
-      : [`Amount due now: ${formatMoney(amountDue)}`];
+      : [`*Amount due now:* ${formatMoney(amountDue)}`];
 
   await sendWhatsAppText(
     phone,
-    [
-      `Thank you for your interest in ${getPrimaryOrderItem(order)}.`,
+    formatWhatsAppMessage([
+      '*Project Fit Payment Instructions*',
+      whatsappDivider,
+      `Thank you for choosing *${getPrimaryOrderItem(order)}*.`,
+      'Your order has been created and is ready for payment verification.',
       '',
-      `Order ID: ${order.id}`,
+      `*Order ID:* ${order.id}`,
       ...paymentLines,
       '',
-      `Before making the payment, please talk to ${projectFitManagerName}, Project Fit manager, so your plan can be activated quickly after payment.`,
-      `Manager phone: ${projectFitManagerPhone}`,
+      '*Before you pay*',
+      `- Please speak with ${projectFitManagerName}, Project Fit manager, for quick plan activation.`,
+      `- Manager phone: ${projectFitManagerPhone}`,
+      '- Use the QR scanner sent below.',
+      '- After paying, reply here with your name, transaction ID, and payment screenshot.',
       '',
-      'Please use the QR scanner for payment. After paying, reply here with your name, transaction ID, and payment screenshot.',
-    ].join('\\n'),
+      'We will review it carefully and update you here.',
+    ]),
     order.user_id
   );
 
@@ -558,97 +574,108 @@ export async function sendProgramPaymentInstructions(order: ApiOrder) {
   await sendWhatsAppImage(
     phone,
     mediaId,
-    `Project Fit payment QR for order ${order.id}.`,
+    formatWhatsAppMessage([
+      '*Project Fit Payment QR*',
+      `*Order ID:* ${order.id}`,
+      `*Amount due now:* ${formatMoney(amountDue)}`,
+    ]),
     order.user_id
   );
 }
-
 export async function sendFreeSampleContactInstructions(order: ApiOrder) {
   return sendWhatsAppText(
     order.delivery_address.phone,
-    [
+    formatWhatsAppMessage([
+      '*Project Fit Free Sample*',
+      whatsappDivider,
       'Your free sample request has been created.',
+      `*Order ID:* ${order.id}`,
       '',
-      `Order ID: ${order.id}`,
-      '',
-      `Please contact ${projectFitManagerName}, Project Fit manager, to confirm your free sample delivery.`,
-      `Phone: ${projectFitManagerPhone}`,
+      '*Next step*',
+      `- Please contact ${projectFitManagerName}, Project Fit manager, to confirm your free sample delivery.`,
+      `- Manager phone: ${projectFitManagerPhone}`,
       '',
       'The chef team will review the request and update you here.',
-    ].join('\\n'),
+    ]),
     order.user_id
   );
 }
-
 export async function sendPlanActivatedMessage(order: ApiOrder) {
   const paymentLine =
     order.payment_option === 'half'
-      ? `First payment received: ${formatMoney(order.initial_payment_amount)}. Remaining payment: ${formatMoney(order.remaining_payment_amount)} due on ${formatOrderDate(order.remaining_payment_due_at)}.`
-      : `Payment received: ${formatMoney(order.total)}.`;
+      ? `*First payment received:* ${formatMoney(order.initial_payment_amount)}. *Remaining payment:* ${formatMoney(order.remaining_payment_amount)} due on ${formatOrderDate(order.remaining_payment_due_at)}.`
+      : `*Payment received:* ${formatMoney(order.total)}.`;
 
   return sendWhatsAppText(
     order.delivery_address.phone,
-    [
-      'Your Project Fit plan has been activated.',
+    formatWhatsAppMessage([
+      '*Project Fit Plan Activated*',
+      whatsappDivider,
+      'Your meal plan has been activated.',
       '',
-      `Order ID: ${order.id}`,
-      `Plan: ${getPrimaryOrderItem(order)}`,
-      ...(getOrderMealSlotLine(order) ? [getOrderMealSlotLine(order) as string] : []),
-      `Start date: ${formatOrderDate(order.plan_activated_at ?? order.requested_start_date)}`,
+      `*Order ID:* ${order.id}`,
+      `*Plan:* ${getPrimaryOrderItem(order)}`,
+      getOrderMealSlotLine(order),
+      `*Start date:* ${formatOrderDate(order.plan_activated_at ?? order.requested_start_date)}`,
       paymentLine,
-    ].join('\\n'),
+      '',
+      'Your meals are now scheduled. We will keep you updated here.',
+    ]),
     order.user_id
   );
 }
-
 export async function sendRemainingPaymentConfirmedMessage(order: ApiOrder) {
   return sendWhatsAppText(
     order.delivery_address.phone,
-    [
+    formatWhatsAppMessage([
+      '*Project Fit Payment Confirmed*',
+      whatsappDivider,
       'Your remaining payment has been confirmed.',
       '',
-      `Order ID: ${order.id}`,
-      `Plan: ${getPrimaryOrderItem(order)}`,
-      ...(getOrderMealSlotLine(order) ? [getOrderMealSlotLine(order) as string] : []),
-      'Your monthly plan is now fully paid.',
-    ].join('\\n'),
+      `*Order ID:* ${order.id}`,
+      `*Plan:* ${getPrimaryOrderItem(order)}`,
+      getOrderMealSlotLine(order),
+      '',
+      'Your monthly plan is now fully paid. Thank you for completing the payment.',
+    ]),
     order.user_id
   );
 }
-
 export async function sendPlanStoppedMidwayMessage(order: ApiOrder) {
   return sendWhatsAppText(
     order.delivery_address.phone,
-    [
-      'Your Project Fit monthly plan has been closed.',
+    formatWhatsAppMessage([
+      '*Project Fit Plan Update*',
+      whatsappDivider,
+      'Your monthly plan has been closed.',
       '',
-      `Order ID: ${order.id}`,
+      `*Order ID:* ${order.id}`,
       order.completion_reason || 'The plan was ended after the first half of service days.',
-    ].join('\\n'),
+      '',
+      'If you need any clarification, reply here and our team will help.',
+    ]),
     order.user_id
   );
 }
-
 export async function sendOrderCancellationMessage(order: ApiOrder) {
   const reason = order.cancellation_reason?.trim();
-  const message =
-    order.order_type === 'free_sample'
-      ? [
-          'Your free sample delivery request has been cancelled.',
-          reason ? `Reason: ${reason}` : null,
-        ]
-      : [
-          'Your Project Fit plan request has been cancelled.',
-          reason ? `Reason: ${reason}` : null,
-        ];
+  const title = order.order_type === 'free_sample'
+    ? 'Your free sample delivery request has been cancelled.'
+    : 'Your Project Fit plan request has been cancelled.';
 
   return sendWhatsAppText(
     order.delivery_address.phone,
-    message.filter(Boolean).join('\\n\\n'),
+    formatWhatsAppMessage([
+      '*Project Fit Order Update*',
+      whatsappDivider,
+      title,
+      reason ? `*Reason:* ${reason}` : null,
+      '',
+      'If this does not look right, reply here and our team will help you.',
+    ]),
     order.user_id
   );
 }
-
 export async function sendRemainingPaymentReminderTemplate(order: ApiOrder) {
   const formattedPhone = formatWhatsAppPhone(order.delivery_address.phone) ?? order.delivery_address.phone;
   const payload = {
@@ -738,16 +765,20 @@ export async function buildMenuReply() {
   const items = data ?? [];
 
   if (items.length === 0) {
-    return 'Our menu is being updated. Please contact the kitchen for today\'s options.';
+    return formatWhatsAppMessage([
+      '*ProjectFit Vizag Menu*',
+      whatsappDivider,
+      'Our menu is being updated.',
+      'Please contact the kitchen for today\'s options.',
+    ]);
   }
 
-  return [
-    'ProjectFit Vizag Menu',
-    ...items.map((item) => `${item.name}${item.description ? `
-${item.description}` : ''}`),
-  ].join('\\n\\n');
+  return formatWhatsAppMessage([
+    '*ProjectFit Vizag Menu*',
+    whatsappDivider,
+    ...items.map((item) => `*${item.name}*${item.description ? `\n${item.description}` : ''}`),
+  ]);
 }
-
 export async function buildSpecialsReply() {
   const { data } = await supabaseRestFetch<MenuItem[]>(
     '/menu_items?active=eq.true&category=ilike.*special*&select=*&order=name.asc'
@@ -755,16 +786,20 @@ export async function buildSpecialsReply() {
   const items = data ?? [];
 
   if (items.length === 0) {
-    return 'Today\'s specials are coming soon. Reply 1 to view the full menu.';
+    return formatWhatsAppMessage([
+      '*Today\'s Specials*',
+      whatsappDivider,
+      'Specials are being updated for today.',
+      'Reply 1 to view the full menu or contact the kitchen for help.',
+    ]);
   }
 
-  return [
-    'Today\'s Specials',
-    ...items.map((item) => `${item.name}${item.description ? `
-${item.description}` : ''}`),
-  ].join('\\n\\n');
+  return formatWhatsAppMessage([
+    '*Today\'s Specials*',
+    whatsappDivider,
+    ...items.map((item) => `*${item.name}*${item.description ? `\n${item.description}` : ''}`),
+  ]);
 }
-
 export async function buildMealPlansReply() {
   const { data } = await supabaseRestFetch<MealPlan[]>(
     '/meal_plans?active=eq.true&select=*&order=price.asc'
@@ -772,19 +807,30 @@ export async function buildMealPlansReply() {
   const plans = data ?? [];
 
   if (plans.length === 0) {
-    return 'Meal plans are being updated. Please reply 4 to contact the kitchen.';
+    return formatWhatsAppMessage([
+      '*Project Fit Meal Plans*',
+      whatsappDivider,
+      'Meal plans are being updated.',
+      'Please reply 4 to contact the kitchen team.',
+    ]);
   }
 
-  return [
-    'Available Meal Plans',
-    ...plans.map((plan) => `${plan.name} (${plan.duration})${plan.description ? `
-${plan.description}` : ''}`),
-  ].join('\\n\\n');
+  return formatWhatsAppMessage([
+    '*Project Fit Meal Plans*',
+    whatsappDivider,
+    ...plans.map((plan) => `*${plan.name}* (${plan.duration})${plan.description ? `\n${plan.description}` : ''}`),
+  ]);
 }
-
 export function buildKitchenContactReply() {
   return (
     process.env.WHATSAPP_KITCHEN_CONTACT_MESSAGE?.trim() ||
-    'Contact ProjectFit Vizag Kitchen:\nPhone: +91 90000 00000\nHours: 8 AM - 9 PM'
+    formatWhatsAppMessage([
+      '*ProjectFit Vizag Kitchen*',
+      whatsappDivider,
+      '*Phone:* +91 90000 00000',
+      '*Hours:* 8 AM - 9 PM',
+      '',
+      'Reply here and our team will help you with orders, plans, or delivery questions.',
+    ])
   );
 }
