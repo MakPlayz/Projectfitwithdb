@@ -178,6 +178,7 @@ export default function Cart() {
   const handleCheckout = async () => {
     setError('');
     setIsSubmitting(true);
+    let whatsappWindow: Window | null = null;
 
     try {
       if (items.length !== 1 || items.some((item) => item.quantity !== 1)) {
@@ -188,6 +189,13 @@ export default function Cart() {
 
       if (addressError) {
         throw new Error(addressError);
+      }
+
+      whatsappWindow = window.open('about:blank', '_blank');
+      if (whatsappWindow) {
+        whatsappWindow.opener = null;
+        whatsappWindow.document.title = 'Project Fit checkout';
+        whatsappWindow.document.body.textContent = 'Preparing WhatsApp checkout...';
       }
 
       const response = await fetch('/api/checkout-intents', {
@@ -208,6 +216,7 @@ export default function Cart() {
       const data = await response.json();
 
       if (!response.ok) {
+        whatsappWindow?.close();
         if (/complete your profile/i.test(data.error ?? '')) {
           toggleCart();
           router.push('/profile?completeProfile=1');
@@ -228,17 +237,23 @@ export default function Cart() {
       setRequestedStartDate(getTomorrowDateValue());
       toggleCart();
       if (data.whatsappUrl) {
-        window.open(data.whatsappUrl, '_blank', 'noopener,noreferrer');
-        router.push(
-          `/order-confirmed?intent=${data.checkoutIntent.code}&whatsapp=1${
-            data.checkoutIntent.order_type === 'free_sample' ? '&type=sample' : ''
-          }`
-        );
+        const confirmationPath = `/order-confirmed?intent=${data.checkoutIntent.code}&whatsapp=1${
+          data.checkoutIntent.order_type === 'free_sample' ? '&type=sample' : ''
+        }`;
+
+        if (whatsappWindow && !whatsappWindow.closed) {
+          whatsappWindow.location.href = data.whatsappUrl;
+          router.push(confirmationPath);
+        } else {
+          window.location.assign(data.whatsappUrl);
+        }
         return;
       }
 
+      whatsappWindow?.close();
       router.push('/my-plan');
     } catch (err) {
+      whatsappWindow?.close();
       setError(err instanceof Error ? err.message : 'Could not place your order.');
       setIsSubmitting(false);
     }
