@@ -34,6 +34,19 @@ export const emptyStoredProfile: StoredProfile = {
   deliveryAddress: emptyDeliveryAddress,
 };
 
+export function normalizeDeliveryPhone(phone?: string | null) {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+
+  if (/^91[6-9]\d{9}$/.test(digits)) {
+    return digits.slice(2);
+  }
+
+  if (/^[6-9]\d{9}$/.test(digits)) {
+    return digits;
+  }
+
+  return String(phone ?? '');
+}
 export function normalizeDeliveryAddress(address?: Partial<DeliveryAddress>): DeliveryAddress {
   return {
     ...emptyDeliveryAddress,
@@ -42,7 +55,7 @@ export function normalizeDeliveryAddress(address?: Partial<DeliveryAddress>): De
     addressLine2: address?.addressLine2 ?? '',
     city: address?.city ?? '',
     pincode: address?.pincode ?? '',
-    phone: address?.phone ?? '',
+    phone: normalizeDeliveryPhone(address?.phone),
   };
 }
 

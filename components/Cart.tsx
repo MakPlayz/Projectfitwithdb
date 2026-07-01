@@ -76,12 +76,14 @@ export default function Cart() {
 
     const savedProfile = readStoredProfile();
     if (savedProfile.deliveryAddress) {
-      setDeliveryAddress((current) => ({
-        ...normalizeDeliveryAddress(savedProfile.deliveryAddress),
-        phone: savedProfile.deliveryAddress?.phone || savedProfile.phone || current.phone,
-      }));
+      setDeliveryAddress((current) =>
+        normalizeDeliveryAddress({
+          ...savedProfile.deliveryAddress,
+          phone: savedProfile.phone || savedProfile.deliveryAddress?.phone || current.phone,
+        })
+      );
     } else if (savedProfile.phone) {
-      setDeliveryAddress((current) => ({ ...current, phone: savedProfile.phone || current.phone }));
+      setDeliveryAddress((current) => normalizeDeliveryAddress({ ...current, phone: savedProfile.phone }));
     }
 
     async function loadSavedProfileAddress() {
@@ -92,15 +94,19 @@ export default function Cart() {
         });
         const data = response.ok ? await response.json() : null;
         const remoteAddress = data?.profile?.delivery_address as Partial<DeliveryAddress> | null | undefined;
+        const remoteProfilePhone = typeof data?.user?.phone === 'string' ? data.user.phone : '';
 
         if (cancelled || !remoteAddress) return;
 
         setDeliveryAddress((current) => {
           const next = normalizeDeliveryAddress({
             ...remoteAddress,
-            phone: remoteAddress.phone || savedProfile.phone || current.phone,
+            phone: remoteProfilePhone || savedProfile.phone || remoteAddress.phone || current.phone,
           });
-          mergeStoredProfile({ deliveryAddress: next });
+          mergeStoredProfile({
+            phone: remoteProfilePhone || savedProfile.phone || '',
+            deliveryAddress: next,
+          });
           return next;
         });
       } catch {

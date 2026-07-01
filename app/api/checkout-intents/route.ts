@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { CartItem } from '@/store/cartStore';
-import type { ApiOrder, CustomerProfile, DeliveryAddress, FreeSampleDeviceClaim } from '@/lib/backend-types';
+import type { ApiOrder, CustomerProfile, DeliveryAddress, FreeSampleDeviceClaim, ProjectFitUser } from '@/lib/backend-types';
 import {
   buildCheckoutWhatsAppMessage,
   buildCustomerName,
@@ -14,7 +14,7 @@ import { validateAddressPincodeMatch } from '@/lib/delivery-address-validation';
 import { isMonthlyPlanItems } from '@/lib/plan-duration';
 import { isDeliverablePincode } from '@/lib/serviceable-pincodes';
 import { getUserFromAccessToken, supabaseRestFetch } from '@/lib/supabase-rest';
-import { getWhatsAppBusinessPhoneForLinks } from '@/lib/whatsapp';
+import { formatWhatsAppPhone, getWhatsAppBusinessPhoneForLinks } from '@/lib/whatsapp';
 
 interface CreateIntentBody {
   items?: CartItem[];
@@ -27,6 +27,12 @@ interface CreateIntentBody {
 
 function normalizeText(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function getDeliveryContactPhone(profileWhatsAppPhone: string) {
+  return profileWhatsAppPhone.startsWith('91') && profileWhatsAppPhone.length === 12
+    ? profileWhatsAppPhone.slice(2)
+    : profileWhatsAppPhone;
 }
 
 function validateDeliveryAddress(value: Partial<DeliveryAddress> | undefined) {
@@ -207,6 +213,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Please complete your profile before placing an order.' }, { status: 403 });
   }
 
+  const appUserResult = await supabaseRestFetch<Pick<ProjectFitUser, 'phone'>[]>(
+    `/users?id=eq.${user.id}&select=phone&limit=1`
+  );
+
+  if (appUserResult.error) {
+    return NextResponse.json({ error: appUserResult.error }, { status: appUserResult.status || 500 });
+  }
+
+  const profileWhatsAppPhone = formatWhatsAppPhone(
+    appUserResult.data?.[0]?.phone || user.user_metadata?.phone || ''
+  );
+
+  if (!profileWhatsAppPhone) {
+    return NextResponse.json(
+      { error: 'Update your profile WhatsApp number before checkout.' },
+      { status: 400 }
+    );
+  }
+
+  const checkoutDeliveryAddress = {
+    ...addressValidation.deliveryAddress,
+    phone: getDeliveryContactPhone(profileWhatsAppPhone),
+  };
+
   const existingOrdersResult = await supabaseRestFetch<ApiOrder[]>(
     `/orders?user_id=eq.${user.id}&select=*`
   );
@@ -284,7 +314,7 @@ export async function POST(request: Request) {
 
   const result = await createCheckoutIntent({
     user_id: user.id,
-    phone: addressValidation.deliveryAddress.phone,
+    phone: profileWhatsAppPhone,
     customer_name: customerName,
     items: trustedItems,
     subtotal,
@@ -294,7 +324,7 @@ export async function POST(request: Request) {
     payable_now: payableNow,
     remaining_amount: remainingAmount,
     order_type: isFreeSampleOrder ? 'free_sample' : 'paid_plan',
-    delivery_address: addressValidation.deliveryAddress,
+    delivery_address: checkoutDeliveryAddress,
     requested_start_date: startDate.date,
     free_sample_device_id: freeSampleDeviceId,
   });

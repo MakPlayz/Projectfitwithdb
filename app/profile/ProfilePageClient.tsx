@@ -160,17 +160,24 @@ export default function ProfilePageClient() {
         const appUser = data?.user;
         if (!remote && !appUser) return;
 
-        setProfile((currentProfile) => ({
-          ...currentProfile,
-          fullName: remote?.full_name || appUser?.name || currentProfile.fullName,
-          phone: appUser?.phone || currentProfile.phone,
-          age: remote?.age ?? currentProfile.age,
-          gender: remote?.gender || currentProfile.gender,
-          height: remote?.height_cm ?? currentProfile.height,
-          weight: remote?.weight_kg ?? currentProfile.weight,
-          healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
-          deliveryAddress: normalizeDeliveryAddress(remote?.delivery_address ?? currentProfile.deliveryAddress),
-        }));
+        setProfile((currentProfile) => {
+          const profilePhone = appUser?.phone || currentProfile.phone;
+
+          return {
+            ...currentProfile,
+            fullName: remote?.full_name || appUser?.name || currentProfile.fullName,
+            phone: profilePhone,
+            age: remote?.age ?? currentProfile.age,
+            gender: remote?.gender || currentProfile.gender,
+            height: remote?.height_cm ?? currentProfile.height,
+            weight: remote?.weight_kg ?? currentProfile.weight,
+            healthNotes: remote?.health_notes ?? currentProfile.healthNotes,
+            deliveryAddress: normalizeDeliveryAddress({
+              ...(remote?.delivery_address ?? currentProfile.deliveryAddress),
+              phone: profilePhone,
+            }),
+          };
+        });
         setMedicalReport(
           remote?.medical_report_file_data
             ? {
@@ -244,7 +251,7 @@ export default function ProfilePageClient() {
       deliveryAddress: normalizeDeliveryAddress({
         ...current.deliveryAddress,
         ...address,
-        phone: current.deliveryAddress.phone || current.phone,
+        phone: current.phone,
       }),
     }));
     setIsMapOpen(false);
@@ -309,7 +316,7 @@ export default function ProfilePageClient() {
       height,
       deliveryAddress: normalizeDeliveryAddress({
         ...profile.deliveryAddress,
-        phone: profile.deliveryAddress.phone || profile.phone,
+        phone: profile.phone,
       }),
     };
     writeStoredProfile(nextProfile);
