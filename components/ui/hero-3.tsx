@@ -58,7 +58,6 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
   const contentY = useTransform(scrollYProgress, [0, 1], [0, -90]);
   const contentOpacity = useTransform(scrollYProgress, [0, 0.6], [1, 0]);
   const galleryY = useTransform(scrollYProgress, [0, 1], [0, 80]);
-  const cueOpacity = useTransform(scrollYProgress, [0, 0.12], [1, 0]);
 
   return (
     <section ref={heroRef} className={cn(styles.hero, className)}>
@@ -122,17 +121,6 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
             </Link>
           ) : null}
         </motion.div>
-      </motion.div>
-
-      <motion.div className={styles.scrollCue} style={{ opacity: cueOpacity }} aria-hidden>
-        <span className={styles.scrollCueLabel}>Scroll</span>
-        <span className={styles.scrollCueTrack}>
-          <motion.span
-            className={styles.scrollCueDot}
-            animate={{ y: [0, 14, 0], opacity: [1, 0.3, 1] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          />
-        </span>
       </motion.div>
 
       <motion.div className={styles.galleryWrap} style={{ y: galleryY }} aria-label="Fresh breakfast gallery">
