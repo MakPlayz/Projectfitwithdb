@@ -318,7 +318,7 @@ class Media {
     });
   }
 
-  update(scroll: { current: number; last: number }, direction: 'right' | 'left') {
+  update(scroll: { current: number; last: number }, direction: 'right' | 'left', reducedMotion = false) {
     this.plane.position.x = this.x - scroll.current - this.extra;
 
     const x = this.plane.position.x;
@@ -343,8 +343,11 @@ class Media {
     }
 
     this.speed = scroll.current - scroll.last;
-    this.program.uniforms.uTime.value += 0.04;
-    this.program.uniforms.uSpeed.value = this.speed;
+    if (!reducedMotion) {
+      // Freeze the decorative wave + scroll-distortion for reduced-motion users.
+      this.program.uniforms.uTime.value += 0.04;
+      this.program.uniforms.uSpeed.value = this.speed;
+    }
 
     const planeOffset = this.plane.scale.x / 2;
     const viewportOffset = this.viewport.width / 2;
@@ -387,6 +390,7 @@ interface AppConfig {
   font?: string;
   scrollSpeed?: number;
   scrollEase?: number;
+  reducedMotion?: boolean;
 }
 
 class App {
@@ -416,9 +420,17 @@ class App {
   boundOnTouchDown!: (e: MouseEvent | TouchEvent) => void;
   boundOnTouchMove!: (e: MouseEvent | TouchEvent) => void;
   boundOnTouchUp!: () => void;
+  boundOnVisibility!: () => void;
+  boundUpdate!: () => void;
 
   isDown: boolean = false;
   start: number = 0;
+
+  // Render-loop gating: only run rAF while the gallery is on-screen and the tab
+  // is visible, so it never burns GPU/battery in the background or off-screen.
+  reducedMotion: boolean = false;
+  inView: boolean = true;
+  intersectionObserver?: IntersectionObserver;
 
   constructor(
     container: HTMLElement,
@@ -429,13 +441,16 @@ class App {
       borderRadius = 0,
       font = 'bold 30px Figtree',
       scrollSpeed = 2,
-      scrollEase = 0.05
+      scrollEase = 0.05,
+      reducedMotion = false
     }: AppConfig
   ) {
     document.documentElement.classList.remove('no-js');
     this.container = container;
     this.scrollSpeed = scrollSpeed;
+    this.reducedMotion = reducedMotion;
     this.scroll = { ease: scrollEase, current: 0, target: 0, last: 0 };
+    this.boundUpdate = this.update.bind(this);
     this.onCheckDebounce = debounce(this.onCheck.bind(this), 200);
     this.createRenderer();
     this.createCamera();
@@ -443,8 +458,9 @@ class App {
     this.onResize();
     this.createGeometry();
     this.createMedias(items, bend, textColor, borderRadius, font);
-    this.update();
     this.addEventListeners();
+    this.observeVisibility();
+    this.startLoop();
   }
 
   createRenderer() {
@@ -469,9 +485,11 @@ class App {
   }
 
   createGeometry() {
+    // The vertex shader only applies a gentle wave, so a low-poly plane is
+    // visually identical here while cutting ~95% of the vertices (perf/iOS GPU).
     this.planeGeometry = new Plane(this.gl, {
-      heightSegments: 50,
-      widthSegments: 100
+      heightSegments: 12,
+      widthSegments: 20
     });
   }
 
@@ -558,6 +576,7 @@ class App {
     this.isDown = true;
     this.scroll.position = this.scroll.current;
     this.start = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    this.wake();
   }
 
   onTouchMove(e: MouseEvent | TouchEvent) {
@@ -565,6 +584,7 @@ class App {
     const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const distance = (this.start - x) * (this.scrollSpeed * 0.025);
     this.scroll.target = (this.scroll.position ?? 0) + distance;
+    this.wake();
   }
 
   onTouchUp() {
@@ -577,6 +597,7 @@ class App {
     const delta = wheelEvent.deltaY || wheelEvent.wheelDelta || wheelEvent.detail || 0;
     this.scroll.target += (delta > 0 ? this.scrollSpeed : -this.scrollSpeed) * 0.2;
     this.onCheckDebounce();
+    this.wake();
   }
 
   onCheck() {
@@ -609,11 +630,61 @@ class App {
     this.scroll.current = lerp(this.scroll.current, this.scroll.target, this.scroll.ease);
     const direction = this.scroll.current > this.scroll.last ? 'right' : 'left';
     if (this.medias) {
-      this.medias.forEach(media => media.update(this.scroll, direction));
+      this.medias.forEach(media => media.update(this.scroll, direction, this.reducedMotion));
     }
     this.renderer.render({ scene: this.scene, camera: this.camera });
     this.scroll.last = this.scroll.current;
-    this.raf = window.requestAnimationFrame(this.update.bind(this));
+
+    // Keep animating while the tab/section is visible. For reduced-motion the
+    // decorative wave is frozen, so idle there means "nothing to draw" — stop
+    // once the scroll has settled and wait for the next interaction to wake().
+    const settling = Math.abs(this.scroll.target - this.scroll.current) > 0.0015;
+    if (this.isRunnable() && (!this.reducedMotion || settling || this.isDown)) {
+      this.raf = window.requestAnimationFrame(this.boundUpdate);
+    } else {
+      this.raf = 0;
+    }
+  }
+
+  isRunnable() {
+    return this.inView && (typeof document === 'undefined' || !document.hidden);
+  }
+
+  startLoop() {
+    if (this.raf || !this.isRunnable()) return;
+    this.raf = window.requestAnimationFrame(this.boundUpdate);
+  }
+
+  stopLoop() {
+    if (this.raf) {
+      window.cancelAnimationFrame(this.raf);
+      this.raf = 0;
+    }
+  }
+
+  // Restart the loop after an interaction when it has idled (reduced-motion).
+  wake() {
+    if (!this.raf) this.startLoop();
+  }
+
+  observeVisibility() {
+    this.boundOnVisibility = () => {
+      if (this.isRunnable()) this.startLoop();
+      else this.stopLoop();
+    };
+    document.addEventListener('visibilitychange', this.boundOnVisibility);
+
+    if (typeof IntersectionObserver !== 'undefined') {
+      this.intersectionObserver = new IntersectionObserver(
+        entries => {
+          this.inView = entries.some(entry => entry.isIntersecting);
+          if (this.isRunnable()) this.startLoop();
+          else this.stopLoop();
+        },
+        { threshold: 0 }
+      );
+      this.intersectionObserver.observe(this.container);
+    }
   }
 
   addEventListeners() {
@@ -622,26 +693,34 @@ class App {
     this.boundOnTouchDown = this.onTouchDown.bind(this);
     this.boundOnTouchMove = this.onTouchMove.bind(this);
     this.boundOnTouchUp = this.onTouchUp.bind(this);
+
     window.addEventListener('resize', this.boundOnResize);
-    window.addEventListener('mousewheel', this.boundOnWheel);
-    window.addEventListener('wheel', this.boundOnWheel);
-    window.addEventListener('mousedown', this.boundOnTouchDown);
+
+    // Scrubbing input is scoped to the gallery element (passive — we never
+    // preventDefault) so it no longer hijacks page scroll or fires for touches
+    // anywhere on the page (was a source of iOS scroll jank).
+    this.container.addEventListener('wheel', this.boundOnWheel, { passive: true });
+    this.container.addEventListener('mousedown', this.boundOnTouchDown);
+    this.container.addEventListener('touchstart', this.boundOnTouchDown, { passive: true });
+
+    // A drag that starts on the gallery keeps tracking even if the pointer
+    // leaves it; guarded by isDown so it's a no-op otherwise.
     window.addEventListener('mousemove', this.boundOnTouchMove);
     window.addEventListener('mouseup', this.boundOnTouchUp);
-    window.addEventListener('touchstart', this.boundOnTouchDown);
-    window.addEventListener('touchmove', this.boundOnTouchMove);
+    window.addEventListener('touchmove', this.boundOnTouchMove, { passive: true });
     window.addEventListener('touchend', this.boundOnTouchUp);
   }
 
   destroy() {
-    window.cancelAnimationFrame(this.raf);
+    this.stopLoop();
+    document.removeEventListener('visibilitychange', this.boundOnVisibility);
+    this.intersectionObserver?.disconnect();
     window.removeEventListener('resize', this.boundOnResize);
-    window.removeEventListener('mousewheel', this.boundOnWheel);
-    window.removeEventListener('wheel', this.boundOnWheel);
-    window.removeEventListener('mousedown', this.boundOnTouchDown);
+    this.container.removeEventListener('wheel', this.boundOnWheel);
+    this.container.removeEventListener('mousedown', this.boundOnTouchDown);
+    this.container.removeEventListener('touchstart', this.boundOnTouchDown);
     window.removeEventListener('mousemove', this.boundOnTouchMove);
     window.removeEventListener('mouseup', this.boundOnTouchUp);
-    window.removeEventListener('touchstart', this.boundOnTouchDown);
     window.removeEventListener('touchmove', this.boundOnTouchMove);
     window.removeEventListener('touchend', this.boundOnTouchUp);
     if (this.renderer && this.renderer.gl && this.renderer.gl.canvas.parentNode) {
@@ -672,6 +751,9 @@ export default function CircularGallery({
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!containerRef.current) return;
+    const reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const app = new App(containerRef.current, {
       items,
       bend,
@@ -679,7 +761,8 @@ export default function CircularGallery({
       borderRadius,
       font,
       scrollSpeed,
-      scrollEase
+      scrollEase,
+      reducedMotion
     });
     return () => {
       app.destroy();

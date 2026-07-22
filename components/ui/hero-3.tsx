@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import type { Variants } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
-import Aurora from '@/components/ui/Aurora/Aurora';
 import CircularGallery from '@/components/ui/CircularGallery/CircularGallery';
 import SplitText from '@/components/ui/SplitText';
 import { cn } from '@/lib/utils';
@@ -63,9 +62,7 @@ export const AnimatedMarqueeHero: React.FC<AnimatedMarqueeHeroProps> = ({
 
   return (
     <section ref={heroRef} className={cn(styles.hero, className)}>
-      <div className={styles.aurora} aria-hidden>
-        <Aurora colorStops={['#10b981', '#34d399', '#059669']} amplitude={0.9} blend={0.55} speed={0.5} />
-      </div>
+      <div className={styles.aurora} aria-hidden />
 
       <motion.div className={styles.content} style={{ y: contentY, opacity: contentOpacity }}>
         <motion.div
