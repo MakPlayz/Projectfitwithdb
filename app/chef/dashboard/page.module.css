@@ -1273,6 +1273,14 @@
   gap: 10px;
 }
 
+.customPriceHint {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted, #6b7280);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .empty {
   border: 1px dashed rgba(205, 221, 210, 0.22);
   background: rgba(255, 255, 255, 0.035);

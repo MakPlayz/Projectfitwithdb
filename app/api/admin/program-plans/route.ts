@@ -22,6 +22,20 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Program plan price must be zero or more.' }, { status: 400 });
   }
 
+  let customPrices: Record<string, number> | null = null;
+  if (body.custom_prices != null) {
+    const allowedSlots = ['breakfast', 'lunch', 'dinner'];
+    customPrices = {};
+    for (const [slot, value] of Object.entries(body.custom_prices)) {
+      if (!allowedSlots.includes(slot)) continue;
+      const numericValue = Number(value);
+      if (!Number.isFinite(numericValue) || numericValue < 0) {
+        return NextResponse.json({ error: `${slot} price must be zero or more.` }, { status: 400 });
+      }
+      customPrices[slot] = numericValue;
+    }
+  }
+
   const payload = {
     plan_id: planId,
     name: String(body.name ?? '').trim() || null,
@@ -29,6 +43,7 @@ export async function PATCH(request: Request) {
     price,
     highlight: String(body.highlight ?? '').trim() || null,
     active: body.active !== false,
+    custom_prices: customPrices,
   };
 
   const result = await supabaseRestFetch<ProgramPlanOverride[]>('/program_plan_overrides?on_conflict=plan_id', {

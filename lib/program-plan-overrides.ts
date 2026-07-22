@@ -9,6 +9,7 @@ export interface ProgramPlanOverride {
   price: number | null;
   highlight: string | null;
   active: boolean;
+  custom_prices: Partial<Record<'breakfast' | 'lunch' | 'dinner', number>> | null;
   updated_at: string;
 }
 
@@ -93,6 +94,9 @@ export async function getDietWithPlanOverrides(slug: string): Promise<DietCatego
         duration: override.duration || plan.duration,
         price: typeof override.price === 'number' ? override.price : plan.price,
         highlight: override.highlight || plan.highlight,
+        customPrices: plan.customPrices
+          ? { ...plan.customPrices, ...(override.custom_prices ?? {}) }
+          : plan.customPrices,
       };
     })
     .filter((plan): plan is DietPlan => Boolean(plan));

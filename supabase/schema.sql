@@ -167,6 +167,7 @@ create table if not exists public.program_plan_overrides (
   price integer check (price is null or price >= 0),
   highlight text,
   active boolean not null default true,
+  custom_prices jsonb,
   updated_at timestamptz not null default now()
 );
 

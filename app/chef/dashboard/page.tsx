@@ -944,7 +944,7 @@ export default function ChefDashboard() {
     });
   }
 
-  function handleProgramSubmit(event: FormEvent<HTMLFormElement>, planId: string) {
+  function handleProgramSubmit(event: FormEvent<HTMLFormElement>, planId: string, hasCustomPrices: boolean) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     void submitJson('/api/admin/program-plans', 'PATCH', {
@@ -954,6 +954,13 @@ export default function ChefDashboard() {
       price: Number(form.get('price') ?? 0),
       highlight: form.get('highlight'),
       active: form.get('active') === 'on',
+      custom_prices: hasCustomPrices
+        ? {
+            breakfast: Number(form.get('breakfast_price') ?? 0),
+            lunch: Number(form.get('lunch_price') ?? 0),
+            dinner: Number(form.get('dinner_price') ?? 0),
+          }
+        : undefined,
     });
   }
 
@@ -1592,6 +1599,9 @@ export default function ChefDashboard() {
                             price: override?.price ?? plan.price,
                             highlight: override?.highlight || plan.highlight,
                             active: override?.active ?? true,
+                            customPrices: plan.customPrices
+                              ? { ...plan.customPrices, ...(override?.custom_prices ?? {}) }
+                              : undefined,
                           };
 
                           return (
@@ -1599,7 +1609,7 @@ export default function ChefDashboard() {
                               key={plan.id}
                               title={plan.name}
                               item={item}
-                              onSubmit={(event) => handleProgramSubmit(event, plan.id)}
+                              onSubmit={(event) => handleProgramSubmit(event, plan.id, Boolean(plan.customPrices))}
                             />
                           );
                         })}
@@ -2403,18 +2413,58 @@ function ProgramPlanEditor({
   onSubmit,
 }: {
   title: string;
-  item: { name: string; duration: string; price: number; highlight: string; active: boolean };
+  item: {
+    name: string;
+    duration: string;
+    price: number;
+    highlight: string;
+    active: boolean;
+    customPrices?: Partial<Record<'breakfast' | 'lunch' | 'dinner', number>>;
+  };
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const hasCustomPrices = Boolean(item.customPrices);
+
   return (
     <form className={styles.compactEditor} onSubmit={onSubmit}>
       <h3>{title}</h3>
       <div className={styles.compactFields}>
         <Field name="name" label="Name" defaultValue={item.name} required />
         <Field name="duration" label="Duration" defaultValue={item.duration} required />
-        <Field name="price" label="Price" type="number" defaultValue={item.price} required />
+        {hasCustomPrices ? (
+          <>
+            <Field
+              name="breakfast_price"
+              label="Breakfast (monthly)"
+              type="number"
+              defaultValue={item.customPrices?.breakfast ?? 0}
+              required
+            />
+            <Field
+              name="lunch_price"
+              label="Lunch (monthly)"
+              type="number"
+              defaultValue={item.customPrices?.lunch ?? 0}
+              required
+            />
+            <Field
+              name="dinner_price"
+              label="Dinner (monthly)"
+              type="number"
+              defaultValue={item.customPrices?.dinner ?? 0}
+              required
+            />
+          </>
+        ) : (
+          <Field name="price" label="Price" type="number" defaultValue={item.price} required />
+        )}
         <Field name="highlight" label="Highlight" defaultValue={item.highlight} />
       </div>
+      {hasCustomPrices && (
+        <small className={styles.customPriceHint}>
+          Customer picks 1 or 2 of these meal times per day — the price charged is the sum of whichever they pick.
+        </small>
+      )}
       <label className={styles.checkRow}>
         <input name="active" type="checkbox" defaultChecked={item.active} />
         Active

@@ -1,7 +1,7 @@
 import type { CartItem } from '@/store/cartStore';
 import { getDietWithPlanOverrides } from '@/lib/program-plan-overrides';
 import type { DietMeal, DietPlan, DietSlug } from '@/data/diets';
-import { getDefaultMealSlots, normalizeMealSlots } from '@/lib/meal-slots';
+import { formatMealSlots, getDefaultMealSlots, normalizeMealSlots } from '@/lib/meal-slots';
 
 type TrustedCheckoutPricing =
   | {
@@ -47,21 +47,15 @@ function findPlanForCartItem(plans: DietPlan[], item: CartItem) {
   });
 }
 
-function getCustomMealCount(item: CartItem) {
-  const match = normalizeText(item.name).match(/\((\d+)\s+meals?\/day\)/i);
-  const count = match ? Number(match[1]) : 1;
-  return count === 2 ? 2 : 1;
-}
-
 function getRequiredMealSlots(plan: DietPlan, item: CartItem) {
-  if (plan.customPrices) return getCustomMealCount(item);
+  if (plan.customPrices) return normalizeMealSlots(item.mealSlots).length;
   return Math.min(3, Math.max(1, plan.mealsPerDay || 1));
 }
 
 function getTrustedPlanPrice(plan: DietPlan, item: CartItem) {
   if (!plan.customPrices) return plan.price;
-  const mealCount = getCustomMealCount(item);
-  return plan.customPrices[mealCount] ?? plan.price;
+  const slots = normalizeMealSlots(item.mealSlots);
+  return slots.reduce((sum, slot) => sum + (plan.customPrices?.[slot] ?? 0), 0);
 }
 
 function findSampleForCartItem(samples: DietMeal[], item: CartItem) {
@@ -127,12 +121,12 @@ export async function getTrustedCheckoutPricing(items: CartItem[]): Promise<Trus
     return { ok: false, error: 'Selected meal plan is not available.' };
   }
 
-  const price = getTrustedPlanPrice(plan, item);
-  if (!Number.isFinite(price) || price < 0) {
-    return { ok: false, error: 'Selected meal plan price is invalid.' };
+  const requiredMealSlots = getRequiredMealSlots(plan, item);
+
+  if (plan.customPrices && (requiredMealSlots < 1 || requiredMealSlots > 2)) {
+    return { ok: false, error: `Select 1 or 2 meal times for ${plan.name}.` };
   }
 
-  const requiredMealSlots = getRequiredMealSlots(plan, item);
   const mealSlots = requiredMealSlots >= 3
     ? getDefaultMealSlots(requiredMealSlots)
     : normalizeMealSlots(item.mealSlots);
@@ -144,8 +138,13 @@ export async function getTrustedCheckoutPricing(items: CartItem[]): Promise<Trus
     };
   }
 
+  const price = getTrustedPlanPrice(plan, item);
+  if (!Number.isFinite(price) || price <= 0) {
+    return { ok: false, error: 'Selected meal plan price is invalid.' };
+  }
+
   const name = plan.customPrices
-    ? `${diet.title} - ${plan.name} (${getCustomMealCount(item)} Meal${getCustomMealCount(item) > 1 ? 's' : ''}/Day)`
+    ? `${diet.title} - ${plan.name} (${formatMealSlots(mealSlots)})`
     : `${diet.title} - ${plan.name}`;
   const subtotal = Math.round(price);
   const tax = Math.round(subtotal * 0.05);
