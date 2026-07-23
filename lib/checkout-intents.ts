@@ -122,6 +122,24 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
     ]);
   }
 
+  const quotePriceLabel = intent.items.find((item) => item.priceLabel)?.priceLabel ?? null;
+  const amountLines = quotePriceLabel
+    ? [
+        `*Plan amount:* ${quotePriceLabel}`,
+        '*Payment:* Final price will be confirmed by the kitchen on WhatsApp.',
+      ]
+    : [
+        `*Plan amount:* Rs ${intent.total.toLocaleString('en-IN')}`,
+        `*Payment option:* ${intent.payment_option === 'half' ? 'Half payment now, remaining payment later' : 'Full payment now'}`,
+        `*Amount due now:* Rs ${intent.payable_now.toLocaleString('en-IN')}`,
+        intent.remaining_amount > 0
+          ? `*Remaining amount after plan starts:* Rs ${intent.remaining_amount.toLocaleString('en-IN')}`
+          : null,
+      ];
+  const closingLine = quotePriceLabel
+    ? 'Please confirm my plan so the kitchen can share the final price and payment details.'
+    : 'Please send the QR payment scanner for the amount due now. I will share the payment screenshot after payment.';
+
   return formatCheckoutMessage([
     '*Project Fit Checkout*',
     '_Meal plan confirmation_',
@@ -133,19 +151,14 @@ export function buildCheckoutWhatsAppMessage(intent: CheckoutIntent) {
     `*Name:* ${intent.customer_name ?? 'Project Fit customer'}`,
     `*WhatsApp phone:* ${intent.delivery_address.phone}`,
     `*Pincode:* ${intent.delivery_address.pincode}`,
-    `*Plan amount:* Rs ${intent.total.toLocaleString('en-IN')}`,
-    `*Payment option:* ${intent.payment_option === 'half' ? 'Half payment now, remaining payment later' : 'Full payment now'}`,
-    `*Amount due now:* Rs ${intent.payable_now.toLocaleString('en-IN')}`,
-    intent.remaining_amount > 0
-      ? `*Remaining amount after plan starts:* Rs ${intent.remaining_amount.toLocaleString('en-IN')}`
-      : null,
+    ...amountLines,
     `*Requested start date:* ${intent.requested_start_date ?? 'Not selected'}`,
     `*Delivery:* ${deliveryNote}`,
     whatsappDivider,
     '*Plan/items*',
     itemList,
     '',
-    'Please send the QR payment scanner for the amount due now. I will share the payment screenshot after payment.',
+    closingLine,
   ]);
 }
 export async function createCheckoutIntent(payload: Omit<CheckoutIntent, 'id' | 'code' | 'status' | 'order_id' | 'whatsapp_from' | 'whatsapp_message_id' | 'expires_at' | 'created_at' | 'updated_at'>) {

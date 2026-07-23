@@ -31,6 +31,29 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
       return;
     }
 
+    const quotePriceLabel = plan.priceLabel?.trim();
+    if (quotePriceLabel) {
+      clearCart();
+      addItem({
+        id: `${plan.id}-${plan.name}`,
+        name: `${diet.title} - ${plan.name}`,
+        itemType: 'plan',
+        programSlug: diet.slug,
+        mealsPerDay: plan.mealsPerDay,
+        mealSlots: [],
+        priceLabel: quotePriceLabel,
+        basePrice: 0,
+        quantity: 1,
+        image: categoryImage,
+        removedIngredients: [],
+        addOns: [],
+        totalPrice: 0,
+      });
+      setCartNotice('');
+      toggleCart();
+      return;
+    }
+
     const mealsPerDay = getPlanMealCount(plan);
     const mealSlots = !plan.customPrices || mealsPerDay >= 3
       ? getDefaultMealSlots(mealsPerDay)
@@ -128,7 +151,8 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
   const monthPlans = diet.plans.filter((p) => p.id.includes('-month-') || p.id.includes('-custom-'));
 
   const renderPlanCard = (plan: DietPlan, i: number) => {
-    const hasCustomOption = Boolean(plan.customPrices);
+    const isQuoteBased = Boolean(plan.priceLabel?.trim());
+    const hasCustomOption = Boolean(plan.customPrices) && !isQuoteBased;
     const customMealsVal = selectedMeals[plan.id] ?? 1;
     const displayMeals = hasCustomOption ? customMealsVal : plan.mealsPerDay;
     const requiredSlots = getPlanMealCount(plan);
@@ -138,11 +162,13 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
     const displayPrice = hasCustomOption && plan.customPrices
       ? selectedSlots.reduce((sum, slot) => sum + (plan.customPrices?.[slot] ?? 0), 0)
       : plan.price;
-    const priceLabel = hasCustomOption && selectedSlots.length === 0
-      ? 'Select meal times'
-      : displayPrice > 0
-        ? `Rs ${displayPrice.toLocaleString('en-IN')}`
-        : 'Updating soon';
+    const priceText = isQuoteBased
+      ? plan.priceLabel!.trim()
+      : hasCustomOption && selectedSlots.length === 0
+        ? 'Select meal times'
+        : displayPrice > 0
+          ? `Rs ${displayPrice.toLocaleString('en-IN')}`
+          : 'Updating soon';
 
     return (
       <motion.article
@@ -169,7 +195,7 @@ export default function DietPageTemplate({ diet }: DietPageTemplateProps) {
           </div>
           <div className={styles.planInfoRow}>
             <span>Price</span>
-            <strong>{priceLabel}</strong>
+            <strong>{priceText}</strong>
           </div>
         </div>
 

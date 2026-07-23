@@ -125,7 +125,8 @@ export default function Cart() {
 
   const total = getTotal();
   const isFreeSampleCheckout = items.length === 1 && items[0]?.itemType === 'free_sample';
-  const canUseHalfPayment = !isFreeSampleCheckout && isMonthlyPlanItems(items);
+  const quotePriceLabel = items.find((item) => item.priceLabel)?.priceLabel ?? null;
+  const canUseHalfPayment = !isFreeSampleCheckout && !quotePriceLabel && isMonthlyPlanItems(items);
   const payableNow = canUseHalfPayment && paymentOption === 'half' ? Math.ceil(total / 2) : total;
   const remainingAmount = Math.max(0, total - payableNow);
   const hasValidPincode = /^[1-9][0-9]{5}$/.test(deliveryAddress.pincode.trim());
@@ -293,7 +294,7 @@ export default function Cart() {
                       <span className={styles.itemEyebrow}>{item.itemType === 'free_sample' ? 'Free sample' : 'Selected plan'}</span>
                       <h4>{item.name}</h4>
                       {getMealSlotsLabel(item) && <small>{getMealSlotsLabel(item)}</small>}
-                      <p>Rs {item.totalPrice.toLocaleString('en-IN')}</p>
+                      <p>{item.priceLabel ? item.priceLabel : `Rs ${item.totalPrice.toLocaleString('en-IN')}`}</p>
                     </div>
                     <button className={styles.removeBtn} onClick={() => removeItem(item.id)}>
                       <Trash2 size={16} />
@@ -447,9 +448,19 @@ export default function Cart() {
               {error && <p className={styles.error}>{error}</p>}
               {!isFreeSampleCheckout && (
                 <div className={styles.paymentSummary}>
-                  <span>Due now</span>
-                  <strong>Rs {payableNow.toLocaleString('en-IN')}</strong>
-                  {remainingAmount > 0 && <small>Remaining later: Rs {remainingAmount.toLocaleString('en-IN')}</small>}
+                  {quotePriceLabel ? (
+                    <>
+                      <span>Price</span>
+                      <strong>{quotePriceLabel}</strong>
+                      <small>The kitchen will confirm the final price on WhatsApp.</small>
+                    </>
+                  ) : (
+                    <>
+                      <span>Due now</span>
+                      <strong>Rs {payableNow.toLocaleString('en-IN')}</strong>
+                      {remainingAmount > 0 && <small>Remaining later: Rs {remainingAmount.toLocaleString('en-IN')}</small>}
+                    </>
+                  )}
                 </div>
               )}
               <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '16px' }} onClick={handleCheckout} disabled={isSubmitting}>

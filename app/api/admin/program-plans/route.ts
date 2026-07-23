@@ -15,6 +15,8 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Program plan id is required.' }, { status: 400 });
   }
 
+  const priceLabel = String(body.price_label ?? '').trim() || null;
+
   const price = body.price === null || body.price === undefined
     ? null
     : Number(body.price);
@@ -41,6 +43,7 @@ export async function PATCH(request: Request) {
     name: String(body.name ?? '').trim() || null,
     duration: String(body.duration ?? '').trim() || null,
     price,
+    price_label: priceLabel,
     highlight: String(body.highlight ?? '').trim() || null,
     active: body.active !== false,
     custom_prices: customPrices,

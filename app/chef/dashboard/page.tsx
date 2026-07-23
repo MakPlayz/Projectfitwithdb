@@ -947,11 +947,22 @@ export default function ChefDashboard() {
   function handleProgramSubmit(event: FormEvent<HTMLFormElement>, planId: string, hasCustomPrices: boolean) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+
+    // For non-custom plans the single price field accepts either a number or a text
+    // label (e.g. "Price depends on Body & Weight"). Custom plans keep their numeric
+    // meal prices and use a dedicated "Price label" field instead.
+    const rawPrice = String(form.get('price') ?? '').trim();
+    const numericPrice = Number(rawPrice);
+    const priceIsNumeric = rawPrice !== '' && Number.isFinite(numericPrice);
+    const labelFromPriceField = !hasCustomPrices && rawPrice !== '' && !priceIsNumeric ? rawPrice : '';
+    const priceLabel = String(form.get('price_label') ?? '').trim() || labelFromPriceField || null;
+
     void submitJson('/api/admin/program-plans', 'PATCH', {
       plan_id: planId,
       name: form.get('name'),
       duration: form.get('duration'),
-      price: Number(form.get('price') ?? 0),
+      price: priceIsNumeric ? numericPrice : 0,
+      price_label: priceLabel,
       highlight: form.get('highlight'),
       active: form.get('active') === 'on',
       custom_prices: hasCustomPrices
@@ -1597,6 +1608,7 @@ export default function ChefDashboard() {
                             name: override?.name || plan.name,
                             duration: override?.duration || plan.duration,
                             price: override?.price ?? plan.price,
+                            priceLabel: override?.price_label ?? plan.priceLabel,
                             highlight: override?.highlight || plan.highlight,
                             active: override?.active ?? true,
                             customPrices: plan.customPrices
@@ -2417,6 +2429,7 @@ function ProgramPlanEditor({
     name: string;
     duration: string;
     price: number;
+    priceLabel?: string;
     highlight: string;
     active: boolean;
     customPrices?: Partial<Record<'breakfast' | 'lunch' | 'dinner', number>>;
@@ -2454,15 +2467,31 @@ function ProgramPlanEditor({
               defaultValue={item.customPrices?.dinner ?? 0}
               required
             />
+            <Field
+              name="price_label"
+              label="Price label (optional)"
+              defaultValue={item.priceLabel ?? ''}
+            />
           </>
         ) : (
-          <Field name="price" label="Price" type="number" defaultValue={item.price} required />
+          <Field
+            name="price"
+            label="Price"
+            type="text"
+            defaultValue={item.priceLabel ?? item.price}
+            required
+          />
         )}
         <Field name="highlight" label="Highlight" defaultValue={item.highlight} />
       </div>
-      {hasCustomPrices && (
+      {hasCustomPrices ? (
         <small className={styles.customPriceHint}>
           Customer picks 1 or 2 of these meal times per day — the price charged is the sum of whichever they pick.
+          Set a price label (e.g. &quot;Price depends on Body &amp; Weight&quot;) to hide the amounts and let the kitchen quote instead.
+        </small>
+      ) : (
+        <small className={styles.customPriceHint}>
+          Enter an amount (e.g. 4249) or text like &quot;Price depends on Body &amp; Weight&quot; — text prices are shown as-is and the kitchen confirms the final price on WhatsApp.
         </small>
       )}
       <label className={styles.checkRow}>
