@@ -14,6 +14,12 @@ export interface DietPlan {
   mealsPerDay: number;
   highlight: string;
   customPrices?: Partial<Record<'breakfast' | 'lunch' | 'dinner', number>>;
+  /**
+   * Optional descriptive price (e.g. "Price depends on Body & Weight"), set by the
+   * chef in the portal. When present, the plan is quote-based: this text is shown to
+   * customers instead of a fixed amount and the kitchen confirms the price on WhatsApp.
+   */
+  priceLabel?: string;
 }
 
 export interface DietMeal {

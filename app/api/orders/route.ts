@@ -63,6 +63,7 @@ function buildManualPaymentMessage({
   const deliveryNote = isIncludedDeliveryPincode(deliveryAddress.pincode)
     ? 'Delivery included in selected plan area'
     : 'Rapido parcel fare applies separately';
+  const quotePriceLabel = order.items.find((item) => item.priceLabel)?.priceLabel ?? null;
 
   return formatWhatsAppOrderMessage([
     '*Project Fit Order Confirmation*',
@@ -74,7 +75,9 @@ function buildManualPaymentMessage({
     `*Name:* ${customerName ?? 'Project Fit customer'}`,
     `*WhatsApp phone:* ${deliveryAddress.phone}`,
     `*Pincode:* ${deliveryAddress.pincode}`,
-    `*Amount:* Rs ${order.total.toLocaleString('en-IN')}`,
+    quotePriceLabel
+      ? `*Amount:* ${quotePriceLabel} (kitchen will confirm the final price)`
+      : `*Amount:* Rs ${order.total.toLocaleString('en-IN')}`,
     `*Requested start date:* ${order.requested_start_date ?? 'Not selected'}`,
     `*Delivery:* ${deliveryNote}`,
     whatsappDivider,

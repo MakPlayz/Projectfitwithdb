@@ -12,6 +12,8 @@ export interface CartItem {
   programSlug?: string;
   mealsPerDay?: number;
   mealSlots?: MealSlot[];
+  /** Set for quote-based plans (e.g. "Price depends on Body & Weight") — no fixed amount. */
+  priceLabel?: string;
   removedIngredients: string[];
   addOns: { name: string; price: number }[];
   totalPrice: number;

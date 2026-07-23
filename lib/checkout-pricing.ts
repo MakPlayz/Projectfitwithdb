@@ -41,10 +41,18 @@ function findPlanForCartItem(plans: DietPlan[], item: CartItem) {
   const id = normalizeText(item.id);
   const name = normalizeText(item.name).toLowerCase();
 
-  return plans.find((plan) => {
-    const planName = plan.name.toLowerCase();
-    return id === plan.id || id.startsWith(`${plan.id}-`) || name.includes(planName);
-  });
+  // Cart item ids are built as `${plan.id}-${name}` (see DietPageTemplate), so an
+  // exact id or id-prefix match is authoritative. Prefer it over name matching,
+  // which is ambiguous when one plan name is a substring of another (e.g. "Day
+  // Regular Plan" is contained in "6-Day Regular Plan") and would otherwise match
+  // the wrong, earlier plan and charge the wrong price.
+  const byId = plans.find((plan) => id === plan.id || id.startsWith(`${plan.id}-`));
+  if (byId) return byId;
+
+  // Fallback to name matching, longest plan name first so the most specific plan wins.
+  return [...plans]
+    .sort((a, b) => b.name.length - a.name.length)
+    .find((plan) => name.includes(plan.name.toLowerCase()));
 }
 
 function getRequiredMealSlots(plan: DietPlan, item: CartItem) {
@@ -67,12 +75,13 @@ function findSampleForCartItem(samples: DietMeal[], item: CartItem) {
   });
 }
 
-function normalizeTrustedItem(item: CartItem, price: number, name?: string, mealSlots?: CartItem['mealSlots'], mealsPerDay?: number): CartItem {
+function normalizeTrustedItem(item: CartItem, price: number, name?: string, mealSlots?: CartItem['mealSlots'], mealsPerDay?: number, priceLabel?: string): CartItem {
   return {
     ...item,
     name: name ?? item.name,
     mealsPerDay,
     mealSlots,
+    priceLabel: priceLabel || undefined,
     basePrice: price,
     quantity: 1,
     addOns: [],
@@ -119,6 +128,27 @@ export async function getTrustedCheckoutPricing(items: CartItem[]): Promise<Trus
   const plan = findPlanForCartItem(diet.plans, item);
   if (!plan) {
     return { ok: false, error: 'Selected meal plan is not available.' };
+  }
+
+  // Quote-based plan: the chef set a text price (e.g. "Price depends on Body &
+  // Weight") instead of a fixed amount. There is nothing to charge up front — the
+  // kitchen confirms the price on WhatsApp — so carry the label and a zero total.
+  const priceLabel = normalizeText(plan.priceLabel);
+  if (priceLabel) {
+    const slots = normalizeMealSlots(item.mealSlots);
+    const mealSlots = slots.length ? slots : undefined;
+    const name = plan.customPrices && mealSlots
+      ? `${diet.title} - ${plan.name} (${formatMealSlots(mealSlots)})`
+      : `${diet.title} - ${plan.name}`;
+
+    return {
+      ok: true,
+      items: [normalizeTrustedItem(item, 0, name, mealSlots, mealSlots?.length, priceLabel)],
+      subtotal: 0,
+      tax: 0,
+      total: 0,
+      orderType: 'paid_plan',
+    };
   }
 
   const requiredMealSlots = getRequiredMealSlots(plan, item);

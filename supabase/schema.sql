@@ -165,6 +165,7 @@ create table if not exists public.program_plan_overrides (
   name text,
   duration text,
   price integer check (price is null or price >= 0),
+  price_label text,
   highlight text,
   active boolean not null default true,
   custom_prices jsonb,
