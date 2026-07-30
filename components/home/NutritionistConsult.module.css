@@ -1,0 +1,207 @@
+.section {
+  position: relative;
+  margin-top: 64px;
+}
+
+.card {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: clamp(24px, 4vw, 48px);
+  align-items: center;
+  padding: clamp(28px, 4vw, 44px);
+  border: 1px solid rgba(5, 150, 105, 0.14);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 88% 8%, rgba(5, 150, 105, 0.1), transparent 42%),
+    linear-gradient(180deg, var(--white) 0%, #f6fbf9 100%);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    460px circle at var(--spot-x, 88%) var(--spot-y, 10%),
+    rgba(5, 150, 105, 0.12),
+    transparent 46%
+  );
+  opacity: 0;
+  transition: opacity 0.4s var(--transition);
+  pointer-events: none;
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.description {
+  margin-top: 14px;
+  max-width: 52ch;
+  color: var(--text-secondary);
+  font-size: clamp(0.98rem, 1.6vw, 1.08rem);
+  line-height: 1.6;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.bookBtn {
+  font-size: 15px;
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.contactCard {
+  padding: clamp(20px, 2.4vw, 26px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow-glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.nutritionist {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 16px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nutritionistAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  color: var(--white);
+  background: linear-gradient(135deg, var(--green), var(--green-dark));
+  box-shadow: var(--shadow-green);
+}
+
+.nutritionistMeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nutritionistName {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.nutritionistRole {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
+.contactList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+}
+
+.contactLink {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  transition: background 0.2s var(--transition), border-color 0.2s var(--transition),
+    transform 0.2s var(--transition);
+}
+
+.contactLink:hover {
+  background: var(--green-light);
+  border-color: rgba(5, 150, 105, 0.18);
+  transform: translateX(2px);
+}
+
+.contactIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--green);
+  background: var(--green-light);
+}
+
+.contactText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.contactLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.contactValue {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .card {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+
+@media (max-width: 560px) {
+  .section {
+    margin-top: 48px;
+  }
+
+  .actions {
+    gap: 12px;
+  }
+}
