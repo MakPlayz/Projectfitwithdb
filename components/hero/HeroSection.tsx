@@ -7,6 +7,7 @@ import { AnimatedMarqueeHero } from '@/components/ui/hero-3';
 import { dietCategories } from '@/data/diets';
 import DietCategoryCard from '@/components/diet/DietCategoryCard';
 import HomepageAdsBoard from '@/components/home/HomepageAdsBoard';
+import NutritionistConsult from '@/components/home/NutritionistConsult';
 import styles from './HeroSection.module.css';
 
 const heroImages = [
@@ -55,6 +56,8 @@ export default function HeroSection() {
 
       <div className="container">
         <HomepageAdsBoard />
+
+        <NutritionistConsult />
 
         <div id="programs" className={styles.cardsSection}>
           <motion.div
